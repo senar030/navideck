@@ -42,6 +42,7 @@ type PlayerContextValue = {
   reorderQueue: (songs: Song[]) => void
   setQueueOpen: (open: boolean) => void
   setExpanded: (open: boolean) => void
+  toggleStar: () => void
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null)
@@ -140,6 +141,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setPlaying(false)
     }
   }, [])
+
+  const toggleStar = useCallback(() => {
+    const song = queueRef.current[indexRef.current]
+    if (!song || !client) return
+    const next = !song.starred
+    void (next ? client.star(song.id) : client.unstar(song.id)).then(
+      () => {
+        setQueue((q) =>
+          q.map((s) =>
+            s.id === song.id ? { ...s, starred: next ? new Date().toISOString() : undefined } : s,
+          ),
+        )
+      },
+      () => {
+        /* ignore */
+      },
+    )
+  }, [client])
 
   const playIndex = useCallback(
     (i: number) => {
@@ -360,6 +379,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       reorderQueue,
       setQueueOpen,
       setExpanded,
+      toggleStar,
     }),
     [
       queue,
@@ -388,6 +408,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playIndex,
       removeFromQueue,
       reorderQueue,
+      toggleStar,
     ],
   )
 

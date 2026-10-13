@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Song } from '../api/types'
 import { formatTime } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
@@ -18,6 +18,10 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
   const { current, playing, playTracks, addToQueue, playNext } = usePlayer()
   const [starred, setStarred] = useState(Boolean(song.starred))
   const active = current?.id === song.id
+
+  useEffect(() => {
+    setStarred(Boolean(song.starred) || (current?.id === song.id && Boolean(current.starred)))
+  }, [song.id, song.starred, current?.id, current?.starred])
 
   async function toggleStar() {
     if (!client) return

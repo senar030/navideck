@@ -14,6 +14,7 @@ import {
   IconRepeat,
   IconShuffle,
   IconSpark,
+  IconStar,
   IconVolume,
 } from './Icons'
 
@@ -41,6 +42,7 @@ export function NowPlaying() {
     index,
     playIndex,
     playTracks,
+    toggleStar,
   } = usePlayer()
   const [showList, setShowList] = useState(false)
   const [mixBusy, setMixBusy] = useState(false)
@@ -94,7 +96,17 @@ export function NowPlaying() {
             <IconQueue size={22} />
           </button>
         </div>
-        <h2>{current.title}</h2>
+        <div className="np-title">
+          <h2>{current.title}</h2>
+          <button
+            type="button"
+            className={`icon-btn ${current.starred ? 'is-on' : ''}`}
+            aria-label={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+            onClick={toggleStar}
+          >
+            <IconStar size={22} filled={Boolean(current.starred)} />
+          </button>
+        </div>
         <div className="np-links">
           {current.artistId ? (
             <button type="button" className="link-btn np-artist" onClick={() => open({ name: 'artist', id: current.artistId! })}>

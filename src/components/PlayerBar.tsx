@@ -9,6 +9,7 @@ import {
   IconQueue,
   IconRepeat,
   IconShuffle,
+  IconStar,
 } from './Icons'
 
 export function PlayerBar() {
@@ -27,6 +28,7 @@ export function PlayerBar() {
     cycleRepeat,
     setQueueOpen,
     setExpanded,
+    toggleStar,
   } = usePlayer()
 
   const progress = duration ? (currentTime / duration) * 100 : 0
@@ -82,6 +84,15 @@ export function PlayerBar() {
         </div>
       </div>
       <div className="player-extra">
+        <button
+          type="button"
+          className={`icon-btn lg ${current?.starred ? 'is-on' : ''}`}
+          aria-label={current?.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+          onClick={toggleStar}
+          disabled={!current}
+        >
+          <IconStar size={22} filled={Boolean(current?.starred)} />
+        </button>
         <button type="button" className="icon-btn lg" aria-label="Queue" onClick={() => setQueueOpen(true)}>
           <IconQueue size={22} />
         </button>
