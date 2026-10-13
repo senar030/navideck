@@ -17,7 +17,7 @@ const FILTERS: { id: AlbumListType; label: string }[] = [
 ]
 
 export function AlbumGrid() {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
   const [type, setType] = useState<AlbumListType>('newest')
@@ -46,7 +46,7 @@ export function AlbumGrid() {
         loadingRef.current = false
       }
     },
-    [client],
+    [client, selectedFolderIds],
   )
 
   useEffect(() => {

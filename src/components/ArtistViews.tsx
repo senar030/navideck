@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Artist, ArtistIndex } from '../api/types'
+import type { Artist, ArtistIndex, ArtistInfo, Song } from '../api/types'
+import { stripHtml } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay } from './Icons'
+import { TrackList } from './TrackList'
 
 export function ArtistList() {
   const { client } = useAuth()
@@ -80,52 +82,98 @@ export function ArtistDetail({ id }: { id: string }) {
   const { go } = useNav()
   const { playTracks } = usePlayer()
   const [artist, setArtist] = useState<Artist | null>(null)
+  const [info, setInfo] = useState<ArtistInfo>({})
+  const [songs, setSongs] = useState<Song[]>([])
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!client) return
     void client
       .getArtist(id)
-      .then(setArtist)
+      .then(async (next) => {
+        setArtist(next)
+        const albums = await Promise.all((next.album ?? []).map((a) => client.getAlbum(a.id)))
+        setSongs(albums.flatMap((a) => a.song ?? []))
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load artist'))
+    void client.getArtistInfo(id).then(setInfo).catch(() => setInfo({}))
   }, [client, id])
 
-  async function playAll() {
-    if (!client || !artist?.album?.length) return
-    const albums = await Promise.all(artist.album.map((a) => client.getAlbum(a.id)))
-    const songs = albums.flatMap((a) => a.song ?? [])
-    playTracks(songs, 0)
+  function playAll() {
+    if (songs.length) playTracks(songs, 0)
   }
 
   if (error) return <p className="error">{error}</p>
-  if (!artist) return <p className="muted">Loading artist…</p>
+  if (!artist) return <p className="muted">Künstler wird geladen…</p>
+
+  const bio = stripHtml(info.biography)
+  const links = [
+    info.lastFmUrl ? { href: info.lastFmUrl, label: 'Last.fm' } : null,
+    info.musicBrainzId
+      ? { href: `https://musicbrainz.org/artist/${info.musicBrainzId}`, label: 'MusicBrainz' }
+      : null,
+  ].filter(Boolean) as { href: string; label: string }[]
 
   return (
     <div className="view detail">
       <div className="hero">
         <CoverArt coverArt={artist.coverArt} alt="" size={400} className="hero-cover avatar" />
         <div className="hero-copy">
-          <p className="eyebrow">Artist</p>
+          <p className="eyebrow">Künstler</p>
           <h2>{artist.name}</h2>
-          <p className="muted">{artist.albumCount ?? artist.album?.length ?? 0} albums</p>
+          <p className="muted">
+            {artist.albumCount ?? artist.album?.length ?? 0} Alben
+            {songs.length ? ` · ${songs.length} Titel` : ''}
+          </p>
           <div className="hero-actions">
-            <button type="button" className="primary-btn" onClick={() => void playAll()}>
-              <IconPlay size={22} /> Play all
+            <button type="button" className="primary-btn" onClick={playAll} disabled={!songs.length}>
+              <IconPlay size={22} /> Alles spielen
             </button>
           </div>
         </div>
       </div>
-      <div className="album-grid">
-        {(artist.album ?? []).map((album) => (
-          <article key={album.id} className="album-card">
-            <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
-              <CoverArt coverArt={album.coverArt} alt="" size={400} />
-              <span className="album-name">{album.name}</span>
-              <span className="album-artist">{album.year}</span>
-            </button>
-          </article>
-        ))}
-      </div>
+      {bio ? <p className="artist-bio">{bio}</p> : null}
+      {links.length ? (
+        <div className="chip-row wrap">
+          {links.map((link) => (
+            <a key={link.href} className="chip" href={link.href} target="_blank" rel="noreferrer">
+              {link.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
+      {info.similarArtist?.length ? (
+        <section className="block">
+          <h3>Ähnliche Künstler</h3>
+          <div className="chip-row wrap">
+            {info.similarArtist.map((a) => (
+              <button key={a.id} type="button" className="chip" onClick={() => go({ name: 'artist', id: a.id })}>
+                {a.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <section className="block">
+        <h3>Alben</h3>
+        <div className="album-grid">
+          {(artist.album ?? []).map((album) => (
+            <article key={album.id} className="album-card">
+              <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
+                <CoverArt coverArt={album.coverArt} alt="" size={400} />
+                <span className="album-name">{album.name}</span>
+                <span className="album-artist">{album.year}</span>
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+      {songs.length ? (
+        <section className="block">
+          <h3>Titel</h3>
+          <TrackList songs={songs} showCover playAllLabel="Alle Titel spielen" />
+        </section>
+      ) : null}
     </div>
   )
 }

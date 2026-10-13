@@ -4,7 +4,9 @@ import type {
   AlbumListType,
   Artist,
   ArtistIndex,
+  ArtistInfo,
   Genre,
+  MusicFolder,
   Playlist,
   SearchResult,
   Song,
@@ -23,6 +25,10 @@ type SubsonicResponse = {
   starred2?: { artist?: Artist[]; album?: Album[]; song?: Song[] }
   genres?: { genre?: Genre | Genre[] }
   songsByGenre?: { song?: Song[] }
+  musicFolders?: { musicFolder?: MusicFolder | MusicFolder[] }
+  artistInfo2?: ArtistInfo
+  topSongs?: { song?: Song[] }
+  randomSongs?: { song?: Song[] }
 }
 
 const CLIENT = 'Navideck'
@@ -35,6 +41,7 @@ export class NavidromeClient {
   private readonly password: string
   private readonly salt: string
   private readonly token: string
+  folderIds: string[] = []
 
   constructor(baseUrl: string, username: string, password: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -66,12 +73,18 @@ export class NavidromeClient {
   }
 
   async getAlbumList(type: AlbumListType, offset = 0): Promise<Album[]> {
-    const data = await this.request('getAlbumList2', {
-      type,
-      size: String(PAGE),
-      offset: String(offset),
-    })
-    return data.albumList2?.album ?? []
+    const pages = await this.forFolders((folder) =>
+      this.request('getAlbumList2', {
+        type,
+        size: String(PAGE),
+        offset: String(offset),
+        ...folder,
+      }),
+    )
+    return uniqueBy(
+      pages.flatMap((data) => data.albumList2?.album ?? []),
+      (a) => a.id,
+    )
   }
 
   async getGenres(): Promise<Genre[]> {
@@ -107,8 +120,54 @@ export class NavidromeClient {
   }
 
   async getArtists(): Promise<ArtistIndex[]> {
-    const data = await this.request('getArtists')
-    return data.artists?.index ?? []
+    const pages = await this.forFolders((folder) => this.request('getArtists', folder))
+    const byLetter = new Map<string, Map<string, Artist>>()
+    for (const data of pages) {
+      for (const group of data.artists?.index ?? []) {
+        let bucket = byLetter.get(group.name)
+        if (!bucket) {
+          bucket = new Map()
+          byLetter.set(group.name, bucket)
+        }
+        for (const artist of group.artist ?? []) bucket.set(artist.id, artist)
+      }
+    }
+    return [...byLetter.entries()].map(([name, artists]) => ({
+      name,
+      artist: [...artists.values()],
+    }))
+  }
+
+  async getMusicFolders(): Promise<MusicFolder[]> {
+    const data = await this.request('getMusicFolders')
+    const list = data.musicFolders?.musicFolder
+    if (!list) return []
+    const folders = Array.isArray(list) ? list : [list]
+    return folders.map((f) => ({ id: String(f.id), name: f.name }))
+  }
+
+  async getArtistInfo(id: string): Promise<ArtistInfo> {
+    const data = await this.request('getArtistInfo2', { id, count: '8' })
+    return data.artistInfo2 ?? {}
+  }
+
+  async getTopSongs(artist: string): Promise<Song[]> {
+    const data = await this.request('getTopSongs', { artist, count: '30' })
+    return data.topSongs?.song ?? []
+  }
+
+  async getRandomSongs(size = 40, genre?: string): Promise<Song[]> {
+    const pages = await this.forFolders((folder) =>
+      this.request('getRandomSongs', {
+        size: String(size),
+        ...(genre ? { genre } : {}),
+        ...folder,
+      }),
+    )
+    return uniqueBy(
+      pages.flatMap((data) => data.randomSongs?.song ?? []),
+      (s) => s.id,
+    ).slice(0, size)
   }
 
   async getArtist(id: string): Promise<Artist> {
@@ -162,6 +221,17 @@ export class NavidromeClient {
     }
   }
 
+  private async forFolders(
+    run: (folder: Record<string, string>) => Promise<SubsonicResponse>,
+  ): Promise<SubsonicResponse[]> {
+    const ids = this.folderIds
+    if (ids.length <= 1) {
+      const folder: Record<string, string> = ids.length === 1 ? { musicFolderId: ids[0] } : {}
+      return [await run(folder)]
+    }
+    return Promise.all(ids.map((id) => run({ musicFolderId: id })))
+  }
+
   private buildUrl(method: string, extra: Record<string, string> = {}): string {
     const params = new URLSearchParams({
       u: this.username,
@@ -199,6 +269,18 @@ export class NavidromeClient {
     }
     return data
   }
+}
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const item of items) {
+    const id = key(item)
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(item)
+  }
+  return out
 }
 
 function randomSalt(): string {

@@ -8,10 +8,12 @@ import {
   type ReactNode,
 } from 'react'
 import { NavidromeClient } from '../api/client'
+import type { MusicFolder } from '../api/types'
 import { normalizeServerUrl } from '../lib/format'
 
 const STORAGE_KEY = 'navideck.auth'
 const LAST_KEY = 'navideck.last'
+const LIB_KEY = 'navideck.libraries'
 
 type StoredAuth = {
   baseUrl: string
@@ -25,6 +27,9 @@ type AuthContextValue = {
   logout: () => void
   lastServer: string
   lastUser: string
+  folders: MusicFolder[]
+  selectedFolderIds: string[]
+  setSelectedFolderIds: (ids: string[]) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -44,8 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const last = readJson<Pick<StoredAuth, 'baseUrl' | 'username'>>(LAST_KEY)
   const [client, setClient] = useState<NavidromeClient | null>(() => {
     if (!stored) return null
-    return new NavidromeClient(stored.baseUrl, stored.username, stored.password)
+    const next = new NavidromeClient(stored.baseUrl, stored.username, stored.password)
+    next.folderIds = readJson<string[]>(LIB_KEY) ?? []
+    return next
   })
+  const [folders, setFolders] = useState<MusicFolder[]>([])
+  const [selectedFolderIds, setSelected] = useState<string[]>(() => readJson<string[]>(LIB_KEY) ?? [])
 
   useEffect(() => {
     if (!client) return
@@ -55,10 +64,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(STORAGE_KEY)
       setClient(null)
     })
+    void client.getMusicFolders().then((list) => {
+      if (!cancelled) setFolders(list)
+    }).catch(() => {
+      if (!cancelled) setFolders([])
+    })
     return () => {
       cancelled = true
     }
   }, [client])
+
+  const setSelectedFolderIds = useCallback((ids: string[]) => {
+    setSelected(ids)
+    localStorage.setItem(LIB_KEY, JSON.stringify(ids))
+    setClient((c) => {
+      if (!c) return c
+      c.folderIds = ids
+      return c
+    })
+  }, [])
 
   const login = useCallback(async (server: string, username: string, password: string) => {
     const baseUrl = normalizeServerUrl(server)
@@ -89,8 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       lastServer: stored?.baseUrl ?? last?.baseUrl ?? '',
       lastUser: stored?.username ?? last?.username ?? '',
+      folders,
+      selectedFolderIds,
+      setSelectedFolderIds,
     }),
-    [client, login, logout, stored?.baseUrl, stored?.username, last?.baseUrl, last?.username],
+    [
+      client,
+      login,
+      logout,
+      stored?.baseUrl,
+      stored?.username,
+      last?.baseUrl,
+      last?.username,
+      folders,
+      selectedFolderIds,
+      setSelectedFolderIds,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

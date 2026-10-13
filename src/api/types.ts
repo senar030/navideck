@@ -69,3 +69,18 @@ export type Genre = {
   songCount?: number
   albumCount?: number
 }
+
+export type MusicFolder = {
+  id: string
+  name: string
+}
+
+export type ArtistInfo = {
+  biography?: string
+  musicBrainzId?: string
+  lastFmUrl?: string
+  smallImageUrl?: string
+  mediumImageUrl?: string
+  largeImageUrl?: string
+  similarArtist?: Artist[]
+}

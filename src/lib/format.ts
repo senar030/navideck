@@ -27,6 +27,20 @@ export function sortSongs<T extends { title: string; artist?: string; album?: st
   return copy
 }
 
+export function stripHtml(input: string | undefined): string {
+  if (!input) return ''
+  return input
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim()
+}
+
 export function normalizeServerUrl(input: string): string {
   let url = input.trim()
   if (!url) return url

@@ -48,7 +48,7 @@ export function NowPlaying() {
       {current.artistId ? (
         <button
           type="button"
-          className="link-btn"
+          className="link-btn np-artist"
           onClick={() => {
             setExpanded(false)
             go({ name: 'artist', id: current.artistId! })
@@ -57,7 +57,7 @@ export function NowPlaying() {
           {current.artist}
         </button>
       ) : (
-        <p>{current.artist}</p>
+        <p className="np-artist">{current.artist}</p>
       )}
       <label className="seek">
         <span>{formatTime(currentTime)}</span>

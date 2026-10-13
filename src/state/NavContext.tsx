@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 export type View =
+  | { name: 'home' }
   | { name: 'albums' }
   | { name: 'artists' }
   | { name: 'playlists' }
@@ -22,11 +23,12 @@ type NavContextValue = {
 const NavContext = createContext<NavContextValue | null>(null)
 
 export function NavProvider({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<View[]>([{ name: 'albums' }])
-  const view = stack[stack.length - 1] ?? { name: 'albums' as const }
+  const [stack, setStack] = useState<View[]>([{ name: 'home' }])
+  const view = stack[stack.length - 1] ?? { name: 'home' as const }
 
   const go = useCallback((next: View) => {
     const isRoot =
+      next.name === 'home' ||
       next.name === 'albums' ||
       next.name === 'artists' ||
       next.name === 'playlists' ||

@@ -1,5 +1,27 @@
 type IconProps = { size?: number }
 
+export function IconHome({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 3 3 12h3v8h5v-6h2v6h5v-8h3L12 3z" />
+    </svg>
+  )
+}
+export function IconSun({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M11 4h2v3h-2V4zm0 13h2v3h-2v-3zM4 11h3v2H4v-2zm13 0h3v2h-3v-2zM6.2 6.2l2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4zm10.5 10.5 2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4zM17.8 6.2l1.4 1.4-2.1 2.1-1.4-1.4 2.1-2.1zM6.2 17.8l1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
+    </svg>
+  )
+}
+export function IconMoon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M15.5 3.5A7.5 7.5 0 1 0 20.5 14 6 6 0 0 1 15.5 3.5z" />
+    </svg>
+  )
+}
+
 export function IconPlay({ size = 28 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
