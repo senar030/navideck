@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 export type View =
   | { name: 'home' }
@@ -13,6 +13,8 @@ export type View =
   | { name: 'playlist'; id: string }
   | { name: 'genre'; id: string }
 
+type HistState = { stack: View[] }
+
 type NavContextValue = {
   view: View
   go: (view: View) => void
@@ -22,29 +24,69 @@ type NavContextValue = {
 
 const NavContext = createContext<NavContextValue | null>(null)
 
+const ROOTS = new Set(['home', 'albums', 'artists', 'playlists', 'starred', 'search', 'genres'])
+
+function isRoot(view: View): boolean {
+  return ROOTS.has(view.name)
+}
+
+function toHash(view: View): string {
+  if ('id' in view) return `#/${view.name}/${encodeURIComponent(view.id)}`
+  return `#/${view.name}`
+}
+
+function parseHash(): View {
+  const raw = window.location.hash.replace(/^#\/?/, '')
+  const [name, ...rest] = raw.split('/')
+  const id = rest.length ? decodeURIComponent(rest.join('/')) : ''
+  if ((name === 'album' || name === 'artist' || name === 'playlist' || name === 'genre') && id) {
+    return { name, id }
+  }
+  if (name && ROOTS.has(name)) return { name } as View
+  return { name: 'home' }
+}
+
 export function NavProvider({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<View[]>([{ name: 'home' }])
+  const [stack, setStack] = useState<View[]>(() => {
+    const fromHash = parseHash()
+    return [fromHash]
+  })
   const view = stack[stack.length - 1] ?? { name: 'home' as const }
 
+  useEffect(() => {
+    history.replaceState({ stack } satisfies HistState, '', toHash(view))
+    const onPop = (event: PopStateEvent) => {
+      const hist = event.state as HistState | null
+      if (hist?.stack?.length) {
+        setStack(hist.stack)
+        return
+      }
+      const fallback: View[] = [parseHash()]
+      history.pushState({ stack: fallback } satisfies HistState, '', toHash(fallback[0]))
+      setStack(fallback)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+    // only bind once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const go = useCallback((next: View) => {
-    const isRoot =
-      next.name === 'home' ||
-      next.name === 'albums' ||
-      next.name === 'artists' ||
-      next.name === 'playlists' ||
-      next.name === 'starred' ||
-      next.name === 'search' ||
-      next.name === 'genres'
     setStack((s) => {
-      if (isRoot) return [next]
-      const cur = s[s.length - 1]
-      if (cur && JSON.stringify(cur) === JSON.stringify(next)) return s
-      return [...s, next]
+      const nextStack = isRoot(next)
+        ? [next]
+        : JSON.stringify(s[s.length - 1]) === JSON.stringify(next)
+          ? s
+          : [...s, next]
+      if (JSON.stringify(s) === JSON.stringify(nextStack)) return s
+      history.pushState({ stack: nextStack } satisfies HistState, '', toHash(next))
+      return nextStack
     })
   }, [])
 
   const back = useCallback(() => {
-    setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
+    if (window.history.length > 1) history.back()
+    else setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
   }, [])
 
   const value = useMemo(

@@ -1,5 +1,12 @@
 type IconProps = { size?: number }
 
+export function IconSpark({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+      <path d="M12 3.5 13.2 8.5 18 9.2 14.4 12.6 15.5 18 12 15.4 8.5 18 9.6 12.6 6 9.2 10.8 8.5 12 3.5z" />
+    </svg>
+  )
+}
 export function IconHome({ size = 22 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -66,7 +73,7 @@ export function IconRepeat({ size = 22 }: IconProps) {
 }
 export function IconStar({ size = 22, filled = false }: IconProps & { filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" aria-hidden>
       <path d="M12 3.5 14.9 9.3l6.4.9-4.6 4.5 1.1 6.4L12 18.1 6.2 21.1l1.1-6.4L2.7 10.2l6.4-.9L12 3.5z" />
     </svg>
   )
@@ -80,7 +87,7 @@ export function IconQueue({ size = 22 }: IconProps) {
 }
 export function IconSearch({ size = 22 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
       <circle cx="11" cy="11" r="7" />
       <path d="M20 20l-3.5-3.5" />
     </svg>

@@ -29,6 +29,7 @@ type SubsonicResponse = {
   artistInfo2?: ArtistInfo
   topSongs?: { song?: Song[] }
   randomSongs?: { song?: Song[] }
+  similarSongs2?: { song?: Song[] }
 }
 
 const CLIENT = 'Navideck'
@@ -154,6 +155,11 @@ export class NavidromeClient {
   async getTopSongs(artist: string): Promise<Song[]> {
     const data = await this.request('getTopSongs', { artist, count: '30' })
     return data.topSongs?.song ?? []
+  }
+
+  async getSimilarSongs(id: string, count = 40): Promise<Song[]> {
+    const data = await this.request('getSimilarSongs2', { id, count: String(count) })
+    return data.similarSongs2?.song ?? []
   }
 
   async getRandomSongs(size = 40, genre?: string): Promise<Song[]> {

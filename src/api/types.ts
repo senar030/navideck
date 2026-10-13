@@ -11,6 +11,7 @@ export type Song = {
   coverArt?: string
   starred?: string
   discNumber?: number
+  genre?: string
 }
 
 export type Album = {
@@ -23,6 +24,7 @@ export type Album = {
   duration?: number
   year?: number
   starred?: string
+  genre?: string
   song?: Song[]
 }
 
