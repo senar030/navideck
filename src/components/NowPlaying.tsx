@@ -76,14 +76,15 @@ export function NowPlaying() {
   }
 
   return (
-    <div className="now-playing">
+    <div className={`now-playing ${showList ? 'has-list' : ''}`}>
       {bg ? <img className="np-bg" src={bg} alt="" /> : null}
-      <div className="np-glass">
-        <button type="button" className="icon-btn np-close" aria-label="Schließen" onClick={() => setExpanded(false)}>
-          <IconClose />
-        </button>
-        <div className={`np-stage ${showList ? 'with-list' : ''}`}>
-          <CoverArt coverArt={current.coverArt} alt="" size={700} className="np-cover" />
+      <div className="np-veil" />
+      <button type="button" className="icon-btn np-close" aria-label="Schließen" onClick={() => setExpanded(false)}>
+        <IconClose />
+      </button>
+      <div className="np-main">
+        <div className="np-stage">
+          <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
           <button
             type="button"
             className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}
@@ -92,24 +93,6 @@ export function NowPlaying() {
           >
             <IconQueue size={22} />
           </button>
-          {showList ? (
-            <aside className="np-queue">
-              <p className="np-queue-title">Aktuelle Playlist</p>
-              <div className="np-queue-body">
-                {queue.map((song, i) => (
-                  <button
-                    key={`${song.id}-${i}`}
-                    type="button"
-                    className={`np-queue-item ${i === index ? 'is-active' : ''}`}
-                    onClick={() => playIndex(i)}
-                  >
-                    <span className="track-title">{song.title}</span>
-                    <span className="track-sub">{song.artist}</span>
-                  </button>
-                ))}
-              </div>
-            </aside>
-          ) : null}
         </div>
         <h2>{current.title}</h2>
         <div className="np-links">
@@ -167,16 +150,33 @@ export function NowPlaying() {
         <div className="vol-row">
           <IconVolume size={18} />
           <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
-          <button
-            type="button"
-            className="chip mix-btn"
-            disabled={mixBusy}
-            onClick={() => void mixFromSong()}
-          >
+          <button type="button" className="chip mix-btn" disabled={mixBusy} onClick={() => void mixFromSong()}>
             <IconSpark size={16} /> {mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
           </button>
         </div>
       </div>
+      {showList ? (
+        <aside className="np-queue">
+          <p className="np-queue-title">Playing next</p>
+          <div className="np-queue-body">
+            {queue.map((song, i) => (
+              <button
+                key={`${song.id}-${i}`}
+                type="button"
+                className={`np-queue-item ${i === index ? 'is-active' : ''}`}
+                onClick={() => playIndex(i)}
+              >
+                <span className="np-q-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="track-meta">
+                  <span className="track-title">{song.title}</span>
+                  <span className="track-sub">{song.artist}</span>
+                </span>
+                <span className="track-time">{formatTime(song.duration)}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+      ) : null}
     </div>
   )
 }
