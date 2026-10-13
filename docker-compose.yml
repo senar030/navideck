@@ -1,0 +1,8 @@
+services:
+  navideck:
+    build: .
+    image: navideck:local
+    container_name: navideck
+    restart: unless-stopped
+    ports:
+      - "4173:80"

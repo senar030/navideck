@@ -1,0 +1,116 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ALBUM_PAGE } from '../api/client'
+import type { Album, AlbumListType } from '../api/types'
+import { useAuth } from '../state/AuthContext'
+import { useNav } from '../state/NavContext'
+import { usePlayer } from '../state/PlayerContext'
+import { CoverArt } from './CoverArt'
+import { IconPlay } from './Icons'
+
+const FILTERS: { id: AlbumListType; label: string }[] = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'recent', label: 'Recent' },
+  { id: 'frequent', label: 'Frequent' },
+  { id: 'random', label: 'Random' },
+  { id: 'starred', label: 'Starred' },
+  { id: 'alphabeticalByName', label: 'A–Z' },
+]
+
+export function AlbumGrid() {
+  const { client } = useAuth()
+  const { go } = useNav()
+  const { playTracks } = usePlayer()
+  const [type, setType] = useState<AlbumListType>('newest')
+  const [albums, setAlbums] = useState<Album[]>([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [more, setMore] = useState(false)
+  const sentinel = useRef<HTMLDivElement>(null)
+  const loadingRef = useRef(false)
+
+  const load = useCallback(
+    async (listType: AlbumListType, offset: number, append: boolean) => {
+      if (!client) return
+      if (loadingRef.current) return
+      loadingRef.current = true
+      setLoading(true)
+      setError('')
+      try {
+        const page = await client.getAlbumList(listType, offset)
+        setAlbums((prev) => (append ? [...prev, ...page] : page))
+        setMore(page.length === ALBUM_PAGE)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load albums')
+      } finally {
+        setLoading(false)
+        loadingRef.current = false
+      }
+    },
+    [client],
+  )
+
+  useEffect(() => {
+    void load(type, 0, false)
+  }, [load, type])
+
+  useEffect(() => {
+    const el = sentinel.current
+    if (!el) return
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && more && !loading && !error) {
+        void load(type, albums.length, true)
+      }
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [albums.length, error, load, loading, more, type])
+
+  async function playAlbum(album: Album) {
+    if (!client) return
+    const full = await client.getAlbum(album.id)
+    playTracks(full.song ?? [], 0)
+  }
+
+  return (
+    <div className="view">
+      <header className="view-head">
+        <h2>Albums</h2>
+        <div className="chip-row">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`chip ${type === f.id ? 'is-on' : ''}`}
+              onClick={() => setType(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </header>
+      {error ? <p className="error">{error}</p> : null}
+      <div className="album-grid">
+        {albums.map((album) => (
+          <article key={album.id} className="album-card">
+            <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
+              <CoverArt coverArt={album.coverArt} alt="" size={400} />
+              <span className="album-name">{album.name}</span>
+              <span className="album-artist">{album.artist}</span>
+            </button>
+            <button
+              type="button"
+              className="play-fab"
+              aria-label={`Play ${album.name}`}
+              onClick={() => void playAlbum(album)}
+            >
+              <IconPlay size={26} />
+            </button>
+          </article>
+        ))}
+      </div>
+      <div ref={sentinel} className="sentinel" />
+      {more && loading ? <p className="muted">Loading more…</p> : null}
+      {loading && albums.length === 0 ? <p className="muted">Loading albums…</p> : null}
+    </div>
+  )
+}

@@ -1,0 +1,103 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import { NavidromeClient } from '../api/client'
+import { normalizeServerUrl } from '../lib/format'
+
+const STORAGE_KEY = 'navideck.auth'
+const LAST_KEY = 'navideck.last'
+
+type StoredAuth = {
+  baseUrl: string
+  username: string
+  password: string
+}
+
+type AuthContextValue = {
+  client: NavidromeClient | null
+  login: (server: string, username: string, password: string) => Promise<void>
+  logout: () => void
+  lastServer: string
+  lastUser: string
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const stored = readJson<StoredAuth>(STORAGE_KEY)
+  const last = readJson<Pick<StoredAuth, 'baseUrl' | 'username'>>(LAST_KEY)
+  const [client, setClient] = useState<NavidromeClient | null>(() => {
+    if (!stored) return null
+    return new NavidromeClient(stored.baseUrl, stored.username, stored.password)
+  })
+
+  useEffect(() => {
+    if (!client) return
+    let cancelled = false
+    void client.ping().catch(() => {
+      if (cancelled) return
+      localStorage.removeItem(STORAGE_KEY)
+      setClient(null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [client])
+
+  const login = useCallback(async (server: string, username: string, password: string) => {
+    const baseUrl = normalizeServerUrl(server)
+    const next = new NavidromeClient(baseUrl, username.trim(), password)
+    await next.ping()
+    const payload = {
+      baseUrl: next.baseUrl,
+      username: next.username,
+      password,
+    } satisfies StoredAuth
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    localStorage.setItem(
+      LAST_KEY,
+      JSON.stringify({ baseUrl: next.baseUrl, username: next.username }),
+    )
+    setClient(next)
+  }, [])
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY)
+    setClient(null)
+  }, [])
+
+  const value = useMemo(
+    () => ({
+      client,
+      login,
+      logout,
+      lastServer: stored?.baseUrl ?? last?.baseUrl ?? '',
+      lastUser: stored?.username ?? last?.username ?? '',
+    }),
+    [client, login, logout, stored?.baseUrl, stored?.username, last?.baseUrl, last?.username],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}
