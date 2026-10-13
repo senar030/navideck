@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatTime } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
@@ -45,7 +45,29 @@ export function NowPlaying() {
     toggleStar,
   } = usePlayer()
   const [showList, setShowList] = useState(false)
+  const [showLyrics, setShowLyrics] = useState(false)
+  const [lyrics, setLyrics] = useState('')
+  const [lyricsBusy, setLyricsBusy] = useState(false)
   const [mixBusy, setMixBusy] = useState(false)
+
+  useEffect(() => {
+    setShowLyrics(false)
+    setLyrics('')
+  }, [current?.id])
+
+  useEffect(() => {
+    if (!showLyrics || !client || !current) return
+    let cancelled = false
+    setLyricsBusy(true)
+    void client.getLyricsForSong(current).then((text) => {
+      if (cancelled) return
+      setLyrics(text)
+      setLyricsBusy(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [showLyrics, client, current])
 
   if (!expanded || !current) return null
 
@@ -85,18 +107,40 @@ export function NowPlaying() {
         <IconClose />
       </button>
       <div className="np-main">
-        <div className="np-stage">
-          <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
-          <button
-            type="button"
-            className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}
-            aria-label="Aktuelle Playlist"
-            onClick={() => setShowList((v) => !v)}
-          >
-            <IconQueue size={22} />
-          </button>
+        <div className={`np-flip ${showLyrics ? 'is-flipped' : ''}`}>
+          <div className="np-flip-inner">
+            <button
+              type="button"
+              className="np-flip-face np-flip-front"
+              aria-label="Lyrics anzeigen"
+              onClick={() => setShowLyrics(true)}
+            >
+              <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
+            </button>
+            <div className="np-flip-face np-flip-back">
+              <div
+                className="np-lyrics"
+                onClick={() => setShowLyrics(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setShowLyrics(false)
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="Cover wieder anzeigen"
+              >
+                {lyricsBusy ? (
+                  <p className="muted">Lade Lyrics…</p>
+                ) : lyrics ? (
+                  <pre>{lyrics}</pre>
+                ) : (
+                  <p className="muted">Keine Lyrics gefunden.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
         <div className="np-title">
+          <span className="np-title-slot" aria-hidden />
           <h2>{current.title}</h2>
           <button
             type="button"
@@ -142,22 +186,34 @@ export function NowPlaying() {
           <span>{formatTime(duration)}</span>
         </label>
         <div className="np-transport">
-          <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Shuffle" onClick={toggleShuffle}>
-            <IconShuffle size={22} />
-          </button>
-          <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev}>
-            <IconPrev size={28} />
-          </button>
+          <div className="np-transport-side">
+            <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Shuffle" onClick={toggleShuffle}>
+              <IconShuffle size={22} />
+            </button>
+            <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev}>
+              <IconPrev size={28} />
+            </button>
+          </div>
           <button type="button" className="play-xl" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
             {playing ? <IconPause size={32} /> : <IconPlay size={32} />}
           </button>
-          <button type="button" className="icon-btn lg" aria-label="Next" onClick={next}>
-            <IconNext size={28} />
-          </button>
-          <button type="button" className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`} aria-label="Repeat" onClick={cycleRepeat}>
-            <IconRepeat size={22} />
-            {repeat === 'one' ? <abbr>1</abbr> : null}
-          </button>
+          <div className="np-transport-side np-transport-end">
+            <button type="button" className="icon-btn lg" aria-label="Next" onClick={next}>
+              <IconNext size={28} />
+            </button>
+            <button type="button" className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`} aria-label="Repeat" onClick={cycleRepeat}>
+              <IconRepeat size={22} />
+              {repeat === 'one' ? <abbr>1</abbr> : null}
+            </button>
+            <button
+              type="button"
+              className={`icon-btn ${showList ? 'is-on' : ''}`}
+              aria-label="Aktuelle Playlist"
+              onClick={() => setShowList((v) => !v)}
+            >
+              <IconQueue size={22} />
+            </button>
+          </div>
         </div>
         <div className="vol-row">
           <IconVolume size={18} />

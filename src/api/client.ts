@@ -30,6 +30,15 @@ type SubsonicResponse = {
   topSongs?: { song?: Song[] }
   randomSongs?: { song?: Song[] }
   similarSongs2?: { song?: Song[] }
+  lyrics?: { artist?: string; title?: string; value?: string }
+  lyricsList?: { structuredLyrics?: StructuredLyrics | StructuredLyrics[] }
+}
+
+type LyricLine = { start?: number; value?: string }
+type StructuredLyrics = {
+  lang?: string
+  synced?: boolean
+  line?: LyricLine | LyricLine[]
 }
 
 const CLIENT = 'Navideck'
@@ -162,6 +171,24 @@ export class NavidromeClient {
     return data.similarSongs2?.song ?? []
   }
 
+  async getLyricsForSong(song: Song): Promise<string> {
+    try {
+      const data = await this.request('getLyricsBySongId', { id: song.id })
+      const text = structuredLyricsText(data.lyricsList?.structuredLyrics)
+      if (text) return text
+    } catch {
+      /* older servers */
+    }
+    try {
+      const extra: Record<string, string> = { title: song.title }
+      if (song.artist) extra.artist = song.artist
+      const data = await this.request('getLyrics', extra)
+      return (data.lyrics?.value ?? '').trim()
+    } catch {
+      return ''
+    }
+  }
+
   async getRandomSongs(size = 40, genre?: string): Promise<Song[]> {
     const pages = await this.forFolders((folder) =>
       this.request('getRandomSongs', {
@@ -275,6 +302,23 @@ export class NavidromeClient {
     }
     return data
   }
+}
+
+function asList<T>(value: T | T[] | undefined): T[] {
+  if (!value) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+function structuredLyricsText(raw: StructuredLyrics | StructuredLyrics[] | undefined): string {
+  for (const block of asList(raw)) {
+    const text = asList(block.line)
+      .map((line) => line.value?.trim() ?? '')
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    if (text) return text
+  }
+  return ''
 }
 
 function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
