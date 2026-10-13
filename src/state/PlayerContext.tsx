@@ -47,6 +47,16 @@ type PlayerContextValue = {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null)
 const VOLUME_KEY = 'navideck.volume'
+const SESSION_KEY = 'navideck.session'
+
+type Session = {
+  user: string
+  queue: Song[]
+  index: number
+  time: number
+  shuffle: boolean
+  repeat: RepeatMode
+}
 
 function readVolume(): number {
   try {
@@ -59,17 +69,42 @@ function readVolume(): number {
   }
 }
 
+function readSession(user?: string): Session | null {
+  if (!user) return null
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as Session
+    if (data.user !== user || !Array.isArray(data.queue) || !data.queue.length) return null
+    const index = Math.min(Math.max(0, Number(data.index) || 0), data.queue.length - 1)
+    const time = Number.isFinite(data.time) ? Math.max(0, data.time) : 0
+    const repeat: RepeatMode = data.repeat === 'all' || data.repeat === 'one' ? data.repeat : 'off'
+    return { user, queue: data.queue, index, time, shuffle: Boolean(data.shuffle), repeat }
+  } catch {
+    return null
+  }
+}
+
+function writeSession(session: Session) {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  } catch {
+    /* quota */
+  }
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { client } = useAuth()
+  const boot = useRef(readSession(client?.username))
   const audioRef = useRef(new Audio())
-  const [queue, setQueue] = useState<Song[]>([])
-  const [index, setIndex] = useState(0)
+  const [queue, setQueue] = useState<Song[]>(() => boot.current?.queue ?? [])
+  const [index, setIndex] = useState(() => boot.current?.index ?? 0)
   const [playing, setPlaying] = useState(false)
-  const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState<RepeatMode>('off')
+  const [shuffle, setShuffle] = useState(() => boot.current?.shuffle ?? false)
+  const [repeat, setRepeat] = useState<RepeatMode>(() => boot.current?.repeat ?? 'off')
   const [volume, setVolumeState] = useState(readVolume)
   const [muted, setMuted] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
+  const [currentTime, setCurrentTime] = useState(() => boot.current?.time ?? 0)
   const [duration, setDuration] = useState(0)
   const [queueOpen, setQueueOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -274,6 +309,65 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     },
     [loadAndPlay],
   )
+
+  useEffect(() => {
+    const saved = boot.current
+    const song = saved?.queue[saved.index]
+    if (!client || !song) return
+    const audio = audioRef.current
+    audio.src = client.streamUrl(song.id)
+    audio.preload = 'auto'
+    const onMeta = () => {
+      if (queueRef.current[indexRef.current]?.id !== song.id) return
+      const t = Math.min(saved.time, Number.isFinite(audio.duration) ? audio.duration : saved.time)
+      if (t > 0) audio.currentTime = t
+      setDuration(audio.duration || 0)
+      setCurrentTime(audio.currentTime)
+    }
+    audio.addEventListener('loadedmetadata', onMeta, { once: true })
+    audio.load()
+    if (saved.time >= 30) scrobbled.current = true
+    return () => audio.removeEventListener('loadedmetadata', onMeta)
+  }, [client])
+
+  useEffect(() => {
+    if (!client) return
+    const id = window.setTimeout(() => {
+      if (!queue.length) {
+        try {
+          localStorage.removeItem(SESSION_KEY)
+        } catch {
+          /* ignore */
+        }
+        return
+      }
+      writeSession({
+        user: client.username,
+        queue,
+        index,
+        time: audioRef.current.currentTime || currentTime,
+        shuffle,
+        repeat,
+      })
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [client, queue, index, currentTime, shuffle, repeat])
+
+  useEffect(() => {
+    const save = () => {
+      if (!client || !queueRef.current.length) return
+      writeSession({
+        user: client.username,
+        queue: queueRef.current,
+        index: indexRef.current,
+        time: audioRef.current.currentTime,
+        shuffle: shuffleRef.current,
+        repeat: repeatRef.current,
+      })
+    }
+    window.addEventListener('pagehide', save)
+    return () => window.removeEventListener('pagehide', save)
+  }, [client])
 
   useEffect(() => {
     const audio = audioRef.current

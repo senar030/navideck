@@ -1,4 +1,5 @@
 import { useAuth } from '../state/AuthContext'
+import { PALETTES, useTheme } from '../state/ThemeContext'
 import { IconClose } from './Icons'
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 
 export function SettingsSheet({ open, onClose }: Props) {
   const { client, logout, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
+  const { palette, setPalette } = useTheme()
   if (!open) return null
 
   return (
@@ -24,6 +26,22 @@ export function SettingsSheet({ open, onClose }: Props) {
           <p className="settings-user">{client?.username}</p>
           <p className="muted">Server</p>
           <p className="settings-url">{client?.baseUrl}</p>
+          <p className="muted">Farbthema</p>
+          <p className="settings-hint">Gilt für Hell- und Dunkelmodus.</p>
+          <div className="palette-grid">
+            {PALETTES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`palette-swatch ${palette === item.id ? 'is-on' : ''}`}
+                data-palette={item.id}
+                onClick={() => setPalette(item.id)}
+              >
+                <span className="palette-dot" />
+                {item.label}
+              </button>
+            ))}
+          </div>
           <p className="muted">Bibliotheken</p>
           <p className="settings-hint">Keine Auswahl = alle Bibliotheken.</p>
           <div className="folder-list">
