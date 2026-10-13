@@ -30,55 +30,40 @@ Credentials stay in this browser’s local storage until you disconnect.
 
 ## TrueNAS + Portainer
 
-Navideck is a static web app. The browser talks to Navidrome directly, so the container only has to serve the UI.
+Portainer on TrueNAS cannot build this image (`mkdir /.docker: permission denied`). GitHub Actions builds it; Portainer only pulls `ghcr.io/senar030/navideck:latest`.
 
-### 1. Copy the project onto the NAS
+### 1. Make the package public (once)
 
-Put this folder on a dataset Portainer can see, for example `/mnt/tank/apps/navideck`.
+After the first GitHub Action succeeds:
 
-If you have git on the NAS:
+1. Open [github.com/senar030/navideck/pkgs/container/navideck](https://github.com/senar030/navideck/pkgs/container/navideck)
+2. **Package settings** → **Change visibility** → **Public**
 
-```bash
-cd /mnt/tank/apps
-git clone <your-repo-url> navideck
-```
+If you leave it private, add a GitHub token in Portainer under **Registries**.
 
-Otherwise copy the project over SMB/SFTP (include `Dockerfile`, `docker-compose.yml`, and `nginx.conf`).
+### 2. Deploy the stack
 
-### 2. Create a Portainer stack
+1. Portainer → **Stacks** → **Add stack** → name `navideck`
+2. **Repository**: `https://github.com/senar030/navideck`
+3. Branch: `main`
+4. Compose path: `docker-compose.yml`
+5. Deploy
 
-1. Open Portainer → **Stacks** → **Add stack**.
-2. Name it `navideck`.
-3. Choose **Repository** if the code is in git, or **Web editor** and paste:
+Or paste this into the web editor (no Git clone needed):
 
 ```yaml
 services:
   navideck:
-    build: /mnt/tank/apps/navideck
-    image: navideck:local
+    image: ghcr.io/senar030/navideck:latest
     container_name: navideck
     restart: unless-stopped
     ports:
       - "4173:80"
 ```
 
-If you used **Web editor**, set the build path to the folder on the NAS. Easier: **Repository** / git, or deploy from the compose file in that folder.
+Open `http://<truenas-ip>:4173`. After a GitHub update, wait for the Action to finish, then **Pull and redeploy**.
 
-Alternative that always works with a copied folder: in Portainer go to **Images** → **Build a new image**, set the build context to `/mnt/tank/apps/navideck`, Dockerfile `Dockerfile`, tag `navideck:local`. Then **Containers** → **Add container**:
-
-- Image: `navideck:local`
-- Publish port `4173` → container `80`
-- Restart policy: unless stopped
-
-### 3. Open it
-
-`http://<truenas-ip>:4173`
-
-On the login screen, the **Navidrome URL must be reachable from the device you play on** (PC or Steam Deck), not only from the container. Use something like `http://192.168.178.113:4533`, not `localhost`.
-
-If you serve Navideck over HTTPS, Navidrome must be HTTPS too.
-
-Change `"4173:80"` if that host port is taken.
+On login, Navidrome must be reachable from the player (PC / Steam Deck), e.g. `http://192.168.178.113:4533`, not `localhost`. Change `"4173:80"` if that host port is taken.
 
 ## Notes
 

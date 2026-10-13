@@ -1,7 +1,6 @@
 services:
   navideck:
-    build: .
-    image: navideck:local
+    image: ghcr.io/senar030/navideck:latest
     container_name: navideck
     restart: unless-stopped
     ports:
