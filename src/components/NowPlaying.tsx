@@ -186,40 +186,36 @@ export function NowPlaying() {
           <span>{formatTime(duration)}</span>
         </label>
         <div className="np-transport">
-          <div className="np-transport-side">
-            <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Shuffle" onClick={toggleShuffle}>
-              <IconShuffle size={22} />
-            </button>
-            <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev}>
-              <IconPrev size={28} />
-            </button>
-          </div>
+          <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Shuffle" onClick={toggleShuffle}>
+            <IconShuffle size={22} />
+          </button>
+          <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev}>
+            <IconPrev size={28} />
+          </button>
           <button type="button" className="play-xl" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
             {playing ? <IconPause size={32} /> : <IconPlay size={32} />}
           </button>
-          <div className="np-transport-side np-transport-end">
-            <button type="button" className="icon-btn lg" aria-label="Next" onClick={next}>
-              <IconNext size={28} />
-            </button>
-            <button type="button" className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`} aria-label="Repeat" onClick={cycleRepeat}>
-              <IconRepeat size={22} />
-              {repeat === 'one' ? <abbr>1</abbr> : null}
-            </button>
-            <button
-              type="button"
-              className={`icon-btn ${showList ? 'is-on' : ''}`}
-              aria-label="Aktuelle Playlist"
-              onClick={() => setShowList((v) => !v)}
-            >
-              <IconQueue size={22} />
-            </button>
-          </div>
+          <button type="button" className="icon-btn lg" aria-label="Next" onClick={next}>
+            <IconNext size={28} />
+          </button>
+          <button type="button" className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`} aria-label="Repeat" onClick={cycleRepeat}>
+            <IconRepeat size={22} />
+            {repeat === 'one' ? <abbr>1</abbr> : null}
+          </button>
         </div>
         <div className="vol-row">
           <IconVolume size={18} />
           <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
           <button type="button" className="chip mix-btn" disabled={mixBusy} onClick={() => void mixFromSong()}>
             <IconSpark size={16} /> {mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+          </button>
+          <button
+            type="button"
+            className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}
+            aria-label="Aktuelle Playlist"
+            onClick={() => setShowList((v) => !v)}
+          >
+            <IconQueue size={22} />
           </button>
         </div>
       </div>
