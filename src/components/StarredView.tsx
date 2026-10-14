@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import type { SearchResult } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
+import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function StarredView() {
   const { client } = useAuth()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const [data, setData] = useState<SearchResult>({})
   const [error, setError] = useState('')
 
@@ -24,13 +27,14 @@ export function StarredView() {
   return (
     <div className="view">
       <header className="view-head">
-        <h2>Starred</h2>
+        <h2>Favoriten</h2>
+        <LayoutToggle section="starred" />
       </header>
       {error ? <p className="error">{error}</p> : null}
       {data.album?.length ? (
         <section className="block">
           <h3>Albums</h3>
-          <div className="album-grid compact">
+          <div className={`album-grid compact ${layout.starred === 'list' ? 'is-list' : ''}`}>
             {data.album.map((album) => (
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>

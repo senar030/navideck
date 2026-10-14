@@ -6,6 +6,7 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
+import { LayoutToggle } from './LayoutToggle'
 import { IconPlay, IconRadio } from './Icons'
 import { TrackList } from './TrackList'
 
@@ -13,7 +14,7 @@ export function GenreList() {
   const { client } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
-  const { mixSize } = usePrefs()
+  const { mixSize, layout } = usePrefs()
   const [genres, setGenres] = useState<Genre[]>([])
   const [error, setError] = useState('')
   const [mixing, setMixing] = useState('')
@@ -58,9 +59,10 @@ export function GenreList() {
     <div className="view">
       <header className="view-head">
         <h2>Genres</h2>
+        <LayoutToggle section="genres" />
       </header>
       {error ? <p className="error">{error}</p> : null}
-      <div className="genre-grid">
+      <div className={`genre-grid ${layout.genres === 'list' ? 'is-list' : ''}`}>
         {genres.map((genre) => (
           <article key={genre.value} className="genre-card">
             <button type="button" className="genre-hit" onClick={() => go({ name: 'genre', id: genre.value })}>

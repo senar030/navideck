@@ -5,12 +5,15 @@ import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
+import { usePrefs } from '../state/PrefsContext'
 import { IconPlay } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function ArtistList() {
   const { client } = useAuth()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const [indexes, setIndexes] = useState<ArtistIndex[]>([])
   const [error, setError] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
@@ -36,7 +39,8 @@ export function ArtistList() {
   return (
     <div className="view artist-view">
       <header className="view-head">
-        <h2>Artists</h2>
+        <h2>Künstler</h2>
+        <LayoutToggle section="artists" />
       </header>
       {error ? <p className="error">{error}</p> : null}
       <div className="artist-layout">
@@ -44,7 +48,7 @@ export function ArtistList() {
           {indexes.map((group) => (
             <section key={group.name} data-letter={group.name}>
               <h3 className="letter">{group.name}</h3>
-              <div className="artist-list">
+              <div className={`artist-list ${layout.artists === 'grid' ? 'is-grid' : ''}`}>
                 {(group.artist ?? []).map((artist) => (
                   <button
                     key={artist.id}

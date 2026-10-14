@@ -6,6 +6,8 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
+import { usePrefs } from '../state/PrefsContext'
 
 const FILTERS: { id: AlbumListType; label: string }[] = [
   { id: 'newest', label: 'Newest' },
@@ -20,6 +22,7 @@ export function AlbumGrid() {
   const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
+  const { layout } = usePrefs()
   const [type, setType] = useState<AlbumListType>('newest')
   const [albums, setAlbums] = useState<Album[]>([])
   const [error, setError] = useState('')
@@ -74,22 +77,25 @@ export function AlbumGrid() {
   return (
     <div className="view">
       <header className="view-head">
-        <h2>Albums</h2>
-        <div className="chip-row">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`chip ${type === f.id ? 'is-on' : ''}`}
-              onClick={() => setType(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
+        <h2>Alben</h2>
+        <div className="view-head-tools">
+          <div className="chip-row">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`chip ${type === f.id ? 'is-on' : ''}`}
+                onClick={() => setType(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <LayoutToggle section="albums" />
         </div>
       </header>
       {error ? <p className="error">{error}</p> : null}
-      <div className="album-grid">
+      <div className={`album-grid ${layout.albums === 'list' ? 'is-list' : ''}`}>
         {albums.map((album) => (
           <article key={album.id} className="album-card">
             <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>

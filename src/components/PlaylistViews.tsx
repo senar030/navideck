@@ -5,12 +5,15 @@ import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
+import { usePrefs } from '../state/PrefsContext'
 import { IconPlay } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function PlaylistList() {
   const { client } = useAuth()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const [lists, setLists] = useState<Playlist[]>([])
   const [error, setError] = useState('')
 
@@ -26,9 +29,10 @@ export function PlaylistList() {
     <div className="view">
       <header className="view-head">
         <h2>Playlists</h2>
+        <LayoutToggle section="playlists" />
       </header>
       {error ? <p className="error">{error}</p> : null}
-      <div className="playlist-list">
+      <div className={`playlist-list ${layout.playlists === 'grid' ? 'is-grid' : ''}`}>
         {lists.map((list) => (
           <button
             key={list.id}

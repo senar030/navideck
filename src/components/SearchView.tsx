@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import type { SearchResult } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { IconSearch } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function SearchView() {
   const { client } = useAuth()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<SearchResult>({})
   const [busy, setBusy] = useState(false)
@@ -33,7 +36,8 @@ export function SearchView() {
   return (
     <div className="view">
       <header className="view-head">
-        <h2>Search</h2>
+        <h2>Suche</h2>
+        <div className="view-head-tools">
         <label className="search-box">
           <IconSearch />
           <input
@@ -43,6 +47,8 @@ export function SearchView() {
             autoFocus
           />
         </label>
+        <LayoutToggle section="search" />
+        </div>
       </header>
       {busy ? <p className="muted">Searching…</p> : null}
       {result.artist?.length ? (
@@ -60,7 +66,7 @@ export function SearchView() {
       {result.album?.length ? (
         <section className="block">
           <h3>Albums</h3>
-          <div className="album-grid compact">
+          <div className={`album-grid compact ${layout.search === 'list' ? 'is-list' : ''}`}>
             {result.album.map((album) => (
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>

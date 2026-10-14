@@ -706,6 +706,30 @@ input[type='range']::-moz-range-thumb {
   margin-bottom: 1rem;
 }
 
+.view-head-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.layout-toggle {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.05rem;
+  padding: 0.12rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.layout-toggle .icon-btn {
+  width: 2rem;
+  height: 2rem;
+}
+
 .view-head h2,
 .hero-copy h2,
 .now-playing h2 {
@@ -773,6 +797,47 @@ input[type='range']::-moz-range-thumb {
 
 .album-grid.compact {
   grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+.album-grid.is-list,
+.genre-grid.is-list {
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.album-grid.is-list .album-card {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding-right: 0.35rem;
+}
+
+.album-grid.is-list .album-hit {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.05rem;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.album-grid.is-list .cover {
+  grid-row: 1 / 3;
+  width: 3.2rem;
+  height: 3.2rem;
+  aspect-ratio: auto;
+}
+
+.album-grid.is-list .play-fab {
+  position: relative;
+  inset: auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
 }
 
 .genre-grid {
@@ -952,9 +1017,48 @@ input[type='range']::-moz-range-thumb {
 .letter {
   position: sticky;
   top: 0;
-  margin: 0.4rem 0;
-  background: var(--bg);
-  color: var(--accent);
+  z-index: 2;
+  margin: 0;
+  padding: 0.55rem 0.15rem 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.artist-list.is-grid,
+.playlist-list.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--gap);
+}
+
+.artist-list.is-grid .artist-row,
+.playlist-list.is-grid .playlist-row {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  padding: 0.55rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  gap: 0.45rem;
+}
+
+.artist-list.is-grid .cover,
+.playlist-list.is-grid .cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.artist-list.is-grid span,
+.playlist-list.is-grid span {
+  align-items: center;
 }
 
 .artist-row,
