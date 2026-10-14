@@ -855,7 +855,10 @@ input[type='range']::-moz-range-thumb {
 }
 
 .sheet-sort {
-  padding: 0 0.6rem 0.35rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow: visible;
+  padding: 0.15rem 0.6rem 0.55rem;
 }
 
 .track-row,
@@ -1023,10 +1026,13 @@ input[type='range']::-moz-range-thumb {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.7rem 0.7rem 0.2rem;
+  padding: 0.7rem 0.7rem 0.35rem;
+  flex-shrink: 0;
 }
 
 .sheet-body {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 0.4rem 0.6rem 1rem;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTime, sortSongs, type SongSort } from '../lib/format'
+import { centerInScroller } from '../lib/scroll'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconClose } from './Icons'
@@ -17,14 +18,27 @@ export function QueuePanel() {
   const [sort, setSort] = useState<SongSort>('original')
   const [desc, setDesc] = useState(false)
   const snapshot = useRef(queue)
+  const listRef = useRef<HTMLDivElement>(null)
+  const jumped = useRef(false)
 
   useEffect(() => {
     if (queueOpen) {
       snapshot.current = queue
       setSort('original')
       setDesc(false)
+      jumped.current = false
     }
   }, [queueOpen])
+
+  useEffect(() => {
+    if (!queueOpen) return
+    const root = listRef.current
+    const item = root?.querySelector('.is-active') as HTMLElement | null
+    const smooth = jumped.current
+    jumped.current = true
+    const id = requestAnimationFrame(() => centerInScroller(root, item, smooth))
+    return () => cancelAnimationFrame(id)
+  }, [index, queueOpen, queue.length])
 
   if (!queueOpen) return null
 
@@ -45,7 +59,7 @@ export function QueuePanel() {
           </button>
         </header>
         {queue.length > 1 ? (
-          <div className="chip-row sort-row sheet-sort" role="toolbar" aria-label="Sort queue">
+          <div className="chip-row wrap sort-row sheet-sort" role="toolbar" aria-label="Sort queue">
             {OPTIONS.map((opt) => (
               <button
                 key={opt.id}
@@ -59,7 +73,7 @@ export function QueuePanel() {
             ))}
           </div>
         ) : null}
-        <div className="sheet-body">
+        <div className="sheet-body" ref={listRef}>
           {queue.map((song, i) => (
             <div key={`${song.id}-${i}`} className={`queue-row ${i === index ? 'is-active' : ''}`}>
               <button type="button" className="queue-main" onClick={() => playIndex(i)}>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatTime } from '../lib/format'
+import { centerInScroller } from '../lib/scroll'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
@@ -49,11 +50,26 @@ export function NowPlaying() {
   const [lyrics, setLyrics] = useState('')
   const [lyricsBusy, setLyricsBusy] = useState(false)
   const [mixBusy, setMixBusy] = useState(false)
+  const queueRef = useRef<HTMLDivElement>(null)
+  const queueJumped = useRef(false)
 
   useEffect(() => {
     setShowLyrics(false)
     setLyrics('')
   }, [current?.id])
+
+  useEffect(() => {
+    if (!showList) {
+      queueJumped.current = false
+      return
+    }
+    const root = queueRef.current
+    const item = root?.querySelector('.is-active') as HTMLElement | null
+    const smooth = queueJumped.current
+    queueJumped.current = true
+    const id = requestAnimationFrame(() => centerInScroller(root, item, smooth))
+    return () => cancelAnimationFrame(id)
+  }, [index, showList, queue.length])
 
   useEffect(() => {
     if (!showLyrics || !client || !current) return
@@ -238,7 +254,7 @@ export function NowPlaying() {
       {showList ? (
         <aside className="np-queue">
           <p className="np-queue-title">Playing next</p>
-          <div className="np-queue-body">
+          <div className="np-queue-body" ref={queueRef}>
             {queue.map((song, i) => (
               <button
                 key={`${song.id}-${i}`}
