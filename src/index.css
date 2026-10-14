@@ -968,9 +968,9 @@ input[type='range']::-moz-range-thumb {
 }
 
 .sheet-backdrop {
-  grid-area: 1 / 1 / -1 / -1;
-  position: relative;
-  z-index: 55;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: flex-end;
@@ -1012,11 +1012,12 @@ input[type='range']::-moz-range-thumb {
 }
 
 .now-playing {
-  grid-area: 1 / 1 / -1 / -1;
-  position: relative;
-  z-index: 50;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1024,6 +1025,8 @@ input[type='range']::-moz-range-thumb {
   padding: 2.2rem 3vw 2rem;
   overflow: hidden;
   text-align: center;
+  background: var(--bg);
+  isolation: isolate;
 }
 
 .now-playing.has-list {
@@ -1045,15 +1048,15 @@ input[type='range']::-moz-range-thumb {
 .np-veil {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--bg) 38%, transparent);
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
   backdrop-filter: blur(22px) saturate(1.25);
   pointer-events: none;
 }
 
 .np-close {
   position: absolute;
-  top: 0.7rem;
-  left: 0.7rem;
+  top: calc(0.45rem + env(safe-area-inset-top, 0px));
+  left: 0.45rem;
   z-index: 2;
 }
 
@@ -1551,19 +1554,55 @@ a.chip {
   .now-playing {
     flex-direction: column;
     justify-content: flex-start;
-    overflow: auto;
-    gap: 1.2rem;
-    padding: 3.2rem 1rem 1.2rem;
+    align-items: stretch;
+    overflow: hidden;
+    gap: 0.75rem;
+    padding: calc(2.7rem + env(safe-area-inset-top, 0px)) 1rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .now-playing:not(.has-list) {
+    justify-content: center;
+  }
+
+  .np-main {
+    width: min(34rem, 100%);
+    margin: 0 auto;
+  }
+
+  .now-playing.has-list .np-flip {
+    width: min(38vw, 8.8rem);
+    height: min(38vw, 8.8rem);
+  }
+
+  .now-playing.has-list .np-main {
+    gap: 0.35rem;
   }
 
   .np-queue {
     width: min(34rem, 100%);
+    margin: 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: none;
   }
 
+  .np-queue-body {
+    flex: 1;
+    min-height: 0;
+  }
+
   .np-flip {
-    width: min(72vw, 18rem);
-    height: min(72vw, 18rem);
+    width: min(68vw, 16rem);
+    height: min(68vw, 16rem);
+  }
+
+  .vol-row {
+    flex-wrap: wrap;
+  }
+
+  .mix-btn {
+    flex: 1 1 100%;
+    order: 5;
   }
 }
 
