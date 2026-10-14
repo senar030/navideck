@@ -412,6 +412,15 @@ img {
   min-width: 0;
   display: flex;
   align-items: center;
+  transition: opacity 0.2s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), flex-grow 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chrome.is-search .chrome-start {
+  flex: 0 0 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(-0.7rem);
 }
 
 .chrome-end {
@@ -419,6 +428,17 @@ img {
   align-items: center;
   gap: 0.15rem;
   margin-left: auto;
+  transition: opacity 0.2s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), margin 0.32s ease;
+}
+
+.chrome.is-search .chrome-end {
+  width: 0;
+  min-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(0.7rem);
 }
 
 .chrome-more {
@@ -463,13 +483,40 @@ img {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex: 1;
+  flex: 0 1 0;
+  width: 0;
   min-width: 0;
   min-height: var(--tap);
-  padding: 0 0.35rem 0 0.9rem;
+  padding: 0;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(1.35rem);
+  transform-origin: right center;
+  transition:
+    flex-grow 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    padding 0.28s ease,
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+
+.chrome.is-search .chrome-search {
+  flex: 1 1 auto;
+  width: auto;
+  padding: 0 0.35rem 0 0.9rem;
+  border-color: color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  opacity: 1;
+  overflow: visible;
+  pointer-events: auto;
+  transform: none;
 }
 
 .chrome-search svg {
@@ -497,7 +544,31 @@ img {
   min-height: 0;
   overflow: auto;
   padding: var(--gap) clamp(0.8rem, 2vw, 1.6rem) 1.2rem;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 52%, transparent);
+  backdrop-filter: blur(26px) saturate(1.4);
+  -webkit-backdrop-filter: blur(26px) saturate(1.4);
+  border-top: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  animation: search-overlay-in 0.28s ease;
+}
+
+@keyframes search-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome-start,
+  .chrome-end,
+  .chrome-search,
+  .search-overlay {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
 }
 
 .search-results-tools {

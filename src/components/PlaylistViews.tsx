@@ -73,26 +73,31 @@ export function PlaylistDetail({ id }: { id: string }) {
   if (error) return <p className="error">{error}</p>
   if (!list) return <p className="muted">Loading playlist…</p>
   const songs = list.entry ?? []
+  const bg = client?.coverUrl(list.coverArt, 80)
 
   return (
     <div className="view detail">
-      <div className="hero">
-        <CoverArt coverArt={list.coverArt} alt="" size={400} className="hero-cover" />
-        <div className="hero-copy">
-          <p className="eyebrow">Playlist</p>
-          <h2>{list.name}</h2>
-          {list.comment ? <p>{list.comment}</p> : null}
-          <p className="muted">
-            {songs.length} tracks
-            {list.duration ? ` · ${formatTime(list.duration)}` : ''}
-          </p>
-          <div className="hero-actions">
-            <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-              <IconPlay size={22} /> Play
-            </button>
-            <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
-              Queue all
-            </button>
+      <div className="hero-banner">
+        {bg ? <img className="hero-bg" src={bg} alt="" /> : null}
+        <div className="hero-veil" />
+        <div className="hero">
+          <CoverArt coverArt={list.coverArt} alt="" size={600} className="hero-cover" />
+          <div className="hero-copy">
+            <p className="eyebrow">Playlist</p>
+            <h2>{list.name}</h2>
+            {list.comment ? <p>{list.comment}</p> : null}
+            <p className="muted">
+              {songs.length} tracks
+              {list.duration ? ` · ${formatTime(list.duration)}` : ''}
+            </p>
+            <div className="hero-actions">
+              <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
+                <IconPlay size={22} /> Play
+              </button>
+              <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
+                Queue all
+              </button>
+            </div>
           </div>
         </div>
       </div>

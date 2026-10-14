@@ -55,12 +55,25 @@ export function SearchResults({ query, onPick }: Props) {
       {result.artist?.length ? (
         <section className="block">
           <h3>Künstler</h3>
-          <div className="chip-row wrap">
-            {result.artist.map((a) => (
-              <button key={a.id} type="button" className="chip" onClick={() => open({ name: 'artist', id: a.id })}>
-                {a.name}
-              </button>
-            ))}
+          <div className={layout.search === 'list' ? 'artist-list' : 'artist-heads'}>
+            {result.artist.map((a) =>
+              layout.search === 'list' ? (
+                <button key={a.id} type="button" className="artist-row" onClick={() => open({ name: 'artist', id: a.id })}>
+                  <CoverArt coverArt={a.coverArt} alt="" size={120} className="avatar" />
+                  <span>
+                    <strong>{a.name}</strong>
+                    <em>
+                      {a.albumCount ?? 0} Album{(a.albumCount ?? 0) === 1 ? '' : 's'}
+                    </em>
+                  </span>
+                </button>
+              ) : (
+                <button key={a.id} type="button" className="artist-head" onClick={() => open({ name: 'artist', id: a.id })}>
+                  <CoverArt coverArt={a.coverArt} alt="" size={160} className="avatar" />
+                  <span>{a.name}</span>
+                </button>
+              ),
+            )}
           </div>
         </section>
       ) : null}
