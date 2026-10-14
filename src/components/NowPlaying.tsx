@@ -11,9 +11,9 @@ import {
   IconPlay,
   IconPrev,
   IconQueue,
+  IconRadio,
   IconRepeat,
   IconShuffle,
-  IconSpark,
   IconStar,
   IconVolume,
 } from './Icons'
@@ -103,7 +103,7 @@ export function NowPlaying() {
     <div className={`now-playing ${showList ? 'has-list' : ''}`}>
       {bg ? <img className="np-bg" src={bg} alt="" /> : null}
       <div className="np-veil" />
-      <button type="button" className="icon-btn np-close" aria-label="Schließen" onClick={() => setExpanded(false)}>
+      <button type="button" className="icon-btn np-close" aria-label="Schließen" data-tip="Schließen" onClick={() => setExpanded(false)}>
         <IconClose />
       </button>
       <div className="np-main">
@@ -113,6 +113,7 @@ export function NowPlaying() {
               type="button"
               className="np-flip-face np-flip-front"
               aria-label="Lyrics anzeigen"
+              data-tip="Lyrics anzeigen"
               onClick={() => setShowLyrics(true)}
             >
               <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
@@ -146,6 +147,7 @@ export function NowPlaying() {
             type="button"
             className={`icon-btn ${current.starred ? 'is-on' : ''}`}
             aria-label={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+            data-tip={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
             onClick={toggleStar}
           >
             <IconStar size={22} filled={Boolean(current.starred)} />
@@ -186,33 +188,47 @@ export function NowPlaying() {
           <span>{formatTime(duration)}</span>
         </label>
         <div className="np-transport">
-          <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Shuffle" onClick={toggleShuffle}>
+          <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Zufallswiedergabe" data-tip="Zufallswiedergabe" onClick={toggleShuffle}>
             <IconShuffle size={22} />
           </button>
-          <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev}>
+          <button type="button" className="icon-btn lg" aria-label="Vorheriger Titel" data-tip="Vorheriger Titel" onClick={prev}>
             <IconPrev size={28} />
           </button>
-          <button type="button" className="play-xl" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
+          <button type="button" className="play-xl" aria-label={playing ? 'Pause' : 'Wiedergeben'} data-tip={playing ? 'Pause' : 'Wiedergeben'} onClick={togglePlay}>
             {playing ? <IconPause size={32} /> : <IconPlay size={32} />}
           </button>
-          <button type="button" className="icon-btn lg" aria-label="Next" onClick={next}>
+          <button type="button" className="icon-btn lg" aria-label="Nächster Titel" data-tip="Nächster Titel" onClick={next}>
             <IconNext size={28} />
           </button>
-          <button type="button" className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`} aria-label="Repeat" onClick={cycleRepeat}>
+          <button
+            type="button"
+            className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`}
+            aria-label={repeat === 'one' ? 'Titel wiederholen' : repeat === 'all' ? 'Alle wiederholen' : 'Wiederholen'}
+            data-tip={repeat === 'one' ? 'Titel wiederholen' : repeat === 'all' ? 'Alle wiederholen' : 'Wiederholen'}
+            onClick={cycleRepeat}
+          >
             <IconRepeat size={22} />
             {repeat === 'one' ? <abbr>1</abbr> : null}
           </button>
         </div>
         <div className="vol-row">
-          <IconVolume size={18} />
-          <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
-          <button type="button" className="chip mix-btn" disabled={mixBusy} onClick={() => void mixFromSong()}>
-            <IconSpark size={16} /> {mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+          <button
+            type="button"
+            className="icon-btn mix-btn"
+            disabled={mixBusy}
+            aria-label={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+            data-tip={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+            onClick={() => void mixFromSong()}
+          >
+            <IconRadio size={22} />
           </button>
+          <IconVolume size={18} />
+          <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} title="Lautstärke" aria-label="Lautstärke" />
           <button
             type="button"
             className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}
             aria-label="Aktuelle Playlist"
+            data-tip="Aktuelle Playlist"
             onClick={() => setShowList((v) => !v)}
           >
             <IconQueue size={22} />
@@ -230,7 +246,9 @@ export function NowPlaying() {
                 className={`np-queue-item ${i === index ? 'is-active' : ''}`}
                 onClick={() => playIndex(i)}
               >
-                <span className="np-q-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="np-q-num">
+                  {i === index ? <IconPlay size={16} /> : String(i + 1).padStart(2, '0')}
+                </span>
                 <span className="track-meta">
                   <span className="track-title">{song.title}</span>
                   <span className="track-sub">{song.artist}</span>

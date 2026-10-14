@@ -38,6 +38,7 @@ export function PlayerBar() {
       <button
         type="button"
         className="player-now"
+        data-tip={current ? 'Now Playing öffnen' : undefined}
         onClick={() => current && setExpanded(true)}
         disabled={!current}
       >
@@ -52,30 +53,33 @@ export function PlayerBar() {
           <button
             type="button"
             className={`icon-btn ${shuffle ? 'is-on' : ''}`}
-            aria-label="Shuffle"
+            aria-label="Zufallswiedergabe"
+            data-tip="Zufallswiedergabe"
             onClick={toggleShuffle}
           >
             <IconShuffle />
           </button>
-          <button type="button" className="icon-btn lg" aria-label="Previous" onClick={prev} disabled={!current}>
+          <button type="button" className="icon-btn lg" aria-label="Vorheriger Titel" data-tip="Vorheriger Titel" onClick={prev} disabled={!current}>
             <IconPrev />
           </button>
           <button
             type="button"
             className="play-md"
-            aria-label={playing ? 'Pause' : 'Play'}
+            aria-label={playing ? 'Pause' : 'Wiedergeben'}
+            data-tip={playing ? 'Pause' : 'Wiedergeben'}
             onClick={togglePlay}
             disabled={!current}
           >
             {playing ? <IconPause size={26} /> : <IconPlay size={26} />}
           </button>
-          <button type="button" className="icon-btn lg" aria-label="Next" onClick={next} disabled={!current}>
+          <button type="button" className="icon-btn lg" aria-label="Nächster Titel" data-tip="Nächster Titel" onClick={next} disabled={!current}>
             <IconNext />
           </button>
           <button
             type="button"
             className={`icon-btn ${repeat !== 'off' ? 'is-on' : ''}`}
-            aria-label="Repeat"
+            aria-label={repeat === 'one' ? 'Titel wiederholen' : repeat === 'all' ? 'Alle wiederholen' : 'Wiederholen'}
+            data-tip={repeat === 'one' ? 'Titel wiederholen' : repeat === 'all' ? 'Alle wiederholen' : 'Wiederholen'}
             onClick={cycleRepeat}
           >
             <IconRepeat />
@@ -88,12 +92,13 @@ export function PlayerBar() {
           type="button"
           className={`icon-btn lg ${current?.starred ? 'is-on' : ''}`}
           aria-label={current?.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+          data-tip={current?.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
           onClick={toggleStar}
           disabled={!current}
         >
           <IconStar size={22} filled={Boolean(current?.starred)} />
         </button>
-        <button type="button" className="icon-btn lg" aria-label="Queue" onClick={() => setQueueOpen(true)}>
+        <button type="button" className="icon-btn lg" aria-label="Warteschlange" data-tip="Warteschlange" onClick={() => setQueueOpen(true)}>
           <IconQueue size={22} />
         </button>
       </div>

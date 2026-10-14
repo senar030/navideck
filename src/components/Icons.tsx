@@ -1,5 +1,14 @@
 type IconProps = { size?: number }
 
+export function IconRadio({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" />
+      <path d="M7.2 7.2a6.8 6.8 0 0 1 9.6 9.6" />
+      <path d="M4.6 4.6a10.5 10.5 0 0 1 14.8 14.8" />
+    </svg>
+  )
+}
 export function IconSpark({ size = 22 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
