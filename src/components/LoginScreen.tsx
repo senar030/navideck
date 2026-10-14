@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../state/AuthContext'
+import { usePrefs } from '../state/PrefsContext'
 
 export function LoginScreen() {
   const { login, lastServer, lastUser } = useAuth()
+  const { uiMode, setUiMode } = usePrefs()
   const [server, setServer] = useState(lastServer)
   const [username, setUsername] = useState(lastUser)
   const [password, setPassword] = useState('')
@@ -72,6 +74,15 @@ export function LoginScreen() {
           </span>
         </label>
         {error ? <p className="error">{error}</p> : null}
+        <p className="muted">Ansicht</p>
+        <div className="chip-row wrap">
+          <button type="button" className={`chip ${uiMode === 'deck' ? 'is-on' : ''}`} onClick={() => setUiMode('deck')}>
+            Deck
+          </button>
+          <button type="button" className={`chip ${uiMode === 'desktop' ? 'is-on' : ''}`} onClick={() => setUiMode('desktop')}>
+            Desktop
+          </button>
+        </div>
         <button type="submit" className="primary-btn" disabled={busy}>
           {busy ? 'Connecting…' : 'Connect'}
         </button>

@@ -4,6 +4,7 @@ export const MIX_SIZES = [15, 25, 40, 50, 75, 100] as const
 export type MixSize = (typeof MIX_SIZES)[number]
 export type LayoutMode = 'grid' | 'list'
 export type LayoutKey = 'albums' | 'artists' | 'genres' | 'playlists' | 'starred' | 'search'
+export type UiMode = 'deck' | 'desktop'
 
 const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
   albums: 'grid',
@@ -19,15 +20,44 @@ type PrefsContextValue = {
   setMixSize: (n: MixSize) => void
   layout: Record<LayoutKey, LayoutMode>
   setLayout: (key: LayoutKey, mode: LayoutMode) => void
+  uiMode: UiMode
+  toggleUiMode: () => void
+  setUiMode: (mode: UiMode) => void
 }
 
 const KEY = 'navideck.mixSize'
 const LAYOUT_KEY = 'navideck.layout'
+const UI_KEY = 'navideck.uiMode'
 const PrefsContext = createContext<PrefsContextValue | null>(null)
 
 function readMixSize(): MixSize {
   const n = Number(localStorage.getItem(KEY))
   return MIX_SIZES.includes(n as MixSize) ? (n as MixSize) : 40
+}
+
+export function detectHandheld(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  if (/SteamDeck|SteamOS|Steam Client|\bValve\b|ROG Ally|Legion Go/i.test(ua)) return true
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const shortSide = Math.min(w, h)
+  const longSide = Math.max(w, h)
+  const touch = navigator.maxTouchPoints > 0
+  const coarse = window.matchMedia('(pointer: coarse)').matches
+  if (touch && shortSide >= 700 && shortSide <= 900 && longSide >= 1100 && longSide <= 1400) return true
+  if ((touch || coarse) && shortSide >= 900 && shortSide <= 1200 && longSide >= 1600 && longSide <= 2560) {
+    return (window.devicePixelRatio || 1) >= 1.2 || coarse
+  }
+  return false
+}
+
+function readUiMode(): UiMode {
+  const saved = localStorage.getItem(UI_KEY)
+  if (saved === 'deck' || saved === 'desktop') return saved
+  const next = detectHandheld() ? 'deck' : 'desktop'
+  document.documentElement.dataset.ui = next
+  return next
 }
 
 function readLayout(): Record<LayoutKey, LayoutMode> {
@@ -48,6 +78,11 @@ function readLayout(): Record<LayoutKey, LayoutMode> {
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [mixSize, setMixSizeState] = useState<MixSize>(readMixSize)
   const [layout, setLayoutState] = useState<Record<LayoutKey, LayoutMode>>(readLayout)
+  const [uiMode, setUiModeState] = useState<UiMode>(() => {
+    const next = readUiMode()
+    document.documentElement.dataset.ui = next
+    return next
+  })
 
   useEffect(() => {
     localStorage.setItem(KEY, String(mixSize))
@@ -57,6 +92,11 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout))
   }, [layout])
 
+  useEffect(() => {
+    document.documentElement.dataset.ui = uiMode
+    localStorage.setItem(UI_KEY, uiMode)
+  }, [uiMode])
+
   const setMixSize = useCallback((n: MixSize) => {
     setMixSizeState(n)
   }, [])
@@ -65,9 +105,17 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setLayoutState((prev) => ({ ...prev, [key]: mode }))
   }, [])
 
+  const setUiMode = useCallback((mode: UiMode) => {
+    setUiModeState(mode)
+  }, [])
+
+  const toggleUiMode = useCallback(() => {
+    setUiModeState((mode) => (mode === 'deck' ? 'desktop' : 'deck'))
+  }, [])
+
   const value = useMemo(
-    () => ({ mixSize, setMixSize, layout, setLayout }),
-    [mixSize, setMixSize, layout, setLayout],
+    () => ({ mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode }),
+    [mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode],
   )
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>
 }

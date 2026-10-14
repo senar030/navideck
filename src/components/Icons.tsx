@@ -165,6 +165,20 @@ export function IconPlayNext({ size = 20 }: IconProps) {
     </svg>
   )
 }
+export function IconGamepad({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8.5 7h7A6.5 6.5 0 0 1 22 13.5 4.5 4.5 0 0 1 17.5 18c-1.1 0-2.1-.4-2.9-1.1L13.5 16h-3l-1.1.9A4.5 4.5 0 0 1 6.5 18 4.5 4.5 0 0 1 2 13.5 6.5 6.5 0 0 1 8.5 7zM7 11v2h2v2h2v-2h2v-2h-2V9H9v2H7zm8.2.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm2.4-1.6a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z" />
+    </svg>
+  )
+}
+export function IconDesktop({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-7v2h3v2H7v-2h3v-2H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 2v9h16V6H4z" />
+    </svg>
+  )
+}
 export function IconClose({ size = 22 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>

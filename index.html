@@ -13,6 +13,39 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Navideck" />
     <title>Navideck</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('navideck.uiMode')
+          if (saved === 'deck' || saved === 'desktop') {
+            document.documentElement.setAttribute('data-ui', saved)
+            return
+          }
+          var ua = navigator.userAgent
+          var handheld = /SteamDeck|SteamOS|Steam Client|\bValve\b|ROG Ally|Legion Go/i.test(ua)
+          if (!handheld) {
+            var w = innerWidth
+            var h = innerHeight
+            var shortSide = Math.min(w, h)
+            var longSide = Math.max(w, h)
+            var touch = navigator.maxTouchPoints > 0
+            var coarse = matchMedia('(pointer: coarse)').matches
+            if (touch && shortSide >= 700 && shortSide <= 900 && longSide >= 1100 && longSide <= 1400) handheld = true
+            else if (
+              (touch || coarse) &&
+              shortSide >= 900 &&
+              shortSide <= 1200 &&
+              longSide >= 1600 &&
+              longSide <= 2560 &&
+              ((devicePixelRatio || 1) >= 1.2 || coarse)
+            ) {
+              handheld = true
+            }
+          }
+          document.documentElement.setAttribute('data-ui', handheld ? 'deck' : 'desktop')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1864,3 +1864,187 @@ a.chip {
     --nav: 4.2rem;
   }
 }
+
+html[data-ui='deck'] {
+  --tap: 3.1rem;
+  --font: 16.5px;
+  --player: 6.6rem;
+  --nav: 5.4rem;
+  --gap: 0.9rem;
+  --radius: 0.85rem;
+}
+
+html[data-ui='deck'] .app {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr var(--player) 5.35rem;
+  grid-template-areas:
+    "main"
+    "player"
+    "nav";
+}
+
+html[data-ui='deck'] .nav {
+  flex-direction: row;
+  justify-content: flex-start;
+  overflow-x: auto;
+  border-right: 0;
+  border-top: 1px solid var(--line);
+  padding: 0.25rem 0.4rem calc(0.25rem + env(safe-area-inset-bottom));
+  gap: 0.15rem;
+}
+
+html[data-ui='deck'] .brand,
+html[data-ui='deck'] .nav-user,
+html[data-ui='deck'] .nav-spacer {
+  display: none;
+}
+
+html[data-ui='deck'] .nav-btn {
+  min-width: 4.6rem;
+  min-height: 4.7rem;
+  font-size: 0.78rem;
+  gap: 0.18rem;
+  position: relative;
+}
+
+html[data-ui='deck'] .main {
+  padding: 0.85rem 1rem 1rem;
+}
+
+html[data-ui='deck'] .player-bar {
+  padding: 0.4rem 0.85rem;
+  gap: 0.45rem;
+}
+
+html[data-ui='deck'] .player-buttons {
+  width: 19.5rem;
+  gap: 0.35rem;
+}
+
+html[data-ui='deck'] .player-buttons .icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+}
+
+html[data-ui='deck'] .play-md {
+  width: 2.85rem;
+  height: 2.85rem;
+}
+
+html[data-ui='deck'] .play-xl {
+  width: 4.4rem;
+  height: 4.4rem;
+}
+
+html[data-ui='deck'] .play-fab {
+  width: 3.1rem;
+  height: 3.1rem;
+}
+
+html[data-ui='deck'] .chip,
+html[data-ui='deck'] .primary-btn,
+html[data-ui='deck'] .back-btn {
+  min-height: 2.7rem;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.95em;
+}
+
+html[data-ui='deck'] .album-grid {
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+}
+
+html[data-ui='deck'] .album-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+}
+
+html[data-ui='deck'] .track-row,
+html[data-ui='deck'] .queue-row,
+html[data-ui='deck'] .artist-row,
+html[data-ui='deck'] .playlist-row,
+html[data-ui='deck'] .folder-row {
+  min-height: 3.1rem;
+}
+
+html[data-ui='deck'] .cover.hero-cover {
+  width: 13.5rem;
+  height: 13.5rem;
+}
+
+html[data-ui='deck'] .hero-banner {
+  min-height: 11rem;
+}
+
+html[data-ui='deck'] .artist-heads {
+  gap: 0.7rem;
+}
+
+html[data-ui='deck'] .artist-head {
+  width: 5.6rem;
+}
+
+html[data-ui='deck'] .artist-head .cover {
+  width: 4.4rem;
+  height: 4.4rem;
+}
+
+html[data-ui='deck'] .now-playing {
+  padding: 1.2rem 1.4rem calc(1rem + env(safe-area-inset-bottom));
+  gap: 1.1rem;
+}
+
+html[data-ui='deck'] .np-flip {
+  width: min(42vw, 22rem);
+  height: min(42vw, 22rem);
+}
+
+html[data-ui='deck'] .now-playing.has-list .np-flip {
+  width: min(28vw, 16rem);
+  height: min(28vw, 16rem);
+}
+
+html[data-ui='deck'] .vol-row input[type='range'],
+html[data-ui='deck'] .seek input[type='range'] {
+  min-height: 1.45rem;
+}
+
+html[data-ui='deck'] .sheet-backdrop {
+  align-items: flex-end;
+}
+
+html[data-ui='deck'] .sheet {
+  width: min(42rem, 100%);
+  height: min(78vh, 40rem);
+  border-left: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 1.4rem 1.4rem 0 0;
+}
+
+html[data-ui='deck'] .login-card {
+  padding: 1.5rem;
+  gap: 1rem;
+}
+
+html[data-ui='deck'] input,
+html[data-ui='deck'] .pw-row input {
+  min-height: var(--tap);
+  font-size: 1em;
+}
+
+@media (max-width: 900px) and (min-width: 0) {
+  html[data-ui='deck'] .player-bar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "now extra"
+      "controls controls"
+      "seek seek";
+  }
+
+  html[data-ui='deck'] .now-playing {
+    flex-direction: column;
+  }
+
+  html[data-ui='deck'] .now-playing.has-list .np-flip {
+    width: min(38vw, 10rem);
+    height: min(38vw, 10rem);
+  }
+}

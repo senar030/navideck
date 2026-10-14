@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import { useTheme } from '../state/ThemeContext'
 import { AlbumDetail } from './AlbumDetail'
 import { AlbumGrid } from './AlbumGrid'
@@ -11,6 +12,8 @@ import {
   IconAlbums,
   IconArtists,
   IconBack,
+  IconDesktop,
+  IconGamepad,
   IconGenres,
   IconHome,
   IconLists,
@@ -32,6 +35,7 @@ export function Shell() {
   const { client } = useAuth()
   const { view, go, back, canBack } = useNav()
   const { theme, toggleTheme } = useTheme()
+  const { uiMode, toggleUiMode } = usePrefs()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
@@ -56,6 +60,16 @@ export function Shell() {
         <div className="nav-spacer" />
         <p className="nav-user">{client?.username}</p>
         <NavBtn active={settingsOpen} onClick={() => setSettingsOpen(true)} icon={<IconSettings />} label="Einstell." />
+        <button
+          type="button"
+          className="nav-btn ui-toggle"
+          onClick={toggleUiMode}
+          aria-label={uiMode === 'deck' ? 'Desktop-Ansicht' : 'Deck-Ansicht'}
+          data-tip={uiMode === 'deck' ? 'Zur Desktop-Ansicht' : 'Zur Deck-Ansicht'}
+        >
+          {uiMode === 'deck' ? <IconDesktop /> : <IconGamepad />}
+          <span>{uiMode === 'deck' ? 'Desktop' : 'Deck'}</span>
+        </button>
         <button
           type="button"
           className="nav-btn theme-toggle"

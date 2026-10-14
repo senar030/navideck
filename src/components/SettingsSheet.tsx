@@ -11,7 +11,7 @@ type Props = {
 export function SettingsSheet({ open, onClose }: Props) {
   const { client, logout, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
   const { palette, setPalette } = useTheme()
-  const { mixSize, setMixSize } = usePrefs()
+  const { mixSize, setMixSize, uiMode, setUiMode } = usePrefs()
   if (!open) return null
 
   return (
@@ -28,6 +28,16 @@ export function SettingsSheet({ open, onClose }: Props) {
           <p className="settings-user">{client?.username}</p>
           <p className="muted">Server</p>
           <p className="settings-url">{client?.baseUrl}</p>
+          <p className="muted">Ansicht</p>
+          <p className="settings-hint">Deck View vergrößert die Bedienung für Steam Deck, ROG Ally und ähnliche Handhelds.</p>
+          <div className="chip-row wrap mix-size-row">
+            <button type="button" className={`chip ${uiMode === 'deck' ? 'is-on' : ''}`} onClick={() => setUiMode('deck')}>
+              Deck
+            </button>
+            <button type="button" className={`chip ${uiMode === 'desktop' ? 'is-on' : ''}`} onClick={() => setUiMode('desktop')}>
+              Desktop
+            </button>
+          </div>
           <p className="muted">Farbthema</p>
           <p className="settings-hint">Gilt für Hell- und Dunkelmodus.</p>
           <div className="palette-grid">
