@@ -5,14 +5,16 @@ import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
-import { IconPlay } from './Icons'
+import { IconPlay, IconRadio } from './Icons'
 import { TrackList } from './TrackList'
 
 export function GenreList() {
   const { client } = useAuth()
   const { go } = useNav()
+  const { playTracks } = usePlayer()
   const [genres, setGenres] = useState<Genre[]>([])
   const [error, setError] = useState('')
+  const [mixing, setMixing] = useState('')
 
   useEffect(() => {
     if (!client) return
@@ -28,6 +30,28 @@ export function GenreList() {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load genres'))
   }, [client])
 
+  async function mixGenre(name: string) {
+    if (!client || mixing) return
+    setMixing(name)
+    try {
+      let songs = await client.getRandomSongs(40, name)
+      if (songs.length < 8) {
+        const extra = await client.getSongsByGenre(name, 0)
+        songs = [...songs, ...extra]
+      }
+      const unique = [...new Map(songs.map((s) => [s.id, s])).values()]
+      for (let i = unique.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = unique[i]
+        unique[i] = unique[j]
+        unique[j] = tmp
+      }
+      if (unique.length) playTracks(unique, 0)
+    } finally {
+      setMixing('')
+    }
+  }
+
   return (
     <div className="view">
       <header className="view-head">
@@ -36,17 +60,24 @@ export function GenreList() {
       {error ? <p className="error">{error}</p> : null}
       <div className="genre-grid">
         {genres.map((genre) => (
-          <button
-            key={genre.value}
-            type="button"
-            className="genre-card"
-            onClick={() => go({ name: 'genre', id: genre.value })}
-          >
-            <strong>{genre.value}</strong>
-            <em>
-              {genre.albumCount ?? 0} albums · {genre.songCount ?? 0} tracks
-            </em>
-          </button>
+          <article key={genre.value} className="genre-card">
+            <button type="button" className="genre-hit" onClick={() => go({ name: 'genre', id: genre.value })}>
+              <strong>{genre.value}</strong>
+              <em>
+                {genre.albumCount ?? 0} albums · {genre.songCount ?? 0} tracks
+              </em>
+            </button>
+            <button
+              type="button"
+              className="play-fab"
+              disabled={Boolean(mixing)}
+              aria-label={`Sofort-Mix: ${genre.value}`}
+              data-tip="Sofort-Mix"
+              onClick={() => void mixGenre(genre.value)}
+            >
+              <IconRadio size={18} />
+            </button>
+          </article>
         ))}
       </div>
       {!genres.length && !error ? <p className="muted">Loading genres…</p> : null}

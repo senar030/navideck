@@ -398,6 +398,7 @@ img {
 .track-main,
 .queue-main,
 .album-hit,
+.genre-hit,
 .artist-row,
 .playlist-row {
   border: 0;
@@ -781,23 +782,46 @@ input[type='range']::-moz-range-thumb {
 }
 
 .genre-card {
+  position: relative;
   min-height: 4.2rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  display: flex;
+}
+
+.genre-hit {
+  width: 100%;
+  min-height: 4.2rem;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 0.15rem;
-  padding: 0.65rem 0.8rem;
+  padding: 0.65rem 2.85rem 0.65rem 0.8rem;
   text-align: left;
 }
 
 .genre-card:hover,
-.genre-card:focus-visible {
+.genre-card:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
+}
+
+.genre-card .play-fab {
+  top: 50%;
+  bottom: auto;
+  right: 0.45rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  transform: translateY(-50%);
+}
+
+.genre-card .play-fab[data-tip]::after {
+  transform: translateX(-50%) translateY(0.2rem);
+}
+
+.genre-card .play-fab[data-tip]:hover::after,
+.genre-card .play-fab[data-tip]:focus-visible::after {
+  transform: translateX(-50%) translateY(0);
 }
 
 .album-card {
