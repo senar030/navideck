@@ -6,7 +6,7 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { usePrefs } from '../state/PrefsContext'
-import { IconPlay } from './Icons'
+import { IconPlay, IconStar } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
@@ -89,6 +89,7 @@ export function ArtistDetail({ id }: { id: string }) {
   const [info, setInfo] = useState<ArtistInfo>({})
   const [songs, setSongs] = useState<Song[]>([])
   const [error, setError] = useState('')
+  const [starred, setStarred] = useState(false)
 
   useEffect(() => {
     if (!client) return
@@ -96,6 +97,7 @@ export function ArtistDetail({ id }: { id: string }) {
       .getArtist(id)
       .then(async (next) => {
         setArtist(next)
+        setStarred(Boolean(next.starred))
         const albums = await Promise.all((next.album ?? []).map((a) => client.getAlbum(a.id)))
         setSongs(albums.flatMap((a) => a.song ?? []))
       })
@@ -138,6 +140,20 @@ export function ArtistDetail({ id }: { id: string }) {
             <button type="button" className="primary-btn" onClick={playAll} disabled={!songs.length}>
               <IconPlay size={22} /> Alles spielen
             </button>
+            <button
+              type="button"
+              className={`icon-btn ${starred ? 'is-on' : ''}`}
+              aria-label={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+              data-tip={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+              onClick={() => {
+                if (!client) return
+                const next = !starred
+                setStarred(next)
+                void (next ? client.star(artist.id, 'artistId') : client.unstar(artist.id, 'artistId'))
+              }}
+            >
+              <IconStar filled={starred} />
+            </button>
           </div>
         </div>
         </div>
@@ -155,10 +171,11 @@ export function ArtistDetail({ id }: { id: string }) {
       {info.similarArtist?.length ? (
         <section className="block">
           <h3>Ähnliche Künstler</h3>
-          <div className="chip-row wrap">
+          <div className="artist-heads">
             {info.similarArtist.map((a) => (
-              <button key={a.id} type="button" className="chip" onClick={() => go({ name: 'artist', id: a.id })}>
-                {a.name}
+              <button key={a.id} type="button" className="artist-head" onClick={() => go({ name: 'artist', id: a.id })}>
+                <CoverArt coverArt={a.coverArt} alt="" size={120} className="avatar" />
+                <span>{a.name}</span>
               </button>
             ))}
           </div>

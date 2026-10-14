@@ -23,6 +23,7 @@ export function StarredView() {
   }, [client])
 
   const songs = data.song ?? []
+  const artists = data.artist ?? []
 
   return (
     <div className="view">
@@ -31,9 +32,44 @@ export function StarredView() {
         <LayoutToggle section="starred" />
       </header>
       {error ? <p className="error">{error}</p> : null}
+      {artists.length ? (
+        <section className="block">
+          <h3>Künstler</h3>
+          <div className={layout.starred === 'list' ? 'artist-list' : 'artist-heads'}>
+            {artists.map((artist) =>
+              layout.starred === 'list' ? (
+                <button
+                  key={artist.id}
+                  type="button"
+                  className="artist-row"
+                  onClick={() => go({ name: 'artist', id: artist.id })}
+                >
+                  <CoverArt coverArt={artist.coverArt} alt="" size={120} className="avatar" />
+                  <span>
+                    <strong>{artist.name}</strong>
+                    <em>
+                      {artist.albumCount ?? 0} Album{(artist.albumCount ?? 0) === 1 ? '' : 's'}
+                    </em>
+                  </span>
+                </button>
+              ) : (
+                <button
+                  key={artist.id}
+                  type="button"
+                  className="artist-head"
+                  onClick={() => go({ name: 'artist', id: artist.id })}
+                >
+                  <CoverArt coverArt={artist.coverArt} alt="" size={160} className="avatar" />
+                  <span>{artist.name}</span>
+                </button>
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
       {data.album?.length ? (
         <section className="block">
-          <h3>Albums</h3>
+          <h3>Alben</h3>
           <div className={`album-grid compact ${layout.starred === 'list' ? 'is-list' : ''}`}>
             {data.album.map((album) => (
               <article key={album.id} className="album-card">
@@ -49,11 +85,13 @@ export function StarredView() {
       ) : null}
       {songs.length ? (
         <section className="block">
-          <h3>Tracks</h3>
-          <TrackList songs={songs} showCover playAllLabel="Play starred tracks" />
+          <h3>Titel</h3>
+          <TrackList songs={songs} showCover playAllLabel="Favoriten spielen" />
         </section>
       ) : null}
-      {!data.album?.length && !songs.length && !error ? <p className="muted">Nothing starred yet.</p> : null}
+      {!data.album?.length && !songs.length && !artists.length && !error ? (
+        <p className="muted">Noch keine Favoriten.</p>
+      ) : null}
     </div>
   )
 }
