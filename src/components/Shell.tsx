@@ -1,50 +1,30 @@
-import { useState, type ReactNode } from 'react'
-import { useAuth } from '../state/AuthContext'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNav } from '../state/NavContext'
-import { usePrefs } from '../state/PrefsContext'
-import { useTheme } from '../state/ThemeContext'
 import { AlbumDetail } from './AlbumDetail'
 import { AlbumGrid } from './AlbumGrid'
+import { AppChrome } from './AppChrome'
 import { ArtistDetail, ArtistList } from './ArtistViews'
 import { GenreDetail, GenreList } from './GenreViews'
 import { HomeDashboard } from './HomeDashboard'
-import {
-  IconAlbums,
-  IconArtists,
-  IconBack,
-  IconDesktop,
-  IconGamepad,
-  IconGenres,
-  IconHome,
-  IconLists,
-  IconMoon,
-  IconSearch,
-  IconSettings,
-  IconStar,
-  IconSun,
-} from './Icons'
+import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconStar } from './Icons'
 import { NowPlaying } from './NowPlaying'
 import { PlayerBar } from './PlayerBar'
 import { PlaylistDetail, PlaylistList } from './PlaylistViews'
 import { QueuePanel } from './QueuePanel'
-import { SearchView } from './SearchView'
 import { SettingsSheet } from './SettingsSheet'
 import { StarredView } from './StarredView'
 
 export function Shell() {
-  const { client } = useAuth()
-  const { view, go, back, canBack } = useNav()
-  const { theme, toggleTheme } = useTheme()
-  const { uiMode, toggleUiMode } = usePrefs()
+  const { view, go } = useNav()
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  useEffect(() => {
+    if (view.name === 'search') go({ name: 'home' })
+  }, [view.name, go])
 
   return (
     <div className="app">
       <nav className="nav">
-        <div className="brand">
-          <span className="logo-dot" />
-          Navideck
-        </div>
         <NavBtn active={view.name === 'home'} onClick={() => go({ name: 'home' })} icon={<IconHome />} label="Start" />
         <NavBtn active={view.name === 'albums'} onClick={() => go({ name: 'albums' })} icon={<IconAlbums />} label="Alben" />
         <NavBtn active={view.name === 'artists'} onClick={() => go({ name: 'artists' })} icon={<IconArtists />} label="Künstler" />
@@ -56,47 +36,21 @@ export function Shell() {
           label="Playlists"
         />
         <NavBtn active={view.name === 'starred'} onClick={() => go({ name: 'starred' })} icon={<IconStar />} label="Favoriten" />
-        <NavBtn active={view.name === 'search'} onClick={() => go({ name: 'search' })} icon={<IconSearch />} label="Suche" />
-        <div className="nav-spacer" />
-        <p className="nav-user">{client?.username}</p>
-        <NavBtn active={settingsOpen} onClick={() => setSettingsOpen(true)} icon={<IconSettings />} label="Einstell." />
-        <button
-          type="button"
-          className="nav-btn ui-toggle"
-          onClick={toggleUiMode}
-          aria-label={uiMode === 'deck' ? 'Desktop-Ansicht' : 'Deck-Ansicht'}
-          data-tip={uiMode === 'deck' ? 'Zur Desktop-Ansicht' : 'Zur Deck-Ansicht'}
-        >
-          {uiMode === 'deck' ? <IconDesktop /> : <IconGamepad />}
-          <span>{uiMode === 'deck' ? 'Desktop' : 'Deck'}</span>
-        </button>
-        <button
-          type="button"
-          className="nav-btn theme-toggle"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Hellmodus' : 'Dunkelmodus'}
-        >
-          {theme === 'dark' ? <IconSun /> : <IconMoon />}
-          <span>{theme === 'dark' ? 'Hell' : 'Dunkel'}</span>
-        </button>
       </nav>
       <main className="main">
-        {canBack ? (
-          <button type="button" className="back-btn" onClick={back}>
-            <IconBack /> Zurück
-          </button>
-        ) : null}
-        {view.name === 'home' ? <HomeDashboard /> : null}
-        {view.name === 'albums' ? <AlbumGrid /> : null}
-        {view.name === 'artists' ? <ArtistList /> : null}
-        {view.name === 'playlists' ? <PlaylistList /> : null}
-        {view.name === 'starred' ? <StarredView /> : null}
-        {view.name === 'search' ? <SearchView /> : null}
-        {view.name === 'genres' ? <GenreList /> : null}
-        {view.name === 'album' ? <AlbumDetail id={view.id} /> : null}
-        {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
-        {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}
-        {view.name === 'genre' ? <GenreDetail name={view.id} /> : null}
+        <AppChrome onOpenSettings={() => setSettingsOpen(true)} />
+        <div className="main-body">
+          {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}
+          {view.name === 'albums' ? <AlbumGrid /> : null}
+          {view.name === 'artists' ? <ArtistList /> : null}
+          {view.name === 'playlists' ? <PlaylistList /> : null}
+          {view.name === 'starred' ? <StarredView /> : null}
+          {view.name === 'genres' ? <GenreList /> : null}
+          {view.name === 'album' ? <AlbumDetail id={view.id} /> : null}
+          {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
+          {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}
+          {view.name === 'genre' ? <GenreDetail name={view.id} /> : null}
+        </div>
       </main>
       <PlayerBar />
       <QueuePanel />

@@ -308,6 +308,7 @@ img {
   grid-area: nav;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.2rem;
   padding: 0.55rem 0.35rem 0.55rem;
   background: color-mix(in srgb, var(--bg-2) 88%, transparent);
@@ -373,8 +374,136 @@ img {
 
 .main {
   grid-area: main;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.main-body {
+  grid-row: 2;
+  grid-column: 1;
+  min-height: 0;
   overflow: auto;
   padding: var(--gap) clamp(0.8rem, 2vw, 1.6rem) 1rem;
+}
+
+.chrome {
+  grid-row: 1;
+  position: relative;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  min-height: calc(var(--tap) + 0.5rem);
+  padding: 0.3rem clamp(0.8rem, 2vw, 1.6rem);
+  background: color-mix(in srgb, var(--bg-2) 82%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+
+.chrome-start {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.chrome-end {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+}
+
+.chrome-more {
+  position: relative;
+}
+
+.chrome-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 20;
+  min-width: 15.5rem;
+  padding: 0.35rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  box-shadow: var(--shadow);
+}
+
+.chrome-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: var(--tap);
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: calc(var(--radius) - 0.15rem);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-weight: 500;
+}
+
+.chrome-menu button:hover,
+.chrome-menu button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chrome-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0 0.35rem 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.chrome-search svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.chrome-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: calc(var(--tap) - 0.4rem);
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.chrome-search input:focus {
+  outline: none;
+}
+
+.search-overlay {
+  grid-row: 2;
+  grid-column: 1;
+  z-index: 14;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--gap) clamp(0.8rem, 2vw, 1.6rem) 1.2rem;
+  background: var(--bg);
+}
+
+.search-results-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.7rem;
 }
 
 .player-bar {
@@ -585,9 +714,12 @@ em {
 .play-fab {
   position: absolute;
   right: 0.4rem;
-  bottom: 2.4rem;
+  top: calc(100cqi - 0.45rem);
+  bottom: auto;
+  z-index: 1;
   width: 2.5rem;
   height: 2.5rem;
+  transform: translateY(-100%);
 }
 
 .cover {
@@ -835,9 +967,11 @@ input[type='range']::-moz-range-thumb {
 .album-grid.is-list .play-fab {
   position: relative;
   inset: auto;
+  top: auto;
   width: 2.15rem;
   height: 2.15rem;
   flex-shrink: 0;
+  transform: none;
 }
 
 .genre-grid {
@@ -896,6 +1030,7 @@ input[type='range']::-moz-range-thumb {
 
 .album-card {
   position: relative;
+  container-type: inline-size;
 }
 
 .album-hit {
@@ -1266,11 +1401,12 @@ input[type='range']::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   gap: 3rem;
-  padding: 2.2rem 3vw 2rem;
+  padding: calc(2.4rem + env(safe-area-inset-top, 0px)) 3vw calc(1.1rem + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   text-align: center;
   background: var(--bg);
   isolation: isolate;
+  box-sizing: border-box;
 }
 
 .now-playing.has-list {
@@ -1310,21 +1446,25 @@ input[type='range']::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.55rem;
   width: min(34rem, 100%);
   min-width: 0;
   max-width: 34rem;
-  flex-shrink: 0;
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+  flex-shrink: 1;
 }
 
 .np-flip {
-  width: min(48vw, 22rem);
-  height: min(48vw, 22rem);
+  width: min(42vw, 20rem, 42dvh);
+  height: min(42vw, 20rem, 42dvh);
   perspective: 1200px;
   border: 0;
   background: transparent;
   padding: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .np-flip-inner {
@@ -1414,11 +1554,12 @@ input[type='range']::-moz-range-thumb {
   position: relative;
   z-index: 1;
   width: min(26rem, 38vw);
-  max-height: min(78vh, 40rem);
+  max-height: min(78dvh, 40rem);
   display: flex;
   flex-direction: column;
   text-align: left;
   min-width: 0;
+  min-height: 0;
 }
 
 .np-queue-title {
@@ -1844,8 +1985,8 @@ a.chip {
   }
 
   .np-flip {
-    width: min(68vw, 16rem);
-    height: min(68vw, 16rem);
+    width: min(58vw, 42dvh, 16rem);
+    height: min(58vw, 42dvh, 16rem);
   }
 
   .vol-row {
@@ -1884,33 +2025,13 @@ html[data-ui='deck'] .app {
 
 html[data-ui='deck'] .nav {
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   overflow-x: hidden;
   overflow-y: auto;
   border-right: 1px solid var(--line);
   border-top: 0;
   padding: 0.55rem 0.4rem 0.55rem;
-  gap: 0.22rem;
-}
-
-html[data-ui='deck'] .brand,
-html[data-ui='deck'] .nav-user,
-html[data-ui='deck'] .nav-spacer {
-  display: flex;
-}
-
-html[data-ui='deck'] .brand {
-  font-size: 0.82rem;
-  padding: 0.4rem 0 0.5rem;
-}
-
-html[data-ui='deck'] .nav-user {
-  display: block;
-  font-size: 0.78rem;
-}
-
-html[data-ui='deck'] .nav-spacer {
-  min-height: 0.4rem;
+  gap: 0.28rem;
 }
 
 html[data-ui='deck'] .nav-btn {
@@ -1926,7 +2047,16 @@ html[data-ui='deck'] .nav-btn svg {
   height: 1.7rem;
 }
 
-html[data-ui='deck'] .main {
+html[data-ui='deck'] .main-body {
+  padding: 0.95rem 1.15rem 1.1rem;
+}
+
+html[data-ui='deck'] .chrome {
+  min-height: calc(var(--tap) + 0.55rem);
+  padding: 0.35rem 1.15rem;
+}
+
+html[data-ui='deck'] .search-overlay {
   padding: 0.95rem 1.15rem 1.1rem;
 }
 
@@ -1956,8 +2086,8 @@ html[data-ui='deck'] .play-md {
 }
 
 html[data-ui='deck'] .play-xl {
-  width: 5.3rem;
-  height: 5.3rem;
+  width: 4.4rem;
+  height: 4.4rem;
 }
 
 html[data-ui='deck'] .play-fab {
@@ -2012,18 +2142,27 @@ html[data-ui='deck'] .artist-head .cover {
 }
 
 html[data-ui='deck'] .now-playing {
-  padding: 1.45rem 1.7rem calc(1.2rem + env(safe-area-inset-bottom));
-  gap: 1.3rem;
+  padding: calc(2.8rem + env(safe-area-inset-top, 0px)) 1.2rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  gap: 1.2rem;
+  align-items: center;
+}
+
+html[data-ui='deck'] .np-main {
+  gap: 0.4rem;
 }
 
 html[data-ui='deck'] .np-flip {
-  width: min(42vw, 26.5rem);
-  height: min(42vw, 26.5rem);
+  width: min(34vw, 32dvh, 16.5rem);
+  height: min(34vw, 32dvh, 16.5rem);
 }
 
 html[data-ui='deck'] .now-playing.has-list .np-flip {
-  width: min(28vw, 19rem);
-  height: min(28vw, 19rem);
+  width: min(22vw, 28dvh, 13rem);
+  height: min(22vw, 28dvh, 13rem);
+}
+
+html[data-ui='deck'] .np-queue {
+  max-height: 100%;
 }
 
 html[data-ui='deck'] .vol-row input[type='range'],
