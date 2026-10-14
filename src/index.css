@@ -1475,9 +1475,8 @@ input[type='range']::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   gap: 3rem;
-  padding: calc(2.4rem + env(safe-area-inset-top, 0px)) 3vw calc(1.1rem + env(safe-area-inset-bottom, 0px));
-  overflow-x: hidden;
-  overflow-y: hidden;
+  padding: calc(2.8rem + env(safe-area-inset-top, 0px)) 4vw calc(1.8rem + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
   text-align: center;
   background: var(--bg);
   isolation: isolate;
@@ -1528,8 +1527,7 @@ input[type='range']::-moz-range-thumb {
   max-width: 34rem;
   max-height: 100%;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   flex-shrink: 1;
 }
 
@@ -2210,26 +2208,27 @@ html[data-ui='deck'] .artist-head .cover {
 }
 
 html[data-ui='deck'] .now-playing {
-  padding: calc(2.2rem + env(safe-area-inset-top, 0px)) clamp(1.4rem, 4.5vw, 4rem) calc(0.85rem + env(safe-area-inset-bottom, 0px));
-  gap: clamp(1.6rem, 4vw, 4.5rem);
+  padding: calc(3.2rem + env(safe-area-inset-top, 0px)) clamp(2.2rem, 6vw, 5.5rem) calc(2.4rem + env(safe-area-inset-bottom, 0px));
+  gap: clamp(1.8rem, 4vw, 4rem);
   align-items: center;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 html[data-ui='deck'] .np-main {
-  gap: 0.45rem;
-  overflow-x: hidden;
+  gap: 0.4rem;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 html[data-ui='deck'] .now-playing:not(.has-list) .np-main {
-  width: min(46rem, 100%);
-  max-width: 46rem;
+  width: min(42rem, 100%);
+  max-width: 42rem;
 }
 
 html[data-ui='deck'] .now-playing:not(.has-list) .np-flip {
-  width: min(50vw, 60dvh, 30rem);
-  height: min(50vw, 60dvh, 30rem);
-  flex-shrink: 0;
+  width: min(42vw, 44dvh, calc(100dvh - 26rem), 24rem);
+  height: min(42vw, 44dvh, calc(100dvh - 26rem), 24rem);
+  flex: 0 1 auto;
 }
 
 html[data-ui='deck'] .now-playing.has-list {
@@ -2241,19 +2240,26 @@ html[data-ui='deck'] .now-playing.has-list .np-main {
   flex: 1 1 0;
   width: auto;
   max-width: none;
+  overflow: hidden;
 }
 
 html[data-ui='deck'] .now-playing.has-list .np-flip {
-  width: min(36vw, 54dvh, 26rem);
-  height: min(36vw, 54dvh, 26rem);
-  flex-shrink: 0;
+  width: min(32vw, 42dvh, calc(100dvh - 26rem), 22rem);
+  height: min(32vw, 42dvh, calc(100dvh - 26rem), 22rem);
+  flex: 0 1 auto;
 }
 
 html[data-ui='deck'] .now-playing.has-list .np-queue {
   flex: 1 1 0;
   width: auto;
   max-width: none;
-  max-height: none;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+html[data-ui='deck'] .now-playing.has-list .np-queue-body {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 html[data-ui='deck'] .np-title,
