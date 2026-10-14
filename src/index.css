@@ -782,22 +782,34 @@ input[type='range']::-moz-range-thumb {
 }
 
 .genre-card {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
   min-height: 4.2rem;
+  padding-right: 0.4rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
 }
 
 .genre-hit {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 4.2rem;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 0.15rem;
-  padding: 0.65rem 2.85rem 0.65rem 0.8rem;
+  padding: 0.65rem 0.45rem 0.65rem 0.8rem;
   text-align: left;
+}
+
+.genre-hit strong,
+.genre-hit em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .genre-card:hover,
@@ -807,21 +819,14 @@ input[type='range']::-moz-range-thumb {
 }
 
 .genre-card .play-fab {
-  top: 50%;
+  position: relative;
+  top: auto;
+  right: auto;
   bottom: auto;
-  right: 0.45rem;
+  flex-shrink: 0;
   width: 2.15rem;
   height: 2.15rem;
-  transform: translateY(-50%);
-}
-
-.genre-card .play-fab[data-tip]::after {
-  transform: translateX(-50%) translateY(0.2rem);
-}
-
-.genre-card .play-fab[data-tip]:hover::after,
-.genre-card .play-fab[data-tip]:focus-visible::after {
-  transform: translateX(-50%) translateY(0);
+  transform: none;
 }
 
 .album-card {
@@ -1478,6 +1483,10 @@ input[type='range']::-moz-range-thumb {
 .settings-hint {
   margin: 0 0 0.3rem;
   font-size: 0.85em;
+}
+
+.mix-size-row {
+  margin: 0.35rem 0 1.15rem;
 }
 
 .palette-grid {

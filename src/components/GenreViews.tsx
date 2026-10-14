@@ -4,6 +4,7 @@ import type { Album, Genre, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay, IconRadio } from './Icons'
 import { TrackList } from './TrackList'
@@ -12,6 +13,7 @@ export function GenreList() {
   const { client } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
+  const { mixSize } = usePrefs()
   const [genres, setGenres] = useState<Genre[]>([])
   const [error, setError] = useState('')
   const [mixing, setMixing] = useState('')
@@ -34,8 +36,8 @@ export function GenreList() {
     if (!client || mixing) return
     setMixing(name)
     try {
-      let songs = await client.getRandomSongs(40, name)
-      if (songs.length < 8) {
+      let songs = await client.getRandomSongs(mixSize, name)
+      if (songs.length < Math.min(8, mixSize)) {
         const extra = await client.getSongsByGenre(name, 0)
         songs = [...songs, ...extra]
       }
@@ -46,7 +48,7 @@ export function GenreList() {
         unique[i] = unique[j]
         unique[j] = tmp
       }
-      if (unique.length) playTracks(unique, 0)
+      if (unique.length) playTracks(unique.slice(0, mixSize), 0)
     } finally {
       setMixing('')
     }

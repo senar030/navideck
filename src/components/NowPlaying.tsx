@@ -4,6 +4,7 @@ import { centerInScroller } from '../lib/scroll'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import {
   IconClose,
@@ -45,6 +46,7 @@ export function NowPlaying() {
     playTracks,
     toggleStar,
   } = usePlayer()
+  const { mixSize } = usePrefs()
   const [showList, setShowList] = useState(false)
   const [showLyrics, setShowLyrics] = useState(false)
   const [lyrics, setLyrics] = useState('')
@@ -99,16 +101,16 @@ export function NowPlaying() {
     if (!client || !current) return
     setMixBusy(true)
     try {
-      let songs = await client.getSimilarSongs(current.id, 40)
-      if (songs.length < 8 && current.genre) {
-        const extra = await client.getRandomSongs(40, current.genre)
+      let songs = await client.getSimilarSongs(current.id, mixSize)
+      if (songs.length < Math.min(8, mixSize) && current.genre) {
+        const extra = await client.getRandomSongs(mixSize, current.genre)
         songs = [...songs, ...extra]
       }
-      if (songs.length < 8) {
-        const extra = await client.getRandomSongs(30)
+      if (songs.length < Math.min(8, mixSize)) {
+        const extra = await client.getRandomSongs(mixSize)
         songs = [...songs, ...extra]
       }
-      const rest = songs.filter((s) => s.id !== current.id)
+      const rest = songs.filter((s) => s.id !== current.id).slice(0, mixSize)
       playTracks([current, ...rest], 0)
     } finally {
       setMixBusy(false)

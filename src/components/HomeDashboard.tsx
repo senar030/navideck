@@ -4,6 +4,7 @@ import { matchMoodGenre, MOODS, type MoodId } from '../lib/moods'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay } from './Icons'
 
@@ -33,6 +34,7 @@ export function HomeDashboard() {
   const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
+  const { mixSize } = usePrefs()
   const [widgets, setWidgets] = useState<WidgetId[]>(readWidgets)
   const [edit, setEdit] = useState(false)
   const [recent, setRecent] = useState<Album[]>([])
@@ -74,8 +76,8 @@ export function HomeDashboard() {
     try {
       const names = genres.map((g) => g.value)
       const genre = matchMoodGenre(mood, names)
-      let songs = await client.getRandomSongs(40, genre)
-      if (!songs.length && genre) songs = await client.getRandomSongs(40)
+      let songs = await client.getRandomSongs(mixSize, genre)
+      if (!songs.length && genre) songs = await client.getRandomSongs(mixSize)
       if (!songs.length) {
         const moodName = MOODS.find((m) => m.id === mood)?.label.toLowerCase() ?? ''
         const list = playlists.find((p) => p.name.toLowerCase().includes(moodName))
@@ -84,11 +86,11 @@ export function HomeDashboard() {
           songs = [...(full.entry ?? [])].sort(() => Math.random() - 0.5)
         }
       }
-      if (songs.length) playTracks(songs, 0)
+      if (songs.length) playTracks(songs.slice(0, mixSize), 0)
     } finally {
       setMoodBusy(false)
     }
-  }, [client, genres, mood, playlists, playTracks])
+  }, [client, genres, mixSize, mood, playlists, playTracks])
 
   const genrePreview = useMemo(() => genres.slice(0, 10), [genres])
 

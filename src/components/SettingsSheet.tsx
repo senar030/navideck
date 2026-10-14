@@ -1,4 +1,5 @@
 import { useAuth } from '../state/AuthContext'
+import { MIX_SIZES, usePrefs } from '../state/PrefsContext'
 import { PALETTES, useTheme } from '../state/ThemeContext'
 import { IconClose } from './Icons'
 
@@ -10,6 +11,7 @@ type Props = {
 export function SettingsSheet({ open, onClose }: Props) {
   const { client, logout, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
   const { palette, setPalette } = useTheme()
+  const { mixSize, setMixSize } = usePrefs()
   if (!open) return null
 
   return (
@@ -39,6 +41,20 @@ export function SettingsSheet({ open, onClose }: Props) {
               >
                 <span className="palette-dot" />
                 {item.label}
+              </button>
+            ))}
+          </div>
+          <p className="muted">Sofort-Mix</p>
+          <p className="settings-hint">Anzahl der Titel in Genre-Mix, Stimmungs-Mix und ähnlichem Mix.</p>
+          <div className="chip-row wrap mix-size-row">
+            {MIX_SIZES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`chip ${mixSize === n ? 'is-on' : ''}`}
+                onClick={() => setMixSize(n)}
+              >
+                {n}
               </button>
             ))}
           </div>
