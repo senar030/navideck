@@ -1866,95 +1866,119 @@ a.chip {
 }
 
 html[data-ui='deck'] {
-  --tap: 3.1rem;
-  --font: 16.5px;
-  --player: 6.6rem;
-  --nav: 5.4rem;
-  --gap: 0.9rem;
-  --radius: 0.85rem;
+  --tap: 3.75rem;
+  --font: 20px;
+  --player: 7.9rem;
+  --nav: 6.6rem;
+  --gap: 1.1rem;
+  --radius: 1rem;
 }
 
 html[data-ui='deck'] .app {
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr var(--player) 5.35rem;
+  grid-template-columns: var(--nav) 1fr;
+  grid-template-rows: 1fr var(--player);
   grid-template-areas:
-    "main"
-    "player"
-    "nav";
+    "nav main"
+    "player player";
 }
 
 html[data-ui='deck'] .nav {
-  flex-direction: row;
+  flex-direction: column;
   justify-content: flex-start;
-  overflow-x: auto;
-  border-right: 0;
-  border-top: 1px solid var(--line);
-  padding: 0.25rem 0.4rem calc(0.25rem + env(safe-area-inset-bottom));
-  gap: 0.15rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  border-top: 0;
+  padding: 0.55rem 0.4rem 0.55rem;
+  gap: 0.22rem;
 }
 
 html[data-ui='deck'] .brand,
 html[data-ui='deck'] .nav-user,
 html[data-ui='deck'] .nav-spacer {
-  display: none;
+  display: flex;
+}
+
+html[data-ui='deck'] .brand {
+  font-size: 0.82rem;
+  padding: 0.4rem 0 0.5rem;
+}
+
+html[data-ui='deck'] .nav-user {
+  display: block;
+  font-size: 0.78rem;
+}
+
+html[data-ui='deck'] .nav-spacer {
+  min-height: 0.4rem;
 }
 
 html[data-ui='deck'] .nav-btn {
-  min-width: 4.6rem;
-  min-height: 4.7rem;
+  min-width: 0;
+  min-height: var(--tap);
   font-size: 0.78rem;
-  gap: 0.18rem;
+  gap: 0.16rem;
   position: relative;
 }
 
+html[data-ui='deck'] .nav-btn svg {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
 html[data-ui='deck'] .main {
-  padding: 0.85rem 1rem 1rem;
+  padding: 0.95rem 1.15rem 1.1rem;
 }
 
 html[data-ui='deck'] .player-bar {
-  padding: 0.4rem 0.85rem;
-  gap: 0.45rem;
+  padding: 0.5rem 1.1rem 0.55rem;
+  column-gap: 0.9rem;
+}
+
+html[data-ui='deck'] .player-now {
+  min-height: 3.4rem;
 }
 
 html[data-ui='deck'] .player-buttons {
-  width: 19.5rem;
-  gap: 0.35rem;
+  width: 23.5rem;
+  gap: 0.45rem;
 }
 
-html[data-ui='deck'] .player-buttons .icon-btn {
+html[data-ui='deck'] .player-buttons .icon-btn,
+html[data-ui='deck'] .player-extra .icon-btn {
   width: var(--tap);
   height: var(--tap);
 }
 
 html[data-ui='deck'] .play-md {
-  width: 2.85rem;
-  height: 2.85rem;
+  width: 3.4rem;
+  height: 3.4rem;
 }
 
 html[data-ui='deck'] .play-xl {
-  width: 4.4rem;
-  height: 4.4rem;
+  width: 5.3rem;
+  height: 5.3rem;
 }
 
 html[data-ui='deck'] .play-fab {
-  width: 3.1rem;
-  height: 3.1rem;
+  width: 3.7rem;
+  height: 3.7rem;
 }
 
 html[data-ui='deck'] .chip,
 html[data-ui='deck'] .primary-btn,
 html[data-ui='deck'] .back-btn {
-  min-height: 2.7rem;
-  padding: 0.45rem 0.95rem;
-  font-size: 0.95em;
+  min-height: 3.2rem;
+  padding: 0.55rem 1.15rem;
+  font-size: 1em;
 }
 
 html[data-ui='deck'] .album-grid {
-  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13.8rem, 1fr));
 }
 
 html[data-ui='deck'] .album-grid.compact {
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(12.6rem, 1fr));
 }
 
 html[data-ui='deck'] .track-row,
@@ -1962,66 +1986,67 @@ html[data-ui='deck'] .queue-row,
 html[data-ui='deck'] .artist-row,
 html[data-ui='deck'] .playlist-row,
 html[data-ui='deck'] .folder-row {
-  min-height: 3.1rem;
+  min-height: 3.75rem;
 }
 
 html[data-ui='deck'] .cover.hero-cover {
-  width: 13.5rem;
-  height: 13.5rem;
+  width: 16.2rem;
+  height: 16.2rem;
 }
 
 html[data-ui='deck'] .hero-banner {
-  min-height: 11rem;
+  min-height: 13.2rem;
 }
 
 html[data-ui='deck'] .artist-heads {
-  gap: 0.7rem;
+  gap: 0.85rem;
 }
 
 html[data-ui='deck'] .artist-head {
-  width: 5.6rem;
+  width: 6.7rem;
 }
 
 html[data-ui='deck'] .artist-head .cover {
-  width: 4.4rem;
-  height: 4.4rem;
+  width: 5.3rem;
+  height: 5.3rem;
 }
 
 html[data-ui='deck'] .now-playing {
-  padding: 1.2rem 1.4rem calc(1rem + env(safe-area-inset-bottom));
-  gap: 1.1rem;
+  padding: 1.45rem 1.7rem calc(1.2rem + env(safe-area-inset-bottom));
+  gap: 1.3rem;
 }
 
 html[data-ui='deck'] .np-flip {
-  width: min(42vw, 22rem);
-  height: min(42vw, 22rem);
+  width: min(42vw, 26.5rem);
+  height: min(42vw, 26.5rem);
 }
 
 html[data-ui='deck'] .now-playing.has-list .np-flip {
-  width: min(28vw, 16rem);
-  height: min(28vw, 16rem);
+  width: min(28vw, 19rem);
+  height: min(28vw, 19rem);
 }
 
 html[data-ui='deck'] .vol-row input[type='range'],
 html[data-ui='deck'] .seek input[type='range'] {
-  min-height: 1.45rem;
+  min-height: 1.75rem;
 }
 
 html[data-ui='deck'] .sheet-backdrop {
-  align-items: flex-end;
+  align-items: stretch;
+  justify-content: flex-end;
 }
 
 html[data-ui='deck'] .sheet {
-  width: min(42rem, 100%);
-  height: min(78vh, 40rem);
-  border-left: 0;
-  border-top: 1px solid var(--line);
-  border-radius: 1.4rem 1.4rem 0 0;
+  width: min(32rem, 100%);
+  height: 100%;
+  border-left: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0;
 }
 
 html[data-ui='deck'] .login-card {
-  padding: 1.5rem;
-  gap: 1rem;
+  padding: 1.8rem;
+  gap: 1.2rem;
 }
 
 html[data-ui='deck'] input,
@@ -2030,13 +2055,12 @@ html[data-ui='deck'] .pw-row input {
   font-size: 1em;
 }
 
-@media (max-width: 900px) and (min-width: 0) {
+@media (max-width: 900px) {
   html[data-ui='deck'] .player-bar {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(10rem, 1fr) minmax(18rem, 1.6fr) minmax(4rem, 1fr);
     grid-template-areas:
-      "now extra"
-      "controls controls"
-      "seek seek";
+      "now controls extra"
+      "seek seek seek";
   }
 
   html[data-ui='deck'] .now-playing {
@@ -2044,7 +2068,7 @@ html[data-ui='deck'] .pw-row input {
   }
 
   html[data-ui='deck'] .now-playing.has-list .np-flip {
-    width: min(38vw, 10rem);
-    height: min(38vw, 10rem);
+    width: min(38vw, 12rem);
+    height: min(38vw, 12rem);
   }
 }
