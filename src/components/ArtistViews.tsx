@@ -118,9 +118,14 @@ export function ArtistDetail({ id }: { id: string }) {
       : null,
   ].filter(Boolean) as { href: string; label: string }[]
 
+  const bg = client?.coverUrl(artist.coverArt, 80)
+
   return (
     <div className="view detail">
-      <div className="hero">
+      <div className="hero-banner">
+        {bg ? <img className="hero-bg" src={bg} alt="" /> : null}
+        <div className="hero-veil" />
+        <div className="hero">
         <CoverArt coverArt={artist.coverArt} alt="" size={400} className="hero-cover avatar" />
         <div className="hero-copy">
           <p className="eyebrow">Künstler</p>
@@ -134,6 +139,7 @@ export function ArtistDetail({ id }: { id: string }) {
               <IconPlay size={22} /> Alles spielen
             </button>
           </div>
+        </div>
         </div>
       </div>
       {bio ? <p className="artist-bio">{bio}</p> : null}

@@ -32,9 +32,14 @@ export function AlbumDetail({ id }: { id: string }) {
 
   const songs = album.song ?? []
 
+  const bg = client?.coverUrl(album.coverArt, 80)
+
   return (
     <div className="view detail">
-      <div className="hero">
+      <div className="hero-banner">
+        {bg ? <img className="hero-bg" src={bg} alt="" /> : null}
+        <div className="hero-veil" />
+        <div className="hero">
         <CoverArt coverArt={album.coverArt} alt="" size={600} className="hero-cover" />
         <div className="hero-copy">
           <p className="eyebrow">Album</p>
@@ -72,6 +77,7 @@ export function AlbumDetail({ id }: { id: string }) {
               <IconStar filled={starred} />
             </button>
           </div>
+        </div>
         </div>
       </div>
       <TrackList songs={songs} />
