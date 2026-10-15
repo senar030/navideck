@@ -1121,10 +1121,10 @@ input[type='range']::-moz-range-thumb {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 1.5rem;
-  padding: calc(var(--chrome-h) + 0.75rem) var(--main-pad-x) 1.55rem;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 78%, var(--bg));
+  margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 0.6rem;
+  padding: calc(var(--chrome-h) + 0.75rem) var(--main-pad-x) 1.8rem;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .hero-bg {
@@ -1145,8 +1145,9 @@ input[type='range']::-moz-range-thumb {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--bg) 22%, transparent) 0%,
-      color-mix(in srgb, var(--bg) 42%, transparent) 55%,
+      color-mix(in srgb, var(--bg) 18%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 38%, transparent) 48%,
+      color-mix(in srgb, var(--bg) 88%, transparent) 82%,
       var(--bg) 100%
     );
   pointer-events: none;
@@ -1489,14 +1490,27 @@ input[type='range']::-moz-range-thumb {
   height: 100%;
   height: 100dvh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3rem;
-  padding: calc(2.8rem + env(safe-area-inset-top, 0px)) 4vw calc(1.8rem + env(safe-area-inset-bottom, 0px));
+  align-items: stretch;
+  justify-content: stretch;
   overflow: hidden;
   text-align: center;
   background: var(--bg);
   isolation: isolate;
+  box-sizing: border-box;
+}
+
+.np-scroll {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  padding: calc(2.8rem + env(safe-area-inset-top, 0px)) 4vw calc(1.8rem + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -1514,21 +1528,23 @@ input[type='range']::-moz-range-thumb {
   transform: scale(1.18);
   opacity: 0.5;
   pointer-events: none;
+  z-index: 0;
 }
 
 .np-veil {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
   backdrop-filter: blur(22px) saturate(1.25);
   pointer-events: none;
+  z-index: 0;
 }
 
 .np-close {
   position: absolute;
   top: calc(0.45rem + env(safe-area-inset-top, 0px));
   left: 0.45rem;
-  z-index: 2;
+  z-index: 3;
 }
 
 .np-main {
@@ -2035,16 +2051,17 @@ a.chip {
     height: min(70vw, 16rem);
   }
 
-  .now-playing {
+  .now-playing .np-scroll {
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     gap: 0.75rem;
     padding: calc(2.7rem + env(safe-area-inset-top, 0px)) 1rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .now-playing:not(.has-list) {
+  .now-playing:not(.has-list) .np-scroll {
     justify-content: center;
   }
 
@@ -2225,10 +2242,13 @@ html[data-ui='deck'] .artist-head .cover {
 }
 
 html[data-ui='deck'] .now-playing {
+  overflow: hidden;
+}
+
+html[data-ui='deck'] .np-scroll {
   padding: calc(3.2rem + env(safe-area-inset-top, 0px)) clamp(2.2rem, 6vw, 5.5rem) calc(2.4rem + env(safe-area-inset-bottom, 0px));
   gap: clamp(1.8rem, 4vw, 4rem);
   align-items: center;
-  overflow: hidden;
 }
 
 html[data-ui='deck'] .np-main {
@@ -2248,7 +2268,7 @@ html[data-ui='deck'] .now-playing:not(.has-list) .np-flip {
   flex: 0 1 auto;
 }
 
-html[data-ui='deck'] .now-playing.has-list {
+html[data-ui='deck'] .now-playing.has-list .np-scroll {
   justify-content: space-between;
   align-items: stretch;
 }
@@ -2325,7 +2345,7 @@ html[data-ui='deck'] .pw-row input {
       "seek seek seek";
   }
 
-  html[data-ui='deck'] .now-playing {
+  html[data-ui='deck'] .now-playing .np-scroll {
     flex-direction: column;
   }
 
@@ -2443,11 +2463,36 @@ html[data-ui='deck'] .pw-row input {
   .track-list {
     position: relative;
     z-index: 1;
-    background: var(--bg);
+    background: transparent;
+  }
+
+  .sort-row.chip-row {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    gap: 0.28rem;
+    padding-bottom: 0;
+  }
+
+  .sort-row .chip {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 2.05rem;
+    padding: 0.28rem 0.18rem;
+    font-size: 0.72rem;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .track-row {
-    grid-template-columns: minmax(0, 1fr) 3.2rem auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+    background: color-mix(in srgb, var(--text) 3.5%, transparent);
+  }
+
+  .track-time {
+    width: auto;
+    min-width: 2.6rem;
+    padding-right: 0.15rem;
   }
 
   .track-main {
@@ -2475,6 +2520,13 @@ html[data-ui='deck'] .pw-row input {
   .now-playing.has-list,
   html[data-ui='deck'] .now-playing,
   html[data-ui='deck'] .now-playing.has-list {
+    overflow: hidden;
+  }
+
+  .now-playing .np-scroll,
+  .now-playing.has-list .np-scroll,
+  html[data-ui='deck'] .now-playing .np-scroll,
+  html[data-ui='deck'] .now-playing.has-list .np-scroll {
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;

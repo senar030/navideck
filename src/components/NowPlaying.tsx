@@ -124,6 +124,7 @@ export function NowPlaying() {
       <button type="button" className="icon-btn np-close" aria-label="Schließen" data-tip="Schließen" onClick={() => setExpanded(false)}>
         <IconClose />
       </button>
+      <div className="np-scroll">
       <div className="np-main">
         <div className={`np-flip ${showLyrics ? 'is-flipped' : ''}`}>
           <div className="np-flip-inner">
@@ -277,6 +278,7 @@ export function NowPlaying() {
           </div>
         </aside>
       ) : null}
+      </div>
     </div>
   )
 }
