@@ -579,6 +579,10 @@ img {
   margin-bottom: 0.7rem;
 }
 
+.player-dock {
+  display: none;
+}
+
 .player-bar {
   grid-area: player;
   display: grid;
@@ -2315,5 +2319,160 @@ html[data-ui='deck'] .pw-row input {
   html[data-ui='deck'] .now-playing.has-list .np-flip {
     width: min(42vw, 28dvh, 14rem);
     height: min(42vw, 28dvh, 14rem);
+  }
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .app,
+  html[data-ui='deck'] .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 4.65rem;
+    grid-template-areas:
+      "main"
+      "nav";
+  }
+
+  .player-bar,
+  html[data-ui='deck'] .player-bar {
+    position: fixed;
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: calc(4.55rem + env(safe-area-inset-bottom, 0px));
+    z-index: 12;
+    display: flex;
+    align-items: center;
+    grid-template-columns: none;
+    grid-template-areas: none;
+    padding: 0.35rem 0.4rem 0.35rem 0.38rem;
+    border: 0;
+    border-radius: 1.35rem;
+    background: color-mix(in srgb, var(--bg-2) 90%, transparent);
+    backdrop-filter: blur(20px) saturate(1.25);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  }
+
+  .player-now,
+  .player-controls,
+  .player-extra,
+  .player-seek {
+    display: none;
+  }
+
+  .player-dock {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .player-dock-hit {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    padding: 0.05rem 0.2rem 0.05rem 0.05rem;
+  }
+
+  .player-dock-hit:disabled {
+    opacity: 0.7;
+  }
+
+  .player-dock .cover.player-cover {
+    width: 2.55rem;
+    height: 2.55rem;
+    border-radius: 0.45rem;
+  }
+
+  .player-dock .icon-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    color: var(--text);
+  }
+
+  .player-dock-play {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+  }
+
+  .main-body {
+    padding-bottom: 5.4rem;
+  }
+
+  .app:has(.now-playing) .player-bar {
+    display: none;
+  }
+
+  .now-playing,
+  .now-playing.has-list,
+  html[data-ui='deck'] .now-playing,
+  html[data-ui='deck'] .now-playing.has-list {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 1rem;
+    padding: calc(3.1rem + env(safe-area-inset-top, 0px)) 1.15rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .np-main,
+  html[data-ui='deck'] .now-playing:not(.has-list) .np-main,
+  html[data-ui='deck'] .now-playing.has-list .np-main {
+    width: min(36rem, 100%);
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    flex: 0 0 auto;
+    margin: 0 auto;
+  }
+
+  .now-playing .np-flip,
+  .now-playing.has-list .np-flip,
+  html[data-ui='deck'] .now-playing:not(.has-list) .np-flip,
+  html[data-ui='deck'] .now-playing.has-list .np-flip {
+    width: min(86vw, 22.5rem);
+    height: min(86vw, 22.5rem);
+    flex: 0 0 auto;
+    margin: 0.35rem auto 0.15rem;
+  }
+
+  .np-queue,
+  html[data-ui='deck'] .now-playing.has-list .np-queue {
+    flex: 0 0 auto;
+    width: min(36rem, 100%);
+    max-height: none;
+    overflow: visible;
+    margin: 0 auto;
+  }
+
+  .np-queue-body,
+  html[data-ui='deck'] .now-playing.has-list .np-queue-body {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-copy {
+    align-items: center;
+  }
+
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .cover.hero-cover,
+  html[data-ui='deck'] .cover.hero-cover {
+    width: min(42vw, 9.6rem);
+    height: min(42vw, 9.6rem);
   }
 }

@@ -35,6 +35,44 @@ export function PlayerBar() {
 
   return (
     <footer className="player-bar">
+      <div className="player-dock">
+        <button
+          type="button"
+          className="player-dock-hit"
+          onClick={() => current && setExpanded(true)}
+          disabled={!current}
+        >
+          <CoverArt coverArt={current?.coverArt} alt="" size={120} className="player-cover" />
+          <span className="track-meta">
+            <span className="track-title">{current?.title ?? 'Nichts spielt'}</span>
+            <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="icon-btn player-dock-play"
+          aria-label={playing ? 'Pause' : 'Wiedergeben'}
+          onClick={(e) => {
+            e.stopPropagation()
+            togglePlay()
+          }}
+          disabled={!current}
+        >
+          {playing ? <IconPause size={22} /> : <IconPlay size={22} />}
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Nächster Titel"
+          onClick={(e) => {
+            e.stopPropagation()
+            next()
+          }}
+          disabled={!current}
+        >
+          <IconNext size={22} />
+        </button>
+      </div>
       <button
         type="button"
         className="player-now"
