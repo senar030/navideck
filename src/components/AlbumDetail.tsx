@@ -45,16 +45,19 @@ export function AlbumDetail({ id }: { id: string }) {
           <p className="eyebrow">Album</p>
           <h2>{album.name}</h2>
           {album.artistId ? (
-            <button type="button" className="link-btn" onClick={() => go({ name: 'artist', id: album.artistId! })}>
+            <button type="button" className="link-btn hero-artist" onClick={() => go({ name: 'artist', id: album.artistId! })}>
               {album.artist}
             </button>
           ) : (
-            <p>{album.artist}</p>
+            <p className="hero-artist">{album.artist}</p>
           )}
+          {album.genre || album.year ? (
+            <p className="hero-facts muted">
+              {[album.genre, album.year].filter(Boolean).join(' · ')}
+            </p>
+          ) : null}
           <p className="muted">
-            {[album.year, songs.length ? `${songs.length} tracks` : null, formatTime(album.duration)]
-              .filter(Boolean)
-              .join(' · ')}
+            {[songs.length ? `${songs.length} tracks` : null, formatTime(album.duration)].filter(Boolean).join(' · ')}
           </p>
           <div className="hero-actions">
             <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
