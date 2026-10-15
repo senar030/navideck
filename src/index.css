@@ -309,8 +309,6 @@ img {
     "nav main"
     "player player";
   overflow: hidden;
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
 }
 
 .nav {
@@ -2010,13 +2008,16 @@ a.chip {
       "nav";
   }
 
-  .nav {
+  .nav,
+  html[data-ui='deck'] .nav {
     flex-direction: row;
-    justify-content: center;
-    overflow-x: auto;
+    justify-content: stretch;
+    align-items: stretch;
+    overflow: hidden;
     border-right: 0;
     border-top: 1px solid var(--line);
-    padding: 0.2rem 0.3rem calc(0.2rem + env(safe-area-inset-bottom));
+    padding: 0.12rem 0 calc(0.12rem + env(safe-area-inset-bottom, 0px));
+    gap: 0;
   }
 
   .brand,
@@ -2025,8 +2026,14 @@ a.chip {
     display: none;
   }
 
-  .nav-btn {
-    min-width: 3.8rem;
+  .nav-btn,
+  html[data-ui='deck'] .nav-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    padding: 0.2rem 0.05rem;
+    font-size: 0.58rem;
   }
 
   .player-bar {
@@ -2368,11 +2375,18 @@ html[data-ui='deck'] .pw-row input {
   .app,
   html[data-ui='deck'] .app {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto 4.65rem;
+    grid-template-rows: 1fr auto auto;
     grid-template-areas:
       "main"
       "player"
       "nav";
+  }
+
+  .nav,
+  html[data-ui='deck'] .nav {
+    flex-direction: row;
+    overflow: hidden;
+    gap: 0;
   }
 
   .player-bar,
@@ -2603,53 +2617,16 @@ html[data-ui='deck'] .pw-row input {
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {
-  .app {
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
-  }
-
-  .nav {
-    padding-bottom: 0.35rem;
-  }
-
-  .main {
-    --main-pad-x: 1.15rem;
-    --chrome-h: calc(var(--tap) + 0.65rem);
-  }
-
   .chrome {
-    padding-top: 0.45rem;
+    padding-top: max(0.3rem, env(safe-area-inset-top, 0px));
   }
 
   .now-playing .np-scroll {
-    padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
-    padding-right: max(1.15rem, env(safe-area-inset-right, 0px));
+    padding-top: calc(2.8rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(1.4rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
-html.standalone .app {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
-}
-
-html.standalone .nav {
-  padding-bottom: 0.35rem;
-}
-
-html.standalone .main {
-  --main-pad-x: 1.15rem;
-  --chrome-h: calc(var(--tap) + 0.65rem);
-}
-
 html.standalone .chrome {
-  padding-top: 0.45rem;
-}
-
-html.standalone .now-playing .np-scroll {
-  padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
-  padding-right: max(1.15rem, env(safe-area-inset-right, 0px));
+  padding-top: max(0.3rem, env(safe-area-inset-top, 0px));
 }
