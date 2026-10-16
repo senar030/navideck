@@ -1275,7 +1275,7 @@ input[type='range']::-moz-range-thumb {
 .track-row,
 .queue-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto auto;
+  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto;
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -2545,7 +2545,7 @@ html[data-ui='deck'] .pw-row input {
   }
 
   .track-row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     background: color-mix(in srgb, var(--text) 3.5%, transparent);
   }
 
