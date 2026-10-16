@@ -10,7 +10,7 @@ import { LayoutToggle } from './LayoutToggle'
 import { IconPlay, IconRadio } from './Icons'
 
 export function GenreList() {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
   const { mixSize, layout } = usePrefs()
@@ -30,7 +30,7 @@ export function GenreList() {
         ),
       )
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load genres'))
-  }, [client])
+  }, [client, selectedFolderIds])
 
   async function mixGenre(name: string) {
     if (!client || mixing) return

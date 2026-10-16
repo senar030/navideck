@@ -98,29 +98,82 @@ export class NavidromeClient {
   }
 
   async getGenres(): Promise<Genre[]> {
-    const data = await this.request('getGenres')
-    const list = data.genres?.genre
-    if (!list) return []
-    return Array.isArray(list) ? list : [list]
+    // Navidrome's getGenres endpoint ignores musicFolderId, so when a library
+    // filter is active we derive the genre list from that library's albums.
+    if (this.folderIds.length === 0) {
+      const data = await this.request('getGenres')
+      const list = data.genres?.genre
+      if (!list) return []
+      return Array.isArray(list) ? list : [list]
+    }
+    const albums = await this.getAllAlbums()
+    const stats = new Map<string, { albumCount: number; songCount: number }>()
+    for (const album of albums) {
+      const genre = album.genre?.trim()
+      if (!genre) continue
+      const entry = stats.get(genre) ?? { albumCount: 0, songCount: 0 }
+      entry.albumCount += 1
+      entry.songCount += album.songCount ?? 0
+      stats.set(genre, entry)
+    }
+    return [...stats.entries()].map(([value, entry]) => ({
+      value,
+      albumCount: entry.albumCount,
+      songCount: entry.songCount,
+    }))
   }
 
   async getAlbumsByGenre(genre: string, offset = 0): Promise<Album[]> {
-    const data = await this.request('getAlbumList2', {
-      type: 'byGenre',
-      genre,
-      size: String(PAGE),
-      offset: String(offset),
-    })
-    return data.albumList2?.album ?? []
+    const pages = await this.forFolders((folder) =>
+      this.request('getAlbumList2', {
+        type: 'byGenre',
+        genre,
+        size: String(PAGE),
+        offset: String(offset),
+        ...folder,
+      }),
+    )
+    return uniqueBy(
+      pages.flatMap((data) => data.albumList2?.album ?? []),
+      (a) => a.id,
+    )
   }
 
   async getSongsByGenre(genre: string, offset = 0): Promise<Song[]> {
-    const data = await this.request('getSongsByGenre', {
-      genre,
-      count: String(PAGE),
-      offset: String(offset),
-    })
-    return data.songsByGenre?.song ?? []
+    const pages = await this.forFolders((folder) =>
+      this.request('getSongsByGenre', {
+        genre,
+        count: String(PAGE),
+        offset: String(offset),
+        ...folder,
+      }),
+    )
+    return uniqueBy(
+      pages.flatMap((data) => data.songsByGenre?.song ?? []),
+      (s) => s.id,
+    )
+  }
+
+  private async getAllAlbums(): Promise<Album[]> {
+    const byId = new Map<string, Album>()
+    const folders = this.folderIds.length ? this.folderIds : ['']
+    for (const folderId of folders) {
+      let offset = 0
+      for (;;) {
+        const extra: Record<string, string> = {
+          type: 'alphabeticalByName',
+          size: '500',
+          offset: String(offset),
+        }
+        if (folderId) extra.musicFolderId = folderId
+        const data = await this.request('getAlbumList2', extra)
+        const page = data.albumList2?.album ?? []
+        for (const album of page) if (!byId.has(album.id)) byId.set(album.id, album)
+        if (page.length < 500) break
+        offset += page.length
+      }
+    }
+    return [...byId.values()]
   }
 
   async getAlbum(id: string): Promise<Album> {
