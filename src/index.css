@@ -1097,30 +1097,58 @@ input[type='range']::-moz-range-thumb {
   text-align: left;
 }
 
-.genre-faces {
+.genre-stack {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.4rem;
-  aspect-ratio: 16 / 11;
-  padding: 0.35rem;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
   border-radius: calc(var(--radius) - 0.15rem);
   background:
     radial-gradient(
-      circle at 28% 22%,
-      color-mix(in srgb, var(--accent) 40%, transparent),
+      circle at 50% 116%,
+      color-mix(in srgb, var(--accent) 44%, transparent),
       transparent 62%
     ),
     linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--accent-2) 34%, transparent),
-      color-mix(in srgb, var(--bg) 60%, transparent)
+      165deg,
+      color-mix(in srgb, var(--accent-2) 30%, transparent),
+      color-mix(in srgb, var(--bg) 62%, transparent)
     );
 }
 
-.genre-faces .cover {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: auto;
+.genre-stack .cover {
+  position: relative;
+  z-index: 1;
+  width: 56%;
+  height: auto;
+  aspect-ratio: 1;
+  box-shadow: var(--shadow);
+}
+
+/* the round portrait rests on a stylized stack of discs */
+.genre-stack::before,
+.genre-stack::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 55%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.genre-stack::before {
+  transform: translate(-50%, calc(-50% - 0.9rem));
+  opacity: 0.5;
+}
+
+.genre-stack::after {
+  transform: translate(-50%, calc(-50% - 0.45rem));
+  opacity: 0.78;
 }
 
 .genre-text {
@@ -1171,17 +1199,20 @@ input[type='range']::-moz-range-thumb {
   padding: 0.4rem 0.55rem;
 }
 
-.genre-grid.is-list .genre-faces {
-  grid-template-columns: 1fr;
+.genre-grid.is-list .genre-stack {
   width: 2.6rem;
   height: 2.6rem;
   aspect-ratio: auto;
-  padding: 0;
   flex-shrink: 0;
 }
 
-.genre-grid.is-list .genre-faces .cover:not(:first-child) {
+.genre-grid.is-list .genre-stack::before,
+.genre-grid.is-list .genre-stack::after {
   display: none;
+}
+
+.genre-grid.is-list .genre-stack .cover {
+  width: 100%;
 }
 
 .genre-grid.is-list .genre-card .play-fab {

@@ -22,13 +22,7 @@ export function GenreList() {
     if (!client) return
     void client
       .getGenres()
-      .then((list) =>
-        setGenres(
-          [...list].sort(
-            (a, b) => (b.albumCount ?? 0) - (a.albumCount ?? 0) || a.value.localeCompare(b.value),
-          ),
-        ),
-      )
+      .then((list) => setGenres([...list].sort((a, b) => a.value.localeCompare(b.value))))
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load genres'))
   }, [client, selectedFolderIds])
 
@@ -90,10 +84,10 @@ function GenreCard({
 }) {
   const { client } = useAuth()
   const cardRef = useRef<HTMLElement>(null)
-  const [faces, setFaces] = useState<Artist[] | null>(null)
+  const [artist, setArtist] = useState<Artist | null>(null)
 
-  // Artist art is only fetched once a tile scrolls into view, so opening the
-  // grid stays cheap even when there are many genres.
+  // The genre's artist art is only fetched once a tile scrolls into view, so
+  // opening the grid stays cheap even when there are many genres.
   useEffect(() => {
     const el = cardRef.current
     if (!el || !client) return
@@ -102,9 +96,9 @@ function GenreCard({
         if (!entries.some((entry) => entry.isIntersecting)) return
         observer.disconnect()
         void client
-          .getGenreArtists(genre.value, 4)
-          .then(setFaces)
-          .catch(() => setFaces([]))
+          .getGenreTopArtist(genre.value)
+          .then(setArtist)
+          .catch(() => setArtist(null))
       },
       { rootMargin: '320px 0px' },
     )
@@ -115,10 +109,8 @@ function GenreCard({
   return (
     <article className="genre-card" ref={cardRef}>
       <button type="button" className="genre-hit" onClick={() => onOpen(genre.value)}>
-        <span className="genre-faces">
-          {(faces ?? []).slice(0, 4).map((artist) => (
-            <CoverArt key={artist.id} coverArt={artist.coverArt} alt="" size={200} className="avatar" />
-          ))}
+        <span className="genre-stack">
+          <CoverArt coverArt={artist?.coverArt} alt="" size={300} className="avatar" />
         </span>
         <span className="genre-text">
           <strong>{genre.value}</strong>

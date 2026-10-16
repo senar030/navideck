@@ -160,32 +160,34 @@ export class NavidromeClient {
     )
   }
 
-  // Navidrome has no "artists by genre" endpoint, so the genre's artists are
-  // derived from its albums and paired with the artist image when the server has
-  // one, falling back to the cover of the album the artist appears on.
-  async getGenreArtists(genre: string, limit = 4): Promise<Artist[]> {
+  // Navidrome has no "artists by genre" endpoint. Represent a genre with the
+  // artist that has the most songs in it (summed from the genre's albums),
+  // preferring the artist image and falling back to an album cover.
+  async getGenreTopArtist(genre: string): Promise<Artist | null> {
     const albums = await this.getAlbumsByGenre(genre, 0)
-    const order: string[] = []
-    const names = new Map<string, string>()
-    const covers = new Map<string, string | undefined>()
+    const byArtist = new Map<string, { name: string; songs: number; cover?: string }>()
     for (const album of albums) {
       const id = album.artistId
       if (!id) continue
-      if (!names.has(id)) {
-        order.push(id)
-        names.set(id, album.artist ?? '')
-        covers.set(id, album.coverArt)
-      } else if (!covers.get(id) && album.coverArt) {
-        covers.set(id, album.coverArt)
+      const entry = byArtist.get(id) ?? { name: album.artist ?? '', songs: 0, cover: undefined }
+      entry.songs += album.songCount ?? 0
+      if (!entry.cover && album.coverArt) entry.cover = album.coverArt
+      if (!entry.name && album.artist) entry.name = album.artist
+      byArtist.set(id, entry)
+    }
+    let bestId: string | null = null
+    let bestSongs = -1
+    for (const [id, entry] of byArtist) {
+      if (entry.songs > bestSongs) {
+        bestSongs = entry.songs
+        bestId = id
       }
     }
-    if (!order.length) return []
+    if (!bestId) return null
+    const name = byArtist.get(bestId)?.name ?? ''
+    const cover = byArtist.get(bestId)?.cover
     const { art } = await this.getArtistIndex()
-    return order.slice(0, limit).map((id) => ({
-      id,
-      name: names.get(id) ?? '',
-      coverArt: art.get(id) ?? covers.get(id),
-    }))
+    return { id: bestId, name, coverArt: art.get(bestId) ?? cover }
   }
 
   private async getSelectedAlbums(): Promise<Album[]> {
