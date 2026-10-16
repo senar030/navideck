@@ -11,7 +11,7 @@ import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function ArtistList() {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { layout } = usePrefs()
   const [indexes, setIndexes] = useState<ArtistIndex[]>([])
@@ -24,7 +24,7 @@ export function ArtistList() {
       .getArtists()
       .then(setIndexes)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load artists'))
-  }, [client])
+  }, [client, selectedFolderIds])
 
   const letters = useMemo(
     () => indexes.map((i) => i.name).filter((n) => /[A-Z0-9#]/.test(n)),

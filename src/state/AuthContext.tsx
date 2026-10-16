@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const baseUrl = normalizeServerUrl(server)
     const next = new NavidromeClient(baseUrl, username.trim(), password)
     await next.ping()
+    next.folderIds = readJson<string[]>(LIB_KEY) ?? []
     const payload = {
       baseUrl: next.baseUrl,
       username: next.username,
