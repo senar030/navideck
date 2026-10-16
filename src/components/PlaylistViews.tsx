@@ -11,7 +11,7 @@ import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function PlaylistList() {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { layout } = usePrefs()
   const [lists, setLists] = useState<Playlist[]>([])
@@ -23,7 +23,7 @@ export function PlaylistList() {
       .getPlaylists()
       .then(setLists)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load playlists'))
-  }, [client])
+  }, [client, selectedFolderIds])
 
   return (
     <div className="view">

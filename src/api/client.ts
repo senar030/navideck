@@ -52,6 +52,7 @@ export class NavidromeClient {
   private readonly salt: string
   private readonly token: string
   folderIds: string[] = []
+  private albumCache: { key: string; albums: Album[] } | null = null
 
   constructor(baseUrl: string, username: string, password: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -106,7 +107,7 @@ export class NavidromeClient {
       if (!list) return []
       return Array.isArray(list) ? list : [list]
     }
-    const albums = await this.getAllAlbums()
+    const albums = await this.getSelectedAlbums()
     const stats = new Map<string, { albumCount: number; songCount: number }>()
     for (const album of albums) {
       const genre = album.genre?.trim()
@@ -152,6 +153,14 @@ export class NavidromeClient {
       pages.flatMap((data) => data.songsByGenre?.song ?? []),
       (s) => s.id,
     )
+  }
+
+  private async getSelectedAlbums(): Promise<Album[]> {
+    const key = this.folderIds.join(',')
+    if (this.albumCache?.key === key) return this.albumCache.albums
+    const albums = await this.getAllAlbums()
+    this.albumCache = { key, albums }
+    return albums
   }
 
   private async getAllAlbums(): Promise<Album[]> {
@@ -259,12 +268,35 @@ export class NavidromeClient {
   async getArtist(id: string): Promise<Artist> {
     const data = await this.request('getArtist', { id })
     if (!data.artist) throw new Error('Artist not found')
-    return data.artist
+    const artist = data.artist
+    let albums = uniqueBy(artist.album ?? [], (a) => a.id)
+    if (this.folderIds.length > 0) {
+      const allowed = new Set((await this.getSelectedAlbums()).map((a) => a.id))
+      albums = albums.filter((album) => allowed.has(album.id))
+    }
+    artist.album = albums
+    return artist
   }
 
   async getPlaylists(): Promise<Playlist[]> {
     const data = await this.request('getPlaylists')
-    return data.playlists?.playlist ?? []
+    const lists = data.playlists?.playlist ?? []
+    // Navidrome playlists are not scoped to a library, so when a filter is
+    // active keep only playlists that actually contain songs from that library.
+    if (this.folderIds.length === 0) return lists
+    const albumIds = new Set((await this.getSelectedAlbums()).map((a) => a.id))
+    const checks = await Promise.all(
+      lists.map(async (list) => {
+        try {
+          const full = await this.getPlaylist(list.id)
+          const entries = full.entry ?? []
+          return entries.some((song) => song.albumId && albumIds.has(song.albumId)) ? list : null
+        } catch {
+          return list
+        }
+      }),
+    )
+    return checks.filter((list): list is Playlist => list !== null)
   }
 
   async getPlaylist(id: string): Promise<Playlist> {
@@ -284,8 +316,12 @@ export class NavidromeClient {
   }
 
   async getStarred(): Promise<SearchResult> {
-    const data = await this.request('getStarred2')
-    return data.starred2 ?? {}
+    const pages = await this.forFolders((folder) => this.request('getStarred2', folder))
+    return {
+      artist: uniqueBy(pages.flatMap((data) => data.starred2?.artist ?? []), (a) => a.id),
+      album: uniqueBy(pages.flatMap((data) => data.starred2?.album ?? []), (a) => a.id),
+      song: uniqueBy(pages.flatMap((data) => data.starred2?.song ?? []), (s) => s.id),
+    }
   }
 
   async star(id: string, kind: 'id' | 'albumId' | 'artistId' = 'id'): Promise<void> {

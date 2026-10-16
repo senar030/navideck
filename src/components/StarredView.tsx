@@ -8,7 +8,7 @@ import { LayoutToggle } from './LayoutToggle'
 import { TrackList } from './TrackList'
 
 export function StarredView() {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { layout } = usePrefs()
   const [data, setData] = useState<SearchResult>({})
@@ -20,7 +20,7 @@ export function StarredView() {
       .getStarred()
       .then(setData)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load starred'))
-  }, [client])
+  }, [client, selectedFolderIds])
 
   const songs = data.song ?? []
   const artists = data.artist ?? []
