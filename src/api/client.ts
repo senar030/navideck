@@ -160,36 +160,53 @@ export class NavidromeClient {
     )
   }
 
-  // Navidrome has no "artists by genre" endpoint. Represent a genre with the
-  // artist that has the most songs in it, but always prefer an artist the server
-  // actually has a picture for, so as many genres as possible show real artwork.
-  // Falls back to an album cover when no artist in the genre has an image.
-  async getGenreTopArtist(genre: string): Promise<Artist | null> {
+  // Navidrome has no "artists by genre" endpoint, so a genre's artists are
+  // derived from its albums. Pages through the albums (until a page comes back
+  // short or `stopWhenImageFound` is satisfied) and aggregates per artist.
+  private async scanGenreArtists(
+    genre: string,
+    pages: number,
+    stopWhenImageFound: boolean,
+  ): Promise<{
+    byArtist: Map<string, { name: string; albums: number; songs: number; cover?: string }>
+    art: Map<string, string | undefined>
+    genreCover?: string
+  }> {
     const { art } = await this.getArtistIndex()
-    const byArtist = new Map<string, { name: string; songs: number; cover?: string }>()
+    const byArtist = new Map<string, { name: string; albums: number; songs: number; cover?: string }>()
     let genreCover: string | undefined
+    let hasImage = false
     let offset = 0
-    for (let page = 0; page < 3; page++) {
+    for (let page = 0; page < pages; page++) {
       const albums = await this.getAlbumsByGenre(genre, offset)
-      let hasImage = false
       for (const album of albums) {
         if (!genreCover && album.coverArt) genreCover = album.coverArt
         const id = album.artistId
         if (!id) continue
         let entry = byArtist.get(id)
         if (!entry) {
-          entry = { name: album.artist ?? '', songs: 0, cover: undefined }
+          entry = { name: album.artist ?? '', albums: 0, songs: 0, cover: undefined }
           byArtist.set(id, entry)
         }
+        entry.albums += 1
         entry.songs += album.songCount ?? 0
         if (!entry.cover && album.coverArt) entry.cover = album.coverArt
         if (!entry.name && album.artist) entry.name = album.artist
         if (art.get(id)) hasImage = true
       }
-      // Enough once an artist with artwork is known, unless the page ended early.
-      if (hasImage || albums.length < PAGE) break
+      if (albums.length < PAGE) break
+      if (stopWhenImageFound && hasImage) break
       offset += albums.length
     }
+    return { byArtist, art, genreCover }
+  }
+
+  // Represent a genre with the artist that has the most songs in it, but always
+  // prefer an artist the server actually has a picture for, so as many genres as
+  // possible show real artwork. Falls back to an album cover when no artist in
+  // the genre has an image.
+  async getGenreTopArtist(genre: string): Promise<Artist | null> {
+    const { byArtist, art, genreCover } = await this.scanGenreArtists(genre, 3, true)
     if (!byArtist.size) return null
     const candidates = [...byArtist.entries()].map(([id, entry]) => ({
       id,
@@ -206,6 +223,20 @@ export class NavidromeClient {
       name: best.name,
       coverArt: best.image ?? best.cover ?? genreCover,
     }
+  }
+
+  // Every artist that appears in the genre, with artwork where the server has
+  // it and an album-cover fallback otherwise.
+  async getGenreArtists(genre: string): Promise<Artist[]> {
+    const { byArtist, art, genreCover } = await this.scanGenreArtists(genre, 5, false)
+    return [...byArtist.entries()]
+      .map(([id, entry]) => ({
+        id,
+        name: entry.name,
+        albumCount: entry.albums,
+        coverArt: art.get(id) ?? entry.cover ?? genreCover,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }
 
   private async getSelectedAlbums(): Promise<Album[]> {

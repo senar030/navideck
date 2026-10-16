@@ -137,6 +137,8 @@ export function GenreDetail({ name }: { name: string }) {
   const { client } = useAuth()
   const { go } = useNav()
   const { playTracks } = usePlayer()
+  const { layout } = usePrefs()
+  const [artists, setArtists] = useState<Artist[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -167,22 +169,56 @@ export function GenreDetail({ name }: { name: string }) {
     void load(0, false)
   }, [load])
 
+  useEffect(() => {
+    if (!client) return
+    void client
+      .getGenreArtists(name)
+      .then(setArtists)
+      .catch(() => setArtists([]))
+  }, [client, name])
+
   async function playAlbum(album: Album) {
     if (!client) return
     const full = await client.getAlbum(album.id)
     playTracks(full.song ?? [], 0)
   }
 
+  const list = layout.genreDetail === 'list'
+
   return (
     <div className="view">
       <header className="view-head">
         <h2>{name}</h2>
+        <LayoutToggle section="genreDetail" />
       </header>
       {error ? <p className="error">{error}</p> : null}
+      {artists.length ? (
+        <section className="block">
+          <h3>Künstler</h3>
+          <div className={`artist-list ${list ? '' : 'is-grid'}`}>
+            {artists.map((artist) => (
+              <button
+                key={artist.id}
+                type="button"
+                className="artist-row"
+                onClick={() => go({ name: 'artist', id: artist.id })}
+              >
+                <CoverArt coverArt={artist.coverArt} alt="" size={120} className="avatar" />
+                <span>
+                  <strong>{artist.name}</strong>
+                  <em>
+                    {artist.albumCount ?? 0} album{(artist.albumCount ?? 0) === 1 ? '' : 's'}
+                  </em>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {albums.length ? (
         <section className="block">
           <h3>Albums</h3>
-          <div className="album-grid">
+          <div className={`album-grid ${list ? 'is-list' : ''}`}>
             {albums.map((album) => (
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>

@@ -3,13 +3,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 export const MIX_SIZES = [15, 25, 40, 50, 75, 100] as const
 export type MixSize = (typeof MIX_SIZES)[number]
 export type LayoutMode = 'grid' | 'list'
-export type LayoutKey = 'albums' | 'artists' | 'genres' | 'playlists' | 'starred' | 'search'
+export type LayoutKey = 'albums' | 'artists' | 'genres' | 'genreDetail' | 'playlists' | 'starred' | 'search'
 export type UiMode = 'deck' | 'desktop'
 
 const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
   albums: 'grid',
   artists: 'list',
   genres: 'grid',
+  genreDetail: 'grid',
   playlists: 'list',
   starred: 'grid',
   search: 'grid',
