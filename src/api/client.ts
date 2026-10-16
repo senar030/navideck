@@ -53,7 +53,11 @@ export class NavidromeClient {
   private readonly token: string
   folderIds: string[] = []
   private albumCache: { key: string; albums: Album[] } | null = null
-  private artistCache: { key: string; ids: Set<string> } | null = null
+  private artistCache: {
+    key: string
+    ids: Set<string>
+    art: Map<string, string | undefined>
+  } | null = null
 
   constructor(baseUrl: string, username: string, password: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -156,6 +160,34 @@ export class NavidromeClient {
     )
   }
 
+  // Navidrome has no "artists by genre" endpoint, so the genre's artists are
+  // derived from its albums and paired with the artist image when the server has
+  // one, falling back to the cover of the album the artist appears on.
+  async getGenreArtists(genre: string, limit = 4): Promise<Artist[]> {
+    const albums = await this.getAlbumsByGenre(genre, 0)
+    const order: string[] = []
+    const names = new Map<string, string>()
+    const covers = new Map<string, string | undefined>()
+    for (const album of albums) {
+      const id = album.artistId
+      if (!id) continue
+      if (!names.has(id)) {
+        order.push(id)
+        names.set(id, album.artist ?? '')
+        covers.set(id, album.coverArt)
+      } else if (!covers.get(id) && album.coverArt) {
+        covers.set(id, album.coverArt)
+      }
+    }
+    if (!order.length) return []
+    const { art } = await this.getArtistIndex()
+    return order.slice(0, limit).map((id) => ({
+      id,
+      name: names.get(id) ?? '',
+      coverArt: art.get(id) ?? covers.get(id),
+    }))
+  }
+
   private async getSelectedAlbums(): Promise<Album[]> {
     const key = this.folderIds.join(',')
     if (this.albumCache?.key === key) return this.albumCache.albums
@@ -164,15 +196,26 @@ export class NavidromeClient {
     return albums
   }
 
-  private async getSelectedArtistIds(): Promise<Set<string>> {
+  private async getArtistIndex(): Promise<{
+    ids: Set<string>
+    art: Map<string, string | undefined>
+  }> {
     const key = this.folderIds.join(',')
-    if (this.artistCache?.key === key) return this.artistCache.ids
+    if (this.artistCache?.key === key) return this.artistCache
     const ids = new Set<string>()
+    const art = new Map<string, string | undefined>()
     for (const group of await this.getArtists()) {
-      for (const artist of group.artist ?? []) ids.add(artist.id)
+      for (const artist of group.artist ?? []) {
+        ids.add(artist.id)
+        art.set(artist.id, artist.coverArt)
+      }
     }
-    this.artistCache = { key, ids }
-    return ids
+    this.artistCache = { key, ids, art }
+    return this.artistCache
+  }
+
+  private async getSelectedArtistIds(): Promise<Set<string>> {
+    return (await this.getArtistIndex()).ids
   }
 
   private async libraryFilter(): Promise<{ albums: Set<string>; artists: Set<string> }> {

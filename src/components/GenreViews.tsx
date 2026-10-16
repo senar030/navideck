@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALBUM_PAGE } from '../api/client'
-import type { Album, Genre } from '../api/types'
+import type { Album, Artist, Genre } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
@@ -63,28 +63,81 @@ export function GenreList() {
       {error ? <p className="error">{error}</p> : null}
       <div className={`genre-grid ${layout.genres === 'list' ? 'is-list' : ''}`}>
         {genres.map((genre) => (
-          <article key={genre.value} className="genre-card">
-            <button type="button" className="genre-hit" onClick={() => go({ name: 'genre', id: genre.value })}>
-              <strong>{genre.value}</strong>
-              <em>
-                {genre.albumCount ?? 0} albums · {genre.songCount ?? 0} tracks
-              </em>
-            </button>
-            <button
-              type="button"
-              className="play-fab"
-              disabled={Boolean(mixing)}
-              aria-label={`Sofort-Mix: ${genre.value}`}
-              data-tip="Sofort-Mix"
-              onClick={() => void mixGenre(genre.value)}
-            >
-              <IconRadio size={18} />
-            </button>
-          </article>
+          <GenreCard
+            key={genre.value}
+            genre={genre}
+            mixing={Boolean(mixing)}
+            onOpen={(value) => go({ name: 'genre', id: value })}
+            onMix={(value) => void mixGenre(value)}
+          />
         ))}
       </div>
       {!genres.length && !error ? <p className="muted">Loading genres…</p> : null}
     </div>
+  )
+}
+
+function GenreCard({
+  genre,
+  mixing,
+  onOpen,
+  onMix,
+}: {
+  genre: Genre
+  mixing: boolean
+  onOpen: (value: string) => void
+  onMix: (value: string) => void
+}) {
+  const { client } = useAuth()
+  const cardRef = useRef<HTMLElement>(null)
+  const [faces, setFaces] = useState<Artist[] | null>(null)
+
+  // Artist art is only fetched once a tile scrolls into view, so opening the
+  // grid stays cheap even when there are many genres.
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !client) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return
+        observer.disconnect()
+        void client
+          .getGenreArtists(genre.value, 4)
+          .then(setFaces)
+          .catch(() => setFaces([]))
+      },
+      { rootMargin: '320px 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [client, genre.value])
+
+  return (
+    <article className="genre-card" ref={cardRef}>
+      <button type="button" className="genre-hit" onClick={() => onOpen(genre.value)}>
+        <span className="genre-faces">
+          {(faces ?? []).slice(0, 4).map((artist) => (
+            <CoverArt key={artist.id} coverArt={artist.coverArt} alt="" size={200} className="avatar" />
+          ))}
+        </span>
+        <span className="genre-text">
+          <strong>{genre.value}</strong>
+          <em>
+            {genre.albumCount ?? 0} albums · {genre.songCount ?? 0} tracks
+          </em>
+        </span>
+      </button>
+      <button
+        type="button"
+        className="play-fab"
+        disabled={mixing}
+        aria-label={`Sofort-Mix: ${genre.value}`}
+        data-tip="Sofort-Mix"
+        onClick={() => onMix(genre.value)}
+      >
+        <IconRadio size={18} />
+      </button>
+    </article>
   )
 }
 

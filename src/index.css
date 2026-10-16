@@ -1071,39 +1071,75 @@ input[type='range']::-moz-range-thumb {
 
 .genre-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
   gap: var(--gap);
 }
 
 .genre-card {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  min-height: 4.2rem;
-  padding-right: 0.4rem;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .genre-hit {
   flex: 1;
+  width: 100%;
   min-width: 0;
-  min-height: 4.2rem;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.15rem;
-  padding: 0.65rem 0.45rem 0.65rem 0.8rem;
+  align-items: stretch;
+  gap: 0.55rem;
+  padding: 0.6rem 0.6rem 0.7rem;
   text-align: left;
 }
 
-.genre-hit strong,
-.genre-hit em {
+.genre-faces {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  aspect-ratio: 16 / 11;
+  padding: 0.35rem;
+  border-radius: calc(var(--radius) - 0.15rem);
+  background:
+    radial-gradient(
+      circle at 28% 22%,
+      color-mix(in srgb, var(--accent) 40%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--accent-2) 34%, transparent),
+      color-mix(in srgb, var(--bg) 60%, transparent)
+    );
+}
+
+.genre-faces .cover {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.genre-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.genre-text strong,
+.genre-text em {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.genre-text strong {
+  font-size: 1rem;
 }
 
 .genre-card:hover,
@@ -1113,14 +1149,48 @@ input[type='range']::-moz-range-thumb {
 }
 
 .genre-card .play-fab {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  bottom: auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  transform: none;
+}
+
+.genre-grid.is-list .genre-card {
+  flex-direction: row;
+  align-items: center;
+  padding-right: 0.4rem;
+}
+
+.genre-grid.is-list .genre-hit {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.genre-grid.is-list .genre-faces {
+  grid-template-columns: 1fr;
+  width: 2.6rem;
+  height: 2.6rem;
+  aspect-ratio: auto;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.genre-grid.is-list .genre-faces .cover:not(:first-child) {
+  display: none;
+}
+
+.genre-grid.is-list .genre-card .play-fab {
   position: relative;
   top: auto;
   right: auto;
-  bottom: auto;
   flex-shrink: 0;
   width: 2.15rem;
   height: 2.15rem;
-  transform: none;
 }
 
 .album-card {
@@ -2172,6 +2242,10 @@ a.chip {
   .album-grid {
     grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
   }
+
+  .genre-grid {
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  }
 }
 
 @media (max-height: 850px) {
@@ -2275,6 +2349,10 @@ html[data-ui='deck'] .album-grid {
 
 html[data-ui='deck'] .album-grid.compact {
   grid-template-columns: repeat(auto-fill, minmax(12.6rem, 1fr));
+}
+
+html[data-ui='deck'] .genre-grid:not(.is-list) {
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
 }
 
 html[data-ui='deck'] .track-row,
