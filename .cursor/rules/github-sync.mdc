@@ -1,0 +1,25 @@
+---
+description: Commit and push completed work to GitHub (senar030/navideck)
+alwaysApply: true
+---
+
+# GitHub sync after changes
+
+When you finish a task that modified project files in this repo:
+
+1. **Commit** the relevant changes with a short, clear message (what/why, present tense).
+2. **Push** to `origin` on the current branch (`git push -u origin HEAD` if upstream is missing).
+
+Do this without asking each time — the user wants work synced to GitHub automatically.
+
+## Safety
+
+- Never `git push --force` to `main`/`master` unless the user explicitly asks.
+- Do not commit secrets (`.env`, tokens, credentials).
+- If `git push` fails (auth, hooks, CI), fix or report the blocker; do not skip silently.
+- If the user says not to push or only to commit locally, follow that instead.
+
+## Scope
+
+- Only commit files that belong to the task; no unrelated churn.
+- Prefer one commit per completed user request unless the user asked for multiple commits.
