@@ -161,33 +161,51 @@ export class NavidromeClient {
   }
 
   // Navidrome has no "artists by genre" endpoint. Represent a genre with the
-  // artist that has the most songs in it (summed from the genre's albums),
-  // preferring the artist image and falling back to an album cover.
+  // artist that has the most songs in it, but always prefer an artist the server
+  // actually has a picture for, so as many genres as possible show real artwork.
+  // Falls back to an album cover when no artist in the genre has an image.
   async getGenreTopArtist(genre: string): Promise<Artist | null> {
-    const albums = await this.getAlbumsByGenre(genre, 0)
-    const byArtist = new Map<string, { name: string; songs: number; cover?: string }>()
-    for (const album of albums) {
-      const id = album.artistId
-      if (!id) continue
-      const entry = byArtist.get(id) ?? { name: album.artist ?? '', songs: 0, cover: undefined }
-      entry.songs += album.songCount ?? 0
-      if (!entry.cover && album.coverArt) entry.cover = album.coverArt
-      if (!entry.name && album.artist) entry.name = album.artist
-      byArtist.set(id, entry)
-    }
-    let bestId: string | null = null
-    let bestSongs = -1
-    for (const [id, entry] of byArtist) {
-      if (entry.songs > bestSongs) {
-        bestSongs = entry.songs
-        bestId = id
-      }
-    }
-    if (!bestId) return null
-    const name = byArtist.get(bestId)?.name ?? ''
-    const cover = byArtist.get(bestId)?.cover
     const { art } = await this.getArtistIndex()
-    return { id: bestId, name, coverArt: art.get(bestId) ?? cover }
+    const byArtist = new Map<string, { name: string; songs: number; cover?: string }>()
+    let genreCover: string | undefined
+    let offset = 0
+    for (let page = 0; page < 3; page++) {
+      const albums = await this.getAlbumsByGenre(genre, offset)
+      let hasImage = false
+      for (const album of albums) {
+        if (!genreCover && album.coverArt) genreCover = album.coverArt
+        const id = album.artistId
+        if (!id) continue
+        let entry = byArtist.get(id)
+        if (!entry) {
+          entry = { name: album.artist ?? '', songs: 0, cover: undefined }
+          byArtist.set(id, entry)
+        }
+        entry.songs += album.songCount ?? 0
+        if (!entry.cover && album.coverArt) entry.cover = album.coverArt
+        if (!entry.name && album.artist) entry.name = album.artist
+        if (art.get(id)) hasImage = true
+      }
+      // Enough once an artist with artwork is known, unless the page ended early.
+      if (hasImage || albums.length < PAGE) break
+      offset += albums.length
+    }
+    if (!byArtist.size) return null
+    const candidates = [...byArtist.entries()].map(([id, entry]) => ({
+      id,
+      ...entry,
+      image: art.get(id),
+    }))
+    candidates.sort((a, b) => {
+      if (Boolean(b.image) !== Boolean(a.image)) return a.image ? -1 : 1
+      return b.songs - a.songs
+    })
+    const best = candidates[0]
+    return {
+      id: best.id,
+      name: best.name,
+      coverArt: best.image ?? best.cover ?? genreCover,
+    }
   }
 
   private async getSelectedAlbums(): Promise<Album[]> {
