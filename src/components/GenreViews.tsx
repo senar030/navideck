@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALBUM_PAGE } from '../api/client'
-import type { Album, Genre, Song } from '../api/types'
+import type { Album, Genre } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
@@ -8,7 +8,6 @@ import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { LayoutToggle } from './LayoutToggle'
 import { IconPlay, IconRadio } from './Icons'
-import { TrackList } from './TrackList'
 
 export function GenreList() {
   const { client } = useAuth()
@@ -94,11 +93,9 @@ export function GenreDetail({ name }: { name: string }) {
   const { go } = useNav()
   const { playTracks } = usePlayer()
   const [albums, setAlbums] = useState<Album[]>([])
-  const [songs, setSongs] = useState<Song[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [moreAlbums, setMoreAlbums] = useState(false)
-  const [moreSongs, setMoreSongs] = useState(false)
   const loadingRef = useRef(false)
 
   const load = useCallback(
@@ -108,14 +105,9 @@ export function GenreDetail({ name }: { name: string }) {
       setLoading(true)
       setError('')
       try {
-        const [albumPage, songPage] = await Promise.all([
-          client.getAlbumsByGenre(name, offset),
-          client.getSongsByGenre(name, offset),
-        ])
+        const albumPage = await client.getAlbumsByGenre(name, offset)
         setAlbums((prev) => (append ? [...prev, ...albumPage] : albumPage))
-        setSongs((prev) => (append ? [...prev, ...songPage] : songPage))
         setMoreAlbums(albumPage.length === ALBUM_PAGE)
-        setMoreSongs(songPage.length === ALBUM_PAGE)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load genre')
       } finally {
@@ -166,23 +158,17 @@ export function GenreDetail({ name }: { name: string }) {
           </div>
         </section>
       ) : null}
-      {songs.length ? (
-        <section className="block">
-          <h3>Tracks</h3>
-          <TrackList songs={songs} showCover playAllLabel="Play genre tracks" />
-        </section>
-      ) : null}
-      {moreAlbums || moreSongs ? (
+      {moreAlbums ? (
         <button
           type="button"
           className="primary-btn ghost"
           disabled={loading}
-          onClick={() => void load(Math.max(albums.length, songs.length), true)}
+          onClick={() => void load(albums.length, true)}
         >
           {loading ? 'Loading…' : 'Load more'}
         </button>
       ) : null}
-      {loading && !albums.length && !songs.length ? <p className="muted">Loading genre…</p> : null}
+      {loading && !albums.length ? <p className="muted">Loading genre…</p> : null}
     </div>
   )
 }
