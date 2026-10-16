@@ -23,7 +23,7 @@ export function ArtistList() {
     void client
       .getArtists()
       .then(setIndexes)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load artists'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Künstler konnten nicht geladen werden'))
   }, [client, selectedFolderIds])
 
   const letters = useMemo(
@@ -60,7 +60,7 @@ export function ArtistList() {
                     <span>
                       <strong>{artist.name}</strong>
                       <em>
-                        {artist.albumCount ?? 0} album{(artist.albumCount ?? 0) === 1 ? '' : 's'}
+                        {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
                       </em>
                     </span>
                   </button>
@@ -69,7 +69,7 @@ export function ArtistList() {
             </section>
           ))}
         </div>
-        <div className="az" aria-label="Jump to letter">
+        <div className="az" aria-label="Zum Buchstaben springen">
           {letters.map((l) => (
             <button key={l} type="button" onClick={() => jump(l)}>
               {l}
@@ -101,7 +101,7 @@ export function ArtistDetail({ id }: { id: string }) {
         const albums = await Promise.all((next.album ?? []).map((a) => client.getAlbum(a.id)))
         setSongs(albums.flatMap((a) => a.song ?? []))
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load artist'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Künstler konnte nicht geladen werden'))
     void client.getArtistInfo(id).then(setInfo).catch(() => setInfo({}))
   }, [client, id])
 

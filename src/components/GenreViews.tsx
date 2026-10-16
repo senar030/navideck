@@ -23,7 +23,7 @@ export function GenreList() {
     void client
       .getGenres()
       .then((list) => setGenres([...list].sort((a, b) => a.value.localeCompare(b.value))))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load genres'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Genres konnten nicht geladen werden'))
   }, [client, selectedFolderIds])
 
   async function mixGenre(name: string) {
@@ -66,7 +66,7 @@ export function GenreList() {
           />
         ))}
       </div>
-      {!genres.length && !error ? <p className="muted">Loading genres…</p> : null}
+      {!genres.length && !error ? <p className="muted">Genres werden geladen…</p> : null}
     </div>
   )
 }
@@ -115,7 +115,7 @@ function GenreCard({
         <span className="genre-text">
           <strong>{genre.value}</strong>
           <em>
-            {genre.albumCount ?? 0} albums · {genre.songCount ?? 0} tracks
+            {genre.albumCount ?? 0} Alben · {genre.songCount ?? 0} Titel
           </em>
         </span>
       </button>
@@ -156,7 +156,7 @@ export function GenreDetail({ name }: { name: string }) {
         setAlbums((prev) => (append ? [...prev, ...albumPage] : albumPage))
         setMoreAlbums(albumPage.length === ALBUM_PAGE)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load genre')
+        setError(err instanceof Error ? err.message : 'Genre konnte nicht geladen werden')
       } finally {
         setLoading(false)
         loadingRef.current = false
@@ -207,7 +207,7 @@ export function GenreDetail({ name }: { name: string }) {
                 <span>
                   <strong>{artist.name}</strong>
                   <em>
-                    {artist.albumCount ?? 0} album{(artist.albumCount ?? 0) === 1 ? '' : 's'}
+                    {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
                   </em>
                 </span>
               </button>
@@ -217,7 +217,7 @@ export function GenreDetail({ name }: { name: string }) {
       ) : null}
       {albums.length ? (
         <section className="block">
-          <h3>Albums</h3>
+          <h3>Alben</h3>
           <div className={`album-grid ${list ? 'is-list' : ''}`}>
             {albums.map((album) => (
               <article key={album.id} className="album-card">
@@ -229,7 +229,7 @@ export function GenreDetail({ name }: { name: string }) {
                 <button
                   type="button"
                   className="play-fab"
-                  aria-label={`Play ${album.name}`}
+                  aria-label={`${album.name} abspielen`}
                   onClick={() => void playAlbum(album)}
                 >
                   <IconPlay size={22} />
@@ -246,10 +246,10 @@ export function GenreDetail({ name }: { name: string }) {
           disabled={loading}
           onClick={() => void load(albums.length, true)}
         >
-          {loading ? 'Loading…' : 'Load more'}
+          {loading ? 'Wird geladen…' : 'Mehr laden'}
         </button>
       ) : null}
-      {loading && !albums.length ? <p className="muted">Loading genre…</p> : null}
+      {loading && !albums.length ? <p className="muted">Genre wird geladen…</p> : null}
     </div>
   )
 }

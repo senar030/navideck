@@ -53,7 +53,7 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
       <button
         type="button"
         className="icon-btn"
-        aria-label="Add to queue"
+        aria-label="Zur Warteschlange hinzufügen"
         onClick={() => addToQueue([song])}
       >
         <IconQueue size={20} />
@@ -61,7 +61,7 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
       <button
         type="button"
         className={`icon-btn ${starred ? 'is-on' : ''}`}
-        aria-label={starred ? 'Unstar' : 'Star'}
+        aria-label={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
         onClick={() => void toggleStar()}
       >
         <IconStar size={20} filled={starred} />

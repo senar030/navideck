@@ -17,6 +17,7 @@ import { StarredView } from './StarredView'
 export function Shell() {
   const { view, go } = useNav()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     if (view.name === 'search') go({ name: 'home' })
@@ -43,8 +44,14 @@ export function Shell() {
         <div className="nav-spacer" />
       </nav>
       <main className="main">
-        <AppChrome onOpenSettings={() => setSettingsOpen(true)} />
-        <div className="main-body">
+        <AppChrome onOpenSettings={() => setSettingsOpen(true)} scrolled={scrolled} />
+        <div
+          className="main-body"
+          onScroll={(e) => {
+            const next = e.currentTarget.scrollTop > 6
+            setScrolled((prev) => (prev === next ? prev : next))
+          }}
+        >
           {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}
           {view.name === 'albums' ? <AlbumGrid /> : null}
           {view.name === 'artists' ? <ArtistList /> : null}

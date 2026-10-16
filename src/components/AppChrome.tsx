@@ -17,9 +17,10 @@ import { SearchResults } from './SearchResults'
 
 type Props = {
   onOpenSettings: () => void
+  scrolled?: boolean
 }
 
-export function AppChrome({ onOpenSettings }: Props) {
+export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
   const { view, back, canBack } = useNav()
   const { theme, toggleTheme } = useTheme()
   const { uiMode, toggleUiMode } = usePrefs()
@@ -67,7 +68,7 @@ export function AppChrome({ onOpenSettings }: Props) {
 
   return (
     <>
-      <header className={`chrome ${searchOpen ? 'is-search' : ''}`}>
+      <header className={`chrome ${searchOpen ? 'is-search' : ''} ${scrolled && !searchOpen ? 'is-scrolled' : ''}`}>
         <div className="chrome-start">
           {canBack ? (
             <button type="button" className="back-btn" onClick={back}>

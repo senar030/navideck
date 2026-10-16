@@ -63,7 +63,7 @@ export function SearchResults({ query, onPick }: Props) {
                   <span>
                     <strong>{a.name}</strong>
                     <em>
-                      {a.albumCount ?? 0} Album{(a.albumCount ?? 0) === 1 ? '' : 's'}
+                      {a.albumCount ?? 0} {(a.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
                     </em>
                   </span>
                 </button>

@@ -131,8 +131,8 @@ export function NowPlaying() {
             <button
               type="button"
               className="np-flip-face np-flip-front"
-              aria-label="Lyrics anzeigen"
-              data-tip="Lyrics anzeigen"
+              aria-label="Songtext anzeigen"
+              data-tip="Songtext anzeigen"
               onClick={() => setShowLyrics(true)}
             >
               <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
@@ -149,11 +149,11 @@ export function NowPlaying() {
                 aria-label="Cover wieder anzeigen"
               >
                 {lyricsBusy ? (
-                  <p className="muted">Lade Lyrics…</p>
+                  <p className="muted">Songtext wird geladen…</p>
                 ) : lyrics ? (
                   <pre>{lyrics}</pre>
                 ) : (
-                  <p className="muted">Keine Lyrics gefunden.</p>
+                  <p className="muted">Kein Songtext gefunden.</p>
                 )}
               </div>
             </div>
@@ -246,8 +246,8 @@ export function NowPlaying() {
           <button
             type="button"
             className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}
-            aria-label="Aktuelle Playlist"
-            data-tip="Aktuelle Playlist"
+            aria-label="Warteschlange"
+            data-tip="Warteschlange"
             onClick={() => setShowList((v) => !v)}
           >
             <IconQueue size={22} />
@@ -256,7 +256,7 @@ export function NowPlaying() {
       </div>
       {showList ? (
         <aside className="np-queue">
-          <p className="np-queue-title">Playing next</p>
+          <p className="np-queue-title">Als Nächstes</p>
           <div className="np-queue-body" ref={queueRef}>
             {queue.map((song, i) => (
               <button

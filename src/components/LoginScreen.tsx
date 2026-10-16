@@ -20,7 +20,7 @@ export function LoginScreen() {
     try {
       await login(server, username, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not connect')
+      setError(err instanceof Error ? err.message : 'Verbindung fehlgeschlagen')
     } finally {
       setBusy(false)
     }
@@ -34,10 +34,10 @@ export function LoginScreen() {
         </div>
         <h1>Navideck</h1>
         <p className="login-lead">
-          Touch-friendly Navidrome player for a desktop or a Steam Deck.
+          Navidrome-Player für Desktop und Steam Deck – angenehm per Touch zu bedienen.
         </p>
         <label>
-          Server URL
+          Server-URL
           <input
             value={server}
             onChange={(e) => setServer(e.target.value)}
@@ -50,7 +50,7 @@ export function LoginScreen() {
           />
         </label>
         <label>
-          Username
+          Benutzername
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -61,7 +61,7 @@ export function LoginScreen() {
           />
         </label>
         <label>
-          Password
+          Passwort
           <span className="pw-row">
             <input
               type={showPw ? 'text' : 'password'}
@@ -70,7 +70,7 @@ export function LoginScreen() {
               required
             />
             <button type="button" className="text-btn" onClick={() => setShowPw((s) => !s)}>
-              {showPw ? 'Hide' : 'Show'}
+              {showPw ? 'Verbergen' : 'Anzeigen'}
             </button>
           </span>
         </label>
@@ -85,7 +85,7 @@ export function LoginScreen() {
           </button>
         </div>
         <button type="submit" className="primary-btn" disabled={busy}>
-          {busy ? 'Connecting…' : 'Connect'}
+          {busy ? 'Verbinden…' : 'Verbinden'}
         </button>
       </form>
     </div>

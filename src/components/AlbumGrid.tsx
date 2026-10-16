@@ -10,11 +10,11 @@ import { LayoutToggle } from './LayoutToggle'
 import { usePrefs } from '../state/PrefsContext'
 
 const FILTERS: { id: AlbumListType; label: string }[] = [
-  { id: 'newest', label: 'Newest' },
-  { id: 'recent', label: 'Recent' },
-  { id: 'frequent', label: 'Frequent' },
-  { id: 'random', label: 'Random' },
-  { id: 'starred', label: 'Starred' },
+  { id: 'newest', label: 'Neueste' },
+  { id: 'recent', label: 'Zuletzt' },
+  { id: 'frequent', label: 'Häufig' },
+  { id: 'random', label: 'Zufällig' },
+  { id: 'starred', label: 'Favoriten' },
   { id: 'alphabeticalByName', label: 'A–Z' },
 ]
 
@@ -43,7 +43,7 @@ export function AlbumGrid() {
         setAlbums((prev) => (append ? [...prev, ...page] : page))
         setMore(page.length === ALBUM_PAGE)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load albums')
+        setError(err instanceof Error ? err.message : 'Alben konnten nicht geladen werden')
       } finally {
         setLoading(false)
         loadingRef.current = false
@@ -106,7 +106,7 @@ export function AlbumGrid() {
             <button
               type="button"
               className="play-fab"
-              aria-label={`Play ${album.name}`}
+              aria-label={`${album.name} abspielen`}
               onClick={() => void playAlbum(album)}
             >
               <IconPlay size={26} />
@@ -115,8 +115,8 @@ export function AlbumGrid() {
         ))}
       </div>
       <div ref={sentinel} className="sentinel" />
-      {more && loading ? <p className="muted">Loading more…</p> : null}
-      {loading && albums.length === 0 ? <p className="muted">Loading albums…</p> : null}
+      {more && loading ? <p className="muted">Mehr wird geladen…</p> : null}
+      {loading && albums.length === 0 ? <p className="muted">Alben werden geladen…</p> : null}
     </div>
   )
 }

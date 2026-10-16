@@ -1,7 +1,7 @@
 {
   "name": "Navideck",
   "short_name": "Navideck",
-  "description": "Touch-friendly Navidrome client for desktop and Steam Deck",
+  "description": "Touch-freundlicher Navidrome-Client für Desktop und Steam Deck",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c0814",

@@ -76,14 +76,14 @@ export function PlayerBar() {
       <button
         type="button"
         className="player-now"
-        data-tip={current ? 'Now Playing öffnen' : undefined}
+        data-tip={current ? 'Wiedergabe öffnen' : undefined}
         onClick={() => current && setExpanded(true)}
         disabled={!current}
       >
         <CoverArt coverArt={current?.coverArt} alt="" size={160} className="player-cover" />
         <span className="track-meta">
-          <span className="track-title">{current?.title ?? 'Nothing playing'}</span>
-          <span className="track-sub">{current?.artist ?? 'Pick an album to start'}</span>
+          <span className="track-title">{current?.title ?? 'Nichts spielt'}</span>
+          <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
         </span>
       </button>
       <div className="player-controls">

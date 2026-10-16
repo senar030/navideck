@@ -22,7 +22,7 @@ export function PlaylistList() {
     void client
       .getPlaylists()
       .then(setLists)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load playlists'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Playlists konnten nicht geladen werden'))
   }, [client, selectedFolderIds])
 
   return (
@@ -44,13 +44,13 @@ export function PlaylistList() {
             <span>
               <strong>{list.name}</strong>
               <em>
-                {list.songCount ?? 0} tracks
+                {list.songCount ?? 0} Titel
                 {list.duration ? ` · ${formatTime(list.duration)}` : ''}
               </em>
             </span>
           </button>
         ))}
-        {!lists.length && !error ? <p className="muted">No playlists yet.</p> : null}
+        {!lists.length && !error ? <p className="muted">Noch keine Playlists.</p> : null}
       </div>
     </div>
   )
@@ -67,11 +67,11 @@ export function PlaylistDetail({ id }: { id: string }) {
     void client
       .getPlaylist(id)
       .then(setList)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load playlist'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Playlist konnte nicht geladen werden'))
   }, [client, id])
 
   if (error) return <p className="error">{error}</p>
-  if (!list) return <p className="muted">Loading playlist…</p>
+  if (!list) return <p className="muted">Playlist wird geladen…</p>
   const songs = list.entry ?? []
   const bg = client?.coverUrl(list.coverArt, 80)
 
@@ -87,15 +87,15 @@ export function PlaylistDetail({ id }: { id: string }) {
             <h2>{list.name}</h2>
             {list.comment ? <p>{list.comment}</p> : null}
             <p className="muted">
-              {songs.length} tracks
+              {songs.length} Titel
               {list.duration ? ` · ${formatTime(list.duration)}` : ''}
             </p>
             <div className="hero-actions">
               <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-                <IconPlay size={22} /> Play
+                <IconPlay size={22} /> Abspielen
               </button>
               <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
-                Queue all
+                Alle einreihen
               </button>
             </div>
           </div>

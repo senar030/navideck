@@ -190,7 +190,7 @@ function AlbumRow({ albums }: { albums: Album[] }) {
           <button
             type="button"
             className="play-fab"
-            aria-label={`Play ${album.name}`}
+            aria-label={`${album.name} abspielen`}
             onClick={() => {
               if (!client) return
               void client.getAlbum(album.id).then((full) => playTracks(full.song ?? [], 0))

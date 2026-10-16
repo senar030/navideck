@@ -543,7 +543,16 @@ h4 {
   min-height: var(--chrome-h);
   padding: 0.35rem var(--main-pad-x);
   background: transparent;
-  border-bottom: 0;
+  border-bottom: 1px solid transparent;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+/* Once the content scrolls under the bar, give it a frosted backdrop so the
+   back/search/menu controls stay legible against whatever passes beneath. */
+.chrome.is-scrolled {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  border-bottom-color: var(--line);
+  backdrop-filter: blur(18px) saturate(1.5);
 }
 
 .chrome-start {

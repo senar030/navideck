@@ -24,11 +24,11 @@ export function AlbumDetail({ id }: { id: string }) {
         setAlbum(next)
         setStarred(Boolean(next.starred))
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load album'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Album konnte nicht geladen werden'))
   }, [client, id])
 
   if (error) return <p className="error">{error}</p>
-  if (!album) return <p className="muted">Loading album…</p>
+  if (!album) return <p className="muted">Album wird geladen…</p>
 
   const songs = album.song ?? []
 
@@ -57,19 +57,19 @@ export function AlbumDetail({ id }: { id: string }) {
             </p>
           ) : null}
           <p className="muted">
-            {[songs.length ? `${songs.length} tracks` : null, formatTime(album.duration)].filter(Boolean).join(' · ')}
+            {[songs.length ? `${songs.length} Titel` : null, formatTime(album.duration)].filter(Boolean).join(' · ')}
           </p>
           <div className="hero-actions">
             <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-              <IconPlay size={22} /> Play
+              <IconPlay size={22} /> Abspielen
             </button>
             <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
-              Queue album
+              Album einreihen
             </button>
             <button
               type="button"
               className={`icon-btn ${starred ? 'is-on' : ''}`}
-              aria-label={starred ? 'Unstar album' : 'Star album'}
+              aria-label={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
               onClick={() => {
                 if (!client) return
                 const next = !starred

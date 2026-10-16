@@ -5,11 +5,11 @@ import { usePlayer } from '../state/PlayerContext'
 import { TrackRow } from './TrackRow'
 
 const OPTIONS: { id: SongSort; label: string }[] = [
-  { id: 'original', label: 'Default' },
-  { id: 'title', label: 'Title' },
-  { id: 'artist', label: 'Artist' },
+  { id: 'original', label: 'Standard' },
+  { id: 'title', label: 'Titel' },
+  { id: 'artist', label: 'Künstler' },
   { id: 'album', label: 'Album' },
-  { id: 'duration', label: 'Time' },
+  { id: 'duration', label: 'Dauer' },
 ]
 
 type Props = {
@@ -40,7 +40,7 @@ export function TrackList({ songs, showCover = false, playAllLabel }: Props) {
         </button>
       ) : null}
       {songs.length > 1 ? (
-        <div className="chip-row wrap sort-row" role="toolbar" aria-label="Sort tracks">
+        <div className="chip-row wrap sort-row" role="toolbar" aria-label="Titel sortieren">
           {OPTIONS.map((opt) => (
             <button
               key={opt.id}

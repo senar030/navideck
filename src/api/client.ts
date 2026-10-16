@@ -314,7 +314,7 @@ export class NavidromeClient {
 
   async getAlbum(id: string): Promise<Album> {
     const data = await this.request('getAlbum', { id })
-    if (!data.album) throw new Error('Album not found')
+    if (!data.album) throw new Error('Album nicht gefunden')
     return data.album
   }
 
@@ -394,7 +394,7 @@ export class NavidromeClient {
 
   async getArtist(id: string): Promise<Artist> {
     const data = await this.request('getArtist', { id })
-    if (!data.artist) throw new Error('Artist not found')
+    if (!data.artist) throw new Error('Künstler nicht gefunden')
     const artist = data.artist
     let albums = uniqueBy(artist.album ?? [], (a) => a.id)
     if (this.folderIds.length > 0) {
@@ -428,7 +428,7 @@ export class NavidromeClient {
 
   async getPlaylist(id: string): Promise<Playlist> {
     const data = await this.request('getPlaylist', { id })
-    if (!data.playlist) throw new Error('Playlist not found')
+    if (!data.playlist) throw new Error('Playlist nicht gefunden')
     return data.playlist
   }
 
@@ -518,17 +518,17 @@ export class NavidromeClient {
       res = await fetch(url)
     } catch {
       throw new Error(
-        'Could not reach the server. Check the URL, that Navidrome is running, and that CORS is allowed.',
+        'Server nicht erreichbar. Prüfe die URL, ob Navidrome läuft und ob CORS erlaubt ist.',
       )
     }
     if (!res.ok) {
-      throw new Error(`Server returned HTTP ${res.status}`)
+      throw new Error(`Server antwortete mit HTTP ${res.status}`)
     }
     const json = (await res.json()) as { 'subsonic-response'?: SubsonicResponse }
     const data = json['subsonic-response']
-    if (!data) throw new Error('Unexpected response from server')
+    if (!data) throw new Error('Unerwartete Antwort vom Server')
     if (data.status === 'failed') {
-      throw new Error(data.error?.message ?? 'Login or request failed')
+      throw new Error(data.error?.message ?? 'Anmeldung oder Anfrage fehlgeschlagen')
     }
     return data
   }

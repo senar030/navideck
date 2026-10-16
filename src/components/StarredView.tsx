@@ -19,7 +19,7 @@ export function StarredView() {
     void client
       .getStarred()
       .then(setData)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load starred'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Favoriten konnten nicht geladen werden'))
   }, [client, selectedFolderIds])
 
   const songs = data.song ?? []
@@ -48,7 +48,7 @@ export function StarredView() {
                   <span>
                     <strong>{artist.name}</strong>
                     <em>
-                      {artist.albumCount ?? 0} Album{(artist.albumCount ?? 0) === 1 ? '' : 's'}
+                      {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
                     </em>
                   </span>
                 </button>

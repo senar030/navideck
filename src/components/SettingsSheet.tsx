@@ -19,7 +19,7 @@ export function SettingsSheet({ open, onClose }: Props) {
       <aside className="sheet" onClick={(e) => e.stopPropagation()}>
         <header className="sheet-head">
           <h3>Einstellungen</h3>
-          <button type="button" className="icon-btn" aria-label="Close settings" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label="Einstellungen schließen" onClick={onClose}>
             <IconClose />
           </button>
         </header>
@@ -29,7 +29,7 @@ export function SettingsSheet({ open, onClose }: Props) {
           <p className="muted">Server</p>
           <p className="settings-url">{client?.baseUrl}</p>
           <p className="muted">Ansicht</p>
-          <p className="settings-hint">Deck View vergrößert die Bedienung für Steam Deck, ROG Ally und ähnliche Handhelds.</p>
+          <p className="settings-hint">Die Deck-Ansicht vergrößert die Bedienung für Steam Deck, ROG Ally und ähnliche Handhelds.</p>
           <div className="chip-row wrap mix-size-row">
             <button type="button" className={`chip ${uiMode === 'deck' ? 'is-on' : ''}`} onClick={() => setUiMode('deck')}>
               Deck
