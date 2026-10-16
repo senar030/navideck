@@ -24,10 +24,10 @@
 
 html[data-theme='light'] {
   color-scheme: light;
-  --bg: #f6f1f7;
-  --bg-2: #fffbfe;
+  --bg: #e7f3e7;
+  --bg-2: #f3faf3;
   --surface: #ffffff;
-  --surface-2: #eee6f2;
+  --surface-2: #e2efe2;
   --line: rgba(70, 48, 80, 0.1);
   --text: #3a3344;
   --muted: #8a7e96;
@@ -35,7 +35,7 @@ html[data-theme='light'] {
   --accent-2: #d9a9bb;
   --play-ink: #ffffff;
   --shadow: 0 8px 22px rgba(80, 50, 90, 0.1);
-  --glow: #eadff2;
+  --glow: #d2e9d2;
 }
 
 html[data-theme='dark'][data-palette='ocean'] {
