@@ -1142,12 +1142,11 @@ input[type='range']::-moz-range-thumb {
   margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 0.6rem;
   padding: calc(var(--chrome-h) + 0.75rem) var(--main-pad-x) 1.8rem;
   background: color-mix(in srgb, var(--bg) 74%, white);
-  border-bottom: 2px solid color-mix(in srgb, white 32%, transparent);
+  border-bottom: 0;
 }
 
 html[data-theme='light'] .hero-banner {
   background: color-mix(in srgb, var(--bg) 88%, black);
-  border-bottom-color: color-mix(in srgb, black 22%, transparent);
 }
 
 .hero-bg {
@@ -1289,7 +1288,7 @@ html[data-theme='light'] .hero-veil {
 .track-row,
 .queue-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto auto;
+  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto;
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -2559,7 +2558,7 @@ html[data-ui='deck'] .pw-row input {
   }
 
   .track-row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     background: color-mix(in srgb, var(--text) 3.5%, transparent);
   }
 
