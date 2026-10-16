@@ -1060,6 +1060,7 @@ em {
 .text-btn,
 .link-btn {
   min-height: 2.4rem;
+  padding: 0;
   color: var(--accent);
   font-weight: 500;
   transition: color var(--dur) var(--ease), opacity var(--dur) var(--ease);
@@ -1416,12 +1417,20 @@ input[type='range']:disabled {
    ========================================================================== */
 
 .hero-banner {
+  --hero-bg: color-mix(in srgb, var(--accent) 13%, var(--surface));
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 1.4rem;
+  margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 1.5rem;
   padding: calc(var(--chrome-h) + 1.1rem) var(--main-pad-x) 2rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, var(--bg)) 0%, var(--bg) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 20%, var(--surface)) 0%, var(--hero-bg) 64%);
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: 0 20px 38px -26px rgba(6, 3, 12, 0.8);
+}
+
+html[data-theme='light'] .hero-banner {
+  --hero-bg: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  box-shadow: 0 20px 34px -26px rgba(70, 40, 130, 0.4);
 }
 
 .hero-bg {
@@ -1441,9 +1450,9 @@ input[type='range']:disabled {
   inset: 0;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--bg) 30%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 58%, transparent) 52%,
-    var(--bg) 100%
+    color-mix(in srgb, var(--hero-bg) 34%, transparent) 0%,
+    color-mix(in srgb, var(--hero-bg) 72%, transparent) 54%,
+    var(--hero-bg) 100%
   );
   pointer-events: none;
 }
@@ -1584,11 +1593,6 @@ input[type='range']:disabled {
 
 .album-card:hover .album-name {
   color: var(--accent);
-}
-
-.album-name,
-.album-artist {
-  padding: 0 0.1rem;
 }
 
 .album-grid.is-list .album-card {
