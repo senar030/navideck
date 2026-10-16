@@ -4,7 +4,7 @@ import { formatTime } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
-import { IconPlay, IconQueue, IconStar } from './Icons'
+import { IconPlay, IconPlayNext, IconQueue, IconStar } from './Icons'
 
 type Props = {
   tracks: Song[]
@@ -15,7 +15,7 @@ type Props = {
 
 export function TrackRow({ tracks, song, index, showCover = false }: Props) {
   const { client } = useAuth()
-  const { current, playing, playTracks, addToQueue } = usePlayer()
+  const { current, playing, playTracks, addToQueue, playNext } = usePlayer()
   const [starred, setStarred] = useState(Boolean(song.starred))
   const active = current?.id === song.id
 
@@ -50,6 +50,14 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
         </span>
       </button>
       <span className="track-time">{formatTime(song.duration)}</span>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Play next"
+        onClick={() => playNext([song])}
+      >
+        <IconPlayNext />
+      </button>
       <button
         type="button"
         className="icon-btn"

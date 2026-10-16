@@ -1141,8 +1141,13 @@ input[type='range']::-moz-range-thumb {
   overflow: hidden;
   margin: calc(-1 * var(--chrome-h)) calc(-1 * var(--main-pad-x)) 0.6rem;
   padding: calc(var(--chrome-h) + 0.75rem) var(--main-pad-x) 1.8rem;
-  border-bottom: 0;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg) 74%, white);
+  border-bottom: 2px solid color-mix(in srgb, white 32%, transparent);
+}
+
+html[data-theme='light'] .hero-banner {
+  background: color-mix(in srgb, var(--bg) 88%, black);
+  border-bottom-color: color-mix(in srgb, black 22%, transparent);
 }
 
 .hero-bg {
@@ -1163,12 +1168,21 @@ input[type='range']::-moz-range-thumb {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--bg) 18%, transparent) 0%,
-      color-mix(in srgb, var(--bg) 38%, transparent) 48%,
-      color-mix(in srgb, var(--bg) 88%, transparent) 82%,
-      var(--bg) 100%
+      color-mix(in srgb, var(--bg) 10%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 22%, transparent) 46%,
+      color-mix(in srgb, var(--bg) 74%, white) 100%
     );
   pointer-events: none;
+}
+
+html[data-theme='light'] .hero-veil {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg) 6%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 24%, transparent) 46%,
+      color-mix(in srgb, var(--bg) 88%, black) 100%
+    );
 }
 
 .hero {
@@ -1275,7 +1289,7 @@ input[type='range']::-moz-range-thumb {
 .track-row,
 .queue-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto;
+  grid-template-columns: minmax(0, 1fr) 4.6rem auto auto auto;
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -2545,7 +2559,7 @@ html[data-ui='deck'] .pw-row input {
   }
 
   .track-row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
     background: color-mix(in srgb, var(--text) 3.5%, transparent);
   }
 
