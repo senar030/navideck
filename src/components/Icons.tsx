@@ -1,4 +1,29 @@
+import { useId } from 'react'
+
 type IconProps = { size?: number }
+
+export function IconLogo({ size = 30 }: IconProps) {
+  const raw = useId()
+  const id = `nl-${raw.replace(/[^a-zA-Z0-9]/g, '')}`
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden>
+      <rect width="32" height="32" rx="9.5" fill={`url(#${id})`} />
+      <path
+        d="M10.5 21.5V10.5L21.5 21.5V10.5"
+        stroke="#fff"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor="var(--accent)" />
+          <stop offset="1" stopColor="var(--accent-2)" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}
 
 export function IconRadio({ size = 22 }: IconProps) {
   return (

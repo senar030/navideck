@@ -6,7 +6,7 @@ import { AppChrome } from './AppChrome'
 import { ArtistDetail, ArtistList } from './ArtistViews'
 import { GenreDetail, GenreList } from './GenreViews'
 import { HomeDashboard } from './HomeDashboard'
-import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconStar } from './Icons'
+import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconLogo, IconStar } from './Icons'
 import { NowPlaying } from './NowPlaying'
 import { PlayerBar } from './PlayerBar'
 import { PlaylistDetail, PlaylistList } from './PlaylistViews'
@@ -24,7 +24,11 @@ export function Shell() {
 
   return (
     <div className="app">
-      <nav className="nav">
+      <nav className="nav" aria-label="Hauptnavigation">
+        <div className="brand">
+          <IconLogo size={30} />
+          <span className="brand-name">Navideck</span>
+        </div>
         <NavBtn active={view.name === 'home'} onClick={() => go({ name: 'home' })} icon={<IconHome />} label="Start" />
         <NavBtn active={view.name === 'albums'} onClick={() => go({ name: 'albums' })} icon={<IconAlbums />} label="Alben" />
         <NavBtn active={view.name === 'artists'} onClick={() => go({ name: 'artists' })} icon={<IconArtists />} label="Künstler" />
@@ -36,6 +40,7 @@ export function Shell() {
           label="Playlists"
         />
         <NavBtn active={view.name === 'starred'} onClick={() => go({ name: 'starred' })} icon={<IconStar />} label="Favoriten" />
+        <div className="nav-spacer" />
       </nav>
       <main className="main">
         <AppChrome onOpenSettings={() => setSettingsOpen(true)} />

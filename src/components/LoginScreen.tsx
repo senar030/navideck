@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../state/AuthContext'
 import { usePrefs } from '../state/PrefsContext'
+import { IconLogo } from './Icons'
 
 export function LoginScreen() {
   const { login, lastServer, lastUser } = useAuth()
@@ -29,7 +30,7 @@ export function LoginScreen() {
     <div className="login">
       <form className="login-card" onSubmit={(e) => void onSubmit(e)}>
         <div className="login-mark" aria-hidden>
-          <span />
+          <IconLogo size={52} />
         </div>
         <h1>Navideck</h1>
         <p className="login-lead">
