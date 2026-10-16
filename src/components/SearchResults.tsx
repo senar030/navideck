@@ -13,7 +13,7 @@ type Props = {
 }
 
 export function SearchResults({ query, onPick }: Props) {
-  const { client } = useAuth()
+  const { client, selectedFolderIds } = useAuth()
   const { go } = useNav()
   const { layout } = usePrefs()
   const [result, setResult] = useState<SearchResult>({})
@@ -32,7 +32,7 @@ export function SearchResults({ query, onPick }: Props) {
         .finally(() => setBusy(false))
     }, 280)
     return () => window.clearTimeout(t)
-  }, [client, query])
+  }, [client, query, selectedFolderIds])
 
   function open(view: Parameters<typeof go>[0]) {
     onPick?.()

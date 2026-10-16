@@ -53,6 +53,7 @@ export class NavidromeClient {
   private readonly token: string
   folderIds: string[] = []
   private albumCache: { key: string; albums: Album[] } | null = null
+  private artistCache: { key: string; ids: Set<string> } | null = null
 
   constructor(baseUrl: string, username: string, password: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -163,6 +164,38 @@ export class NavidromeClient {
     return albums
   }
 
+  private async getSelectedArtistIds(): Promise<Set<string>> {
+    const key = this.folderIds.join(',')
+    if (this.artistCache?.key === key) return this.artistCache.ids
+    const ids = new Set<string>()
+    for (const group of await this.getArtists()) {
+      for (const artist of group.artist ?? []) ids.add(artist.id)
+    }
+    this.artistCache = { key, ids }
+    return ids
+  }
+
+  private async libraryFilter(): Promise<{ albums: Set<string>; artists: Set<string> }> {
+    const [albumList, artists] = await Promise.all([
+      this.getSelectedAlbums(),
+      this.getSelectedArtistIds(),
+    ])
+    return { albums: new Set(albumList.map((a) => a.id)), artists }
+  }
+
+  // Endpoints without a musicFolderId parameter (search, similar songs, …) are
+  // filtered here so the selected libraries behave as if nothing else exists.
+  private async filterSongs(songs: Song[]): Promise<Song[]> {
+    const distinct = uniqueBy(songs, (s) => s.id)
+    if (this.folderIds.length === 0) return distinct
+    const { albums, artists } = await this.libraryFilter()
+    return distinct.filter((song) => {
+      if (song.albumId) return albums.has(song.albumId)
+      if (song.artistId) return artists.has(song.artistId)
+      return true
+    })
+  }
+
   private async getAllAlbums(): Promise<Album[]> {
     const byId = new Map<string, Album>()
     const folders = this.folderIds.length ? this.folderIds : ['']
@@ -225,12 +258,12 @@ export class NavidromeClient {
 
   async getTopSongs(artist: string): Promise<Song[]> {
     const data = await this.request('getTopSongs', { artist, count: '30' })
-    return data.topSongs?.song ?? []
+    return this.filterSongs(data.topSongs?.song ?? [])
   }
 
   async getSimilarSongs(id: string, count = 40): Promise<Song[]> {
     const data = await this.request('getSimilarSongs2', { id, count: String(count) })
-    return data.similarSongs2?.song ?? []
+    return this.filterSongs(data.similarSongs2?.song ?? [])
   }
 
   async getLyricsForSong(song: Song): Promise<string> {
@@ -312,7 +345,21 @@ export class NavidromeClient {
       albumCount: '24',
       songCount: '40',
     })
-    return data.searchResult3 ?? {}
+    const result = data.searchResult3 ?? {}
+    const allArtists = uniqueBy(result.artist ?? [], (a) => a.id)
+    const allAlbums = uniqueBy(result.album ?? [], (a) => a.id)
+    const allSongs = uniqueBy(result.song ?? [], (s) => s.id)
+    if (this.folderIds.length === 0) {
+      return { artist: allArtists, album: allAlbums, song: allSongs }
+    }
+    const { albums, artists } = await this.libraryFilter()
+    return {
+      artist: allArtists.filter((a) => artists.has(a.id)),
+      album: allAlbums.filter((a) => albums.has(a.id)),
+      song: allSongs.filter((s) =>
+        s.albumId ? albums.has(s.albumId) : s.artistId ? artists.has(s.artistId) : true,
+      ),
+    }
   }
 
   async getStarred(): Promise<SearchResult> {
