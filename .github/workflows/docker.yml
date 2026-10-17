@@ -23,5 +23,7 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/senar030/navideck:latest
+          build-args: |
+            BUILD_ID=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import { MIX_SIZES, usePrefs } from '../state/PrefsContext'
 import { PALETTES, useTheme } from '../state/ThemeContext'
@@ -112,9 +112,32 @@ export function SettingsSheet({ open, onClose }: Props) {
           >
             Trennen
           </button>
+          <BuildInfo />
         </div>
       </aside>
     </div>
+  )
+}
+
+/*
+ * The app is self-hosted and redeployed by hand, so it helps to see which build
+ * is live and whether the shell really fills the screen: iOS reports its
+ * viewport in its own way (see `--app-h` in index.css), and a shell that is
+ * shorter than `innerHeight` is exactly the "chin gap" above the home
+ * indicator.
+ */
+function BuildInfo() {
+  const [shell, setShell] = useState('…')
+  useEffect(() => {
+    const app = document.querySelector('.app')
+    const height = app ? Math.round(app.getBoundingClientRect().height) : 0
+    setShell(`${window.innerWidth}×${Math.round(window.innerHeight)} · Shell ${height}px`)
+  }, [])
+  const build = String(import.meta.env.VITE_BUILD ?? 'dev').slice(0, 7)
+  return (
+    <p className="settings-hint build-info">
+      Version {build} · {shell}
+    </p>
   )
 }
 

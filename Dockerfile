@@ -3,6 +3,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Surfaced in the settings sheet so a deployed build can be identified.
+ARG BUILD_ID=dev
+ENV VITE_BUILD=$BUILD_ID
 RUN npm run build
 
 FROM nginx:1.27-alpine

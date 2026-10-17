@@ -37,6 +37,16 @@
   --nav: 4.6rem;
   --gap: 0.9rem;
   --font: 14px;
+  /*
+   * Height of the whole app shell. In a browser the dynamic viewport is the
+   * honest value because the toolbars move while the app runs. An *installed*
+   * iOS app overrides this with `100vh` (see the standalone block at the end of
+   * the file): with `black-translucent` + `viewport-fit=cover`, iOS measures
+   * `100%` and the dynamic viewport against a layout viewport that stops below
+   * the status bar, which leaves a ~59px "chin gap" above the home indicator.
+   * `vh` is the real screen height and closes it.
+   */
+  --app-h: 100dvh;
 
   /* type scale */
   --fs-2xs: 0.6875rem;
@@ -283,9 +293,7 @@ html[data-theme='light'][data-palette='aurora'] {
 html,
 body,
 #root {
-  height: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h);
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -299,20 +307,16 @@ body,
  * app to the viewport leaves the document nothing to scroll, so every gesture
  * reaches `.main-body`.
  *
- * The height stays on the dynamic viewport instead of `inset: 0`: iOS reports
- * the containing block of a fixed element without the status-bar strip, so a
- * stretched box would stop ~60px short above the home indicator. The dynamic
- * viewport height covers the whole screen, and the safe-area paddings inside
- * the views keep the content clear of notch and home indicator.
+ * The height comes from `--app-h` instead of a stretched `inset: 0` box: iOS
+ * sizes a stretched fixed box to the containing block it reports, and that one
+ * is exactly what leaves the chin gap open. See `--app-h` in `:root`.
  */
 #root {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h);
 }
 
 html {
@@ -2256,6 +2260,14 @@ html[data-theme='light'] .hero-banner {
   font-size: 0.85em;
 }
 
+.build-info {
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
 .mix-size-row {
   margin: 0.35rem 0 1.2rem;
 }
@@ -2462,9 +2474,7 @@ html[data-theme='light'] .hero-banner {
   z-index: 80;
   width: 100%;
   max-width: 100%;
-  height: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h);
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -3474,10 +3484,23 @@ html[data-ui='deck'] .pw-row input {
    ========================================================================== */
 
 @media (display-mode: standalone), (display-mode: fullscreen) {
+  /* Installed app: iOS shortchanges `100%`/`dvh` here, `vh` is the screen. */
+  :root {
+    --app-h: 100vh;
+  }
+
   .now-playing .np-scroll {
     padding-top: calc(2.8rem + env(safe-area-inset-top, 0px));
     padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/*
+ * `navigator.standalone` is what index.html checks for the `standalone` class;
+ * older iOS never matched `display-mode`, so mirror the rule for that class.
+ */
+html.standalone {
+  --app-h: 100vh;
 }
 
 /* ==========================================================================
