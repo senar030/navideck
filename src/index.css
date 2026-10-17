@@ -3228,10 +3228,22 @@ html[data-ui='deck'] .pw-row input {
     font-size: 0.95rem;
   }
 
+  /*
+   * The floating player hovers *over* the content instead of owning a band of
+   * its own. With `1fr auto auto` the view stopped right above the pill, so
+   * that row was pure background and read as a dark bar that swallowed
+   * everything around the pill. The player row collapses to zero height and the
+   * pill is aligned to its end, which pulls it up over the content: lists keep
+   * scrolling behind it and stay visible above and below the pill.
+   *
+   * `--pill-h` (the pill's height) is reserved as bottom padding on the
+   * scroller, so the last row can still be scrolled clear of the pill.
+   */
   .app,
   html[data-ui='deck'] .app {
+    --pill-h: 3.6rem;
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto auto;
+    grid-template-rows: 1fr 0 auto;
     grid-template-areas:
       'main'
       'player'
@@ -3260,6 +3272,9 @@ html[data-ui='deck'] .pw-row input {
    *     (in the dark palettes the two differ by ~1/255), so the pill did not
    *     separate from the bottom chrome. `--surface` is a clear step up from
    *     both the page background and the nav.
+   *
+   * The gaps are the same on every side the eye can measure: 0.7rem to the
+   * screen edges and 0.7rem down to the nav.
    */
   .player-bar,
   html[data-ui='deck'] .player-bar {
@@ -3269,10 +3284,12 @@ html[data-ui='deck'] .pw-row input {
     bottom: auto;
     grid-area: player;
     z-index: 6;
+    align-self: end;
     display: flex;
     align-items: center;
     width: auto;
-    margin: 0.1rem 0.7rem 0.4rem;
+    min-height: var(--pill-h);
+    margin: 0 0.7rem 0.7rem;
     padding: 0.4rem 0.45rem 0.4rem 0.4rem;
     border: 1px solid var(--line-strong);
     border-radius: 1.4rem;
@@ -3329,7 +3346,8 @@ html[data-ui='deck'] .pw-row input {
   }
 
   .main-body {
-    padding-bottom: 0.9rem;
+    /* Room for the pill hovering over the last row (see `--pill-h`). */
+    padding-bottom: calc(var(--pill-h) + 1.2rem);
   }
 
   .hero-banner {
