@@ -48,8 +48,11 @@ export function Shell() {
         <div
           className="main-body"
           onScroll={(e) => {
-            const next = e.currentTarget.scrollTop > 6
-            setScrolled((prev) => (prev === next ? prev : next))
+            // A dead zone between the two thresholds: without it a finger
+            // resting near the top would flip the bar back and forth, and every
+            // flip re-renders the whole view.
+            const top = e.currentTarget.scrollTop
+            setScrolled((prev) => (top > 24 ? true : top < 8 ? false : prev))
           }}
         >
           {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}

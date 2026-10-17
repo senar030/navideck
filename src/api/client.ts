@@ -45,6 +45,18 @@ const CLIENT = 'Navideck'
 const VERSION = '1.16.1'
 const PAGE = 48
 
+/** Album and playlist lists: cheap to fetch, but not on every view switch. */
+const LIST_TTL = 30_000
+/** Genre and playlist lists scoped to a library cost a full scan, so keep them longer. */
+const LIBRARY_TTL = 300_000
+
+type CacheEntry<T> = { key: string; at: number; data: Promise<T> }
+type ArtistLookup = { ids: Set<string>; art: Map<string, string | undefined> }
+
+function isFresh<T>(entry: CacheEntry<T> | null, key: string, ttl: number): entry is CacheEntry<T> {
+  return Boolean(entry && entry.key === key && Date.now() - entry.at < ttl)
+}
+
 export class NavidromeClient {
   readonly baseUrl: string
   readonly username: string
@@ -52,12 +64,18 @@ export class NavidromeClient {
   private readonly salt: string
   private readonly token: string
   folderIds: string[] = []
-  private albumCache: { key: string; albums: Album[] } | null = null
-  private artistCache: {
-    key: string
-    ids: Set<string>
-    art: Map<string, string | undefined>
-  } | null = null
+  /*
+   * Several views ask for the same thing at the same time — the dashboard wants
+   * albums, genres and playlists at once — so the promises are cached, not just
+   * the results: parallel callers then share one round of requests instead of
+   * racing each other through the same expensive scan.
+   */
+  private albumScan: CacheEntry<Album[]> | null = null
+  private artistScan: CacheEntry<ArtistLookup> | null = null
+  private genresCache: CacheEntry<Genre[]> | null = null
+  private playlistsCache: CacheEntry<Playlist[]> | null = null
+  private albumLists = new Map<string, { at: number; data: Promise<Album[]> }>()
+  private playlistLists = new Map<string, { at: number; data: Promise<Playlist> }>()
 
   constructor(baseUrl: string, username: string, password: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -89,6 +107,21 @@ export class NavidromeClient {
   }
 
   async getAlbumList(type: AlbumListType, offset = 0): Promise<Album[]> {
+    // "Zufällig" has to stay random, and "Favoriten" must show a star that was
+    // just toggled, so neither is allowed to come from the cache.
+    if (type === 'random' || type === 'starred') return this.fetchAlbumList(type, offset)
+    const key = `${this.folderIds.join(',')}|${type}|${offset}`
+    const hit = this.albumLists.get(key)
+    if (hit && Date.now() - hit.at < LIST_TTL) return hit.data
+    const data = this.fetchAlbumList(type, offset).catch((err: unknown) => {
+      this.albumLists.delete(key)
+      throw err
+    })
+    this.albumLists.set(key, { at: Date.now(), data })
+    return data
+  }
+
+  private async fetchAlbumList(type: AlbumListType, offset = 0): Promise<Album[]> {
     const pages = await this.forFolders((folder) =>
       this.request('getAlbumList2', {
         type,
@@ -104,6 +137,17 @@ export class NavidromeClient {
   }
 
   async getGenres(): Promise<Genre[]> {
+    const key = this.folderIds.join(',')
+    if (isFresh(this.genresCache, key, LIBRARY_TTL)) return this.genresCache.data
+    const data = this.fetchGenres().catch((err: unknown) => {
+      this.genresCache = null
+      throw err
+    })
+    this.genresCache = { key, at: Date.now(), data }
+    return data
+  }
+
+  private async fetchGenres(): Promise<Genre[]> {
     // Navidrome's getGenres endpoint ignores musicFolderId, so when a library
     // filter is active we derive the genre list from that library's albums.
     if (this.folderIds.length === 0) {
@@ -239,30 +283,38 @@ export class NavidromeClient {
       .sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  private async getSelectedAlbums(): Promise<Album[]> {
+  private getSelectedAlbums(): Promise<Album[]> {
     const key = this.folderIds.join(',')
-    if (this.albumCache?.key === key) return this.albumCache.albums
-    const albums = await this.getAllAlbums()
-    this.albumCache = { key, albums }
-    return albums
+    if (this.albumScan?.key !== key) {
+      const data = this.getAllAlbums().catch((err: unknown) => {
+        this.albumScan = null
+        throw err
+      })
+      this.albumScan = { key, at: Date.now(), data }
+    }
+    return this.albumScan.data
   }
 
-  private async getArtistIndex(): Promise<{
-    ids: Set<string>
-    art: Map<string, string | undefined>
-  }> {
+  private getArtistIndex(): Promise<ArtistLookup> {
     const key = this.folderIds.join(',')
-    if (this.artistCache?.key === key) return this.artistCache
-    const ids = new Set<string>()
-    const art = new Map<string, string | undefined>()
-    for (const group of await this.getArtists()) {
-      for (const artist of group.artist ?? []) {
-        ids.add(artist.id)
-        art.set(artist.id, artist.coverArt)
-      }
+    if (this.artistScan?.key !== key) {
+      const data = (async () => {
+        const ids = new Set<string>()
+        const art = new Map<string, string | undefined>()
+        for (const group of await this.getArtists()) {
+          for (const artist of group.artist ?? []) {
+            ids.add(artist.id)
+            art.set(artist.id, artist.coverArt)
+          }
+        }
+        return { ids, art }
+      })().catch((err: unknown) => {
+        this.artistScan = null
+        throw err
+      })
+      this.artistScan = { key, at: Date.now(), data }
     }
-    this.artistCache = { key, ids, art }
-    return this.artistCache
+    return this.artistScan.data
   }
 
   private async getSelectedArtistIds(): Promise<Set<string>> {
@@ -406,6 +458,17 @@ export class NavidromeClient {
   }
 
   async getPlaylists(): Promise<Playlist[]> {
+    const key = this.folderIds.join(',')
+    if (isFresh(this.playlistsCache, key, LIBRARY_TTL)) return this.playlistsCache.data
+    const data = this.fetchPlaylists().catch((err: unknown) => {
+      this.playlistsCache = null
+      throw err
+    })
+    this.playlistsCache = { key, at: Date.now(), data }
+    return data
+  }
+
+  private async fetchPlaylists(): Promise<Playlist[]> {
     const data = await this.request('getPlaylists')
     const lists = data.playlists?.playlist ?? []
     // Navidrome playlists are not scoped to a library, so when a filter is
@@ -427,6 +490,18 @@ export class NavidromeClient {
   }
 
   async getPlaylist(id: string): Promise<Playlist> {
+    const key = `${this.folderIds.join(',')}|${id}`
+    const hit = this.playlistLists.get(key)
+    if (hit && Date.now() - hit.at < LIST_TTL) return hit.data
+    const data = this.fetchPlaylist(id).catch((err: unknown) => {
+      this.playlistLists.delete(key)
+      throw err
+    })
+    this.playlistLists.set(key, { at: Date.now(), data })
+    return data
+  }
+
+  private async fetchPlaylist(id: string): Promise<Playlist> {
     const data = await this.request('getPlaylist', { id })
     if (!data.playlist) throw new Error('Playlist nicht gefunden')
     return data.playlist

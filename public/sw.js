@@ -1,17 +1,24 @@
 /* Navideck service worker.
  *
  * Keeps the app shell available so an installed Navideck starts instantly and
- * still opens when the network is down. Navidrome traffic (the REST API, cover
- * art and audio streams) is never cached: it is either authenticated per
- * request or too large to be useful offline.
+ * still opens when the network is down, and keeps cover art around, which is
+ * the one Navidrome response that is worth caching: small, immutable per
+ * id+size, and the slowest thing to fetch over a tailnet link.
+ *
+ * Everything else from Navidrome (the API and the audio streams) is never
+ * cached: it is either authenticated per request or too large to be useful.
  *
  * Bump VERSION whenever a file in public/ changes, or when the strategy below
- * changes: that is what makes the shell cache refresh.
+ * changes: that is what makes the shell and cover caches refresh.
  */
 
-const VERSION = 'v1'
+const VERSION = 'v2'
 const SHELL_CACHE = `navideck-shell-${VERSION}`
 const RUNTIME_CACHE = `navideck-runtime-${VERSION}`
+const COVER_CACHE = `navideck-covers-${VERSION}`
+/* A few hundred covers cover everything a phone shows in a session; the oldest
+   ones are dropped first, so the cache cannot grow without bound. */
+const COVER_LIMIT = 400
 
 const SHELL_FILES = [
   '/',
@@ -46,7 +53,7 @@ self.addEventListener('activate', (event) => {
       const keys = await caches.keys()
       await Promise.all(
         keys
-          .filter((key) => key !== SHELL_CACHE && key !== RUNTIME_CACHE)
+          .filter((key) => key !== SHELL_CACHE && key !== RUNTIME_CACHE && key !== COVER_CACHE)
           .map((key) => caches.delete(key)),
       )
       await self.clients.claim()
@@ -56,7 +63,59 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting()
+  // A cover the page could not render must not stay cached.
+  if (event.data?.type === 'FORGET_COVER' && typeof event.data.url === 'string') {
+    void forgetCover(event.data.url)
+  }
 })
+
+/* --------------------------------------------------------------------------
+   Cover art
+   -------------------------------------------------------------------------- */
+
+/** Cover ids are stable, so the auth parameters are dropped from the cache key. */
+function coverKey(url) {
+  const key = new URL(url.pathname, url.origin)
+  key.searchParams.set('id', url.searchParams.get('id') || '')
+  key.searchParams.set('size', url.searchParams.get('size') || '')
+  return key.href
+}
+
+function isCoverArt(url) {
+  return url.pathname.includes('/rest/getCoverArt')
+}
+
+async function coverArt(request, url) {
+  const cache = await caches.open(COVER_CACHE)
+  const key = coverKey(url)
+  const cached = await cache.match(key)
+  if (cached) return cached
+
+  const response = await fetch(request)
+  // Images are requested by <img> without CORS, so the response is opaque and
+  // has no readable status; that is still fine to store and replay.
+  if (response && (response.ok || response.type === 'opaque')) {
+    await cache.put(key, response.clone())
+    void trimCovers(cache)
+  }
+  return response
+}
+
+async function trimCovers(cache) {
+  const keys = await cache.keys()
+  const excess = keys.length - COVER_LIMIT
+  if (excess <= 0) return
+  await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)))
+}
+
+async function forgetCover(rawUrl) {
+  try {
+    const cache = await caches.open(COVER_CACHE)
+    await cache.delete(coverKey(new URL(rawUrl)))
+  } catch {
+    /* nothing to do */
+  }
+}
 
 function isCacheable(response) {
   return Boolean(response) && response.ok && response.type === 'basic'
@@ -119,7 +178,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)
-  // Navidrome lives on another origin (API, cover art, audio) — hands off.
+  // Cover art is the one Navidrome response worth keeping around.
+  if (isCoverArt(url)) {
+    event.respondWith(coverArt(request, url))
+    return
+  }
+  // The rest of Navidrome lives on another origin (API, audio) — hands off.
   if (url.origin !== self.location.origin) return
   if (url.pathname.startsWith('/rest/')) return
   // Partial content (seeking inside a track) must never be served from the cache.
