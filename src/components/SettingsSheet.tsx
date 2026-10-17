@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import { MIX_SIZES, usePrefs } from '../state/PrefsContext'
 import { PALETTES, useTheme } from '../state/ThemeContext'
+import { isIos, isIosSafari, isSecureOrigin, useInstallState } from '../lib/pwa'
 import { IconClose } from './Icons'
 
 type Props = {
@@ -24,6 +26,7 @@ export function SettingsSheet({ open, onClose }: Props) {
           </button>
         </header>
         <div className="sheet-body settings-body">
+          <InstallSection />
           <p className="muted">Angemeldet als</p>
           <p className="settings-user">{client?.username}</p>
           <p className="muted">Server</p>
@@ -112,5 +115,53 @@ export function SettingsSheet({ open, onClose }: Props) {
         </div>
       </aside>
     </div>
+  )
+}
+
+function installHint(declined: boolean): string {
+  if (!isSecureOrigin()) {
+    return 'Installieren und Offline-Betrieb brauchen HTTPS — über HTTP erlaubt kein Browser Service Worker. Navideck dafür über TLS bereitstellen (z. B. Tailscale Serve oder Reverse-Proxy).'
+  }
+  if (isIosSafari()) {
+    return 'Zum Installieren das Teilen-Symbol antippen und „Zum Home-Bildschirm“ wählen.'
+  }
+  if (isIos()) {
+    return 'Auf iPhone und iPad können nur Safari und Web-Apps installieren — Navideck dazu in Safari öffnen.'
+  }
+  if (declined) {
+    return 'Installation abgebrochen. Über das Browsermenü lässt sie sich jederzeit nachholen.'
+  }
+  return 'Im Browsermenü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.'
+}
+
+function InstallSection() {
+  const { canInstall, installed, promptInstall } = useInstallState()
+  const [declined, setDeclined] = useState(false)
+
+  if (installed) {
+    return (
+      <>
+        <p className="muted">App</p>
+        <p className="settings-hint">Navideck ist installiert und startet auch ohne Netz.</p>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <p className="muted">App</p>
+      {canInstall ? (
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={() => {
+            void promptInstall().then((result) => setDeclined(result === 'dismissed'))
+          }}
+        >
+          Navideck installieren
+        </button>
+      ) : null}
+      {!canInstall || declined ? <p className="settings-hint">{installHint(declined)}</p> : null}
+    </>
   )
 }

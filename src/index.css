@@ -284,6 +284,7 @@ html,
 body,
 #root {
   height: 100%;
+  height: 100vh;
   height: 100dvh;
   width: 100%;
   max-width: 100%;
@@ -329,6 +330,26 @@ button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
+}
+
+/* No long-press callout or text selection on chrome — this is an app. */
+button,
+a,
+label,
+.chrome {
+  -webkit-touch-callout: none;
+}
+
+/*
+ * iOS zooms the viewport whenever a form field below 16px receives focus,
+ * so touch devices get the larger size even though the UI is set in 14px.
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 input[type='checkbox'],
@@ -387,12 +408,13 @@ h4 {
 
 .app {
   height: 100%;
+  height: 100vh;
   height: 100dvh;
   width: 100%;
   max-width: 100%;
   display: grid;
   grid-template-columns: var(--nav) 1fr;
-  grid-template-rows: 1fr var(--player);
+  grid-template-rows: 1fr calc(var(--player) + env(safe-area-inset-bottom, 0px));
   grid-template-areas:
     'nav main'
     'player player';
@@ -410,6 +432,7 @@ h4 {
   padding: 0.7rem 0.5rem 0.7rem;
   background: color-mix(in srgb, var(--bg-2) 82%, transparent);
   border-right: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
   backdrop-filter: blur(20px) saturate(1.2);
   overflow-y: auto;
   overflow-x: hidden;
@@ -552,6 +575,7 @@ h4 {
 .chrome.is-scrolled {
   background: color-mix(in srgb, var(--bg) 72%, transparent);
   border-bottom-color: var(--line);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
   backdrop-filter: blur(18px) saturate(1.5);
 }
 
@@ -603,6 +627,7 @@ h4 {
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-2) 96%, transparent);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   box-shadow: var(--shadow-lg);
   animation: menu-in 0.16s var(--ease);
@@ -670,6 +695,7 @@ h4 {
   padding: 0 0.35rem 0 0.95rem;
   border-color: var(--line-strong);
   background: color-mix(in srgb, var(--surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
   backdrop-filter: blur(16px) saturate(1.2);
   opacity: 1;
   overflow: visible;
@@ -1240,9 +1266,10 @@ a.chip {
   column-gap: 0.75rem;
   row-gap: 0.1rem;
   align-items: center;
-  padding: 0.5rem 1.15rem 0.55rem;
+  padding: 0.5rem 1.15rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--bg-2) 88%, transparent);
   border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
   backdrop-filter: blur(20px) saturate(1.2);
   z-index: 5;
 }
@@ -1928,6 +1955,7 @@ html[data-theme='light'] .hero-banner {
   text-transform: uppercase;
   color: var(--muted);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
 }
@@ -2101,6 +2129,7 @@ html[data-theme='light'] .hero-banner {
   inset: 0;
   z-index: 90;
   background: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: flex-end;
@@ -2294,6 +2323,7 @@ html[data-theme='light'] .hero-banner {
   flex-direction: column;
   gap: 0.9rem;
   box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
 
@@ -2390,6 +2420,7 @@ html[data-theme='light'] .hero-banner {
   width: 100%;
   max-width: 100%;
   height: 100%;
+  height: 100vh;
   height: 100dvh;
   display: flex;
   align-items: stretch;
@@ -2438,6 +2469,7 @@ html[data-theme='light'] .hero-banner {
   position: absolute;
   inset: 0;
   background: color-mix(in srgb, var(--bg) 58%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
   backdrop-filter: blur(24px) saturate(1.25);
   pointer-events: none;
   z-index: 0;
@@ -2512,6 +2544,7 @@ html[data-theme='light'] .hero-banner {
 .np-flip-back {
   transform: rotateY(180deg);
   background: color-mix(in srgb, var(--bg) 74%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
   backdrop-filter: blur(18px) saturate(1.2);
   color: var(--text);
   pointer-events: none;
@@ -2709,7 +2742,7 @@ html[data-theme='light'] .hero-banner {
 
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr var(--player) 4.5rem;
+    grid-template-rows: 1fr var(--player) calc(4.5rem + env(safe-area-inset-bottom, 0px));
     grid-template-areas:
       'main'
       'player'
@@ -2870,7 +2903,7 @@ html[data-ui='deck'] {
 
 html[data-ui='deck'] .app {
   grid-template-columns: var(--nav) 1fr;
-  grid-template-rows: 1fr var(--player);
+  grid-template-rows: 1fr calc(var(--player) + env(safe-area-inset-bottom, 0px));
   grid-template-areas:
     'nav main'
     'player player';
@@ -3142,6 +3175,7 @@ html[data-ui='deck'] .pw-row input {
     border: 0;
     border-radius: 1.4rem;
     background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.25);
     backdrop-filter: blur(20px) saturate(1.25);
     box-shadow: var(--shadow);
   }

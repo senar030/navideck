@@ -40,6 +40,22 @@ function apply(theme: Theme, palette: PaletteId) {
   document.documentElement.dataset.palette = palette
 }
 
+/**
+ * The status bar of an installed app is drawn by the OS, so it has to be told
+ * about colour changes — the manifest value is only the initial one.
+ */
+function applyStatusBarColour() {
+  const colour = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+  if (!colour) return
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', colour)
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const next = readTheme()
@@ -50,6 +66,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     apply(theme, palette)
+    applyStatusBarColour()
     localStorage.setItem(THEME_KEY, theme)
     localStorage.setItem(PALETTE_KEY, palette)
   }, [theme, palette])

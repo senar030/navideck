@@ -28,6 +28,47 @@ On the login screen enter:
 
 Credentials stay in this browser’s local storage until you disconnect.
 
+## Install as an app (PWA)
+
+Navideck ships a web app manifest, maskable icons and a service worker, so it can
+be installed like a native app and started without a network connection.
+
+**Installation and offline mode both require HTTPS.** Service workers are only
+available in a secure context, and `http://<lan-ip>:4173` is not one — no browser
+will offer to install the app from there. `http://localhost` is the only
+exception (development). Ways to get HTTPS in front of the container:
+
+- **Tailscale** (simplest when the devices share a tailnet):
+  `tailscale serve --bg --https=443 http://localhost:4173`, then open
+  `https://<machine>.<tailnet>.ts.net` — the certificate is provisioned automatically.
+- **Reverse proxy with TLS** (Caddy, Traefik, nginx) in front of port 4173.
+- Cloudflare Tunnel or any other HTTPS terminator.
+
+Installing:
+
+- **Android (Chrome/Edge)**: menu → *App installieren*. The same action appears in
+  Navideck under *Einstellungen → App* once the browser reports it as installable.
+- **iOS/iPadOS — Safari only**: Share → *Zum Home-Bildschirm*. Firefox, Chrome and
+  other iOS browsers are WebKit shells without the installation API and cannot
+  install web apps at all.
+
+Offline and updates:
+
+- The service worker pre-caches the app shell (HTML, CSS, JS, icons). Navidrome
+  traffic (API, cover art, audio streams) is never cached.
+- Navigations are network-first, so a redeploy is picked up on the next start. If a
+  new worker takes over while a track is playing, the reload waits until playback stops.
+- Bump `VERSION` in `public/sw.js` whenever files in `public/` change, so the cached
+  shell is refreshed.
+
+The install icons are generated from `public/favicon.svg`:
+
+```bash
+npm run icons
+```
+
+That rewrites `public/icons/*` (192/512, maskable variants, 180px iOS icon).
+
 ## TrueNAS + Portainer
 
 Portainer on TrueNAS cannot build this image (`mkdir /.docker: permission denied`). GitHub Actions builds it; Portainer only pulls `ghcr.io/senar030/navideck:latest`.

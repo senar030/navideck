@@ -1,0 +1,3 @@
+# Navideck is a private player for your own Navidrome server — nothing to index.
+User-agent: *
+Disallow: /

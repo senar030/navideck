@@ -27,7 +27,7 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="login">
+    <main className="login">
       <form className="login-card" onSubmit={(e) => void onSubmit(e)}>
         <div className="login-mark" aria-hidden>
           <IconLogo size={52} />
@@ -57,6 +57,7 @@ export function LoginScreen() {
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
+            autoComplete="username"
             required
           />
         </label>
@@ -67,6 +68,7 @@ export function LoginScreen() {
               type={showPw ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
             />
             <button type="button" className="text-btn" onClick={() => setShowPw((s) => !s)}>
@@ -88,6 +90,6 @@ export function LoginScreen() {
           {busy ? 'Verbinden…' : 'Verbinden'}
         </button>
       </form>
-    </div>
+    </main>
   )
 }

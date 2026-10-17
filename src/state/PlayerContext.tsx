@@ -22,6 +22,8 @@ type PlayerContextValue = {
   repeat: RepeatMode
   volume: number
   muted: boolean
+  /** False on iOS, where the app cannot change the level at all. */
+  volumeSupported: boolean
   currentTime: number
   duration: number
   queueOpen: boolean
@@ -48,6 +50,38 @@ type PlayerContextValue = {
 const PlayerContext = createContext<PlayerContextValue | null>(null)
 const VOLUME_KEY = 'navideck.volume'
 const SESSION_KEY = 'navideck.session'
+
+function createAudio(): HTMLAudioElement {
+  const audio = new Audio()
+  audio.preload = 'metadata'
+  // iOS otherwise takes over the screen for inline media.
+  audio.setAttribute('playsinline', 'true')
+  return audio
+}
+
+/**
+ * iOS ignores (and older Safari throws on) writes to `audio.volume`: the
+ * hardware buttons are the only way to change the level there.
+ */
+function supportsVolume(audio: HTMLAudioElement): boolean {
+  try {
+    const previous = audio.volume
+    audio.volume = 0.42
+    const supported = Math.abs(audio.volume - 0.42) < 0.01
+    audio.volume = previous
+    return supported
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Exactly one player per page. The element is created once for the whole app
+ * instead of on every render, and living outside the component keeps it out of
+ * React's dependency tracking.
+ */
+const audio = createAudio()
+const volumeSupported = supportsVolume(audio)
 
 type Session = {
   user: string
@@ -96,7 +130,6 @@ function writeSession(session: Session) {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { client } = useAuth()
   const boot = useRef(readSession(client?.username))
-  const audioRef = useRef(new Audio())
   const [queue, setQueue] = useState<Song[]>(() => boot.current?.queue ?? [])
   const [index, setIndex] = useState(() => boot.current?.index ?? 0)
   const [playing, setPlaying] = useState(false)
@@ -125,7 +158,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const loadAndPlay = useCallback(
     (song: Song) => {
       if (!client) return
-      const audio = audioRef.current
       audio.src = client.streamUrl(song.id)
       audio.load()
       scrobbled.current = false
@@ -164,7 +196,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const togglePlay = useCallback(() => {
-    const audio = audioRef.current
     if (!queueRef.current.length) return
     if (audio.paused) {
       void audio.play().then(
@@ -217,13 +248,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (i + 1 < q.length) playIndex(i + 1)
     else if (mode === 'all') playIndex(0)
     else {
-      audioRef.current.pause()
+      audio.pause()
       setPlaying(false)
     }
   }, [playIndex])
 
   const prev = useCallback(() => {
-    const audio = audioRef.current
     if (audio.currentTime > 3) {
       audio.currentTime = 0
       return
@@ -234,23 +264,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [playIndex])
 
   const seek = useCallback((time: number) => {
-    audioRef.current.currentTime = time
+    audio.currentTime = time
     setCurrentTime(time)
   }, [])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(1, Math.max(0, v))
-    audioRef.current.volume = clamped
+    try {
+      audio.volume = clamped
+    } catch {
+      /* iOS only changes the level via the hardware buttons */
+    }
     setVolumeState(clamped)
     localStorage.setItem(VOLUME_KEY, String(clamped))
     if (clamped > 0) {
-      audioRef.current.muted = false
+      audio.muted = false
       setMuted(false)
     }
   }, [])
 
   const toggleMute = useCallback(() => {
-    const audio = audioRef.current
     audio.muted = !audio.muted
     setMuted(audio.muted)
   }, [])
@@ -299,7 +332,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setIndex(cur - 1)
             loadAndPlay(nextQ[cur - 1])
           } else {
-            audioRef.current.pause()
+            audio.pause()
             setPlaying(false)
             setIndex(0)
           }
@@ -314,7 +347,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const saved = boot.current
     const song = saved?.queue[saved.index]
     if (!client || !song) return
-    const audio = audioRef.current
     audio.src = client.streamUrl(song.id)
     audio.preload = 'auto'
     const onMeta = () => {
@@ -345,7 +377,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         user: client.username,
         queue,
         index,
-        time: audioRef.current.currentTime || currentTime,
+        time: audio.currentTime || currentTime,
         shuffle,
         repeat,
       })
@@ -360,7 +392,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         user: client.username,
         queue: queueRef.current,
         index: indexRef.current,
-        time: audioRef.current.currentTime,
+        time: audio.currentTime,
         shuffle: shuffleRef.current,
         repeat: repeatRef.current,
       })
@@ -370,9 +402,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [client])
 
   useEffect(() => {
-    const audio = audioRef.current
     audio.preload = 'metadata'
-    audio.volume = volume
+    if (volumeSupported) audio.volume = volume
     const onTime = () => {
       const now = performance.now()
       if (now - lastTick.current < 200) return
@@ -410,24 +441,50 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const song = current
     if (!song || !('mediaSession' in navigator)) return
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: song.title,
-      artist: song.artist ?? '',
-      album: song.album ?? '',
-      artwork: song.coverArt && client
-        ? [{ src: client.coverUrl(song.coverArt, 512) ?? '', sizes: '512x512' }]
-        : [],
-    })
-    navigator.mediaSession.setActionHandler('play', () => {
-      void audioRef.current.play()
-    })
-    navigator.mediaSession.setActionHandler('pause', () => audioRef.current.pause())
-    navigator.mediaSession.setActionHandler('previoustrack', () => prev())
-    navigator.mediaSession.setActionHandler('nexttrack', () => next())
-    navigator.mediaSession.setActionHandler('seekto', (d) => {
-      if (typeof d.seekTime === 'number') seek(d.seekTime)
-    })
+    const session = navigator.mediaSession
+    try {
+      session.metadata = new MediaMetadata({
+        title: song.title,
+        artist: song.artist ?? '',
+        album: song.album ?? '',
+        artwork:
+          song.coverArt && client
+            ? [{ src: client.coverUrl(song.coverArt, 512) ?? '', sizes: '512x512' }]
+            : [],
+      })
+    } catch {
+      /* some WebKit builds reject MediaMetadata */
+    }
+    // Not every action exists on every platform, and an unsupported one would
+    // otherwise abort the whole effect.
+    const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
+      ['play', () => void audio.play()],
+      ['pause', () => audio.pause()],
+      ['previoustrack', () => prev()],
+      ['nexttrack', () => next()],
+      ['stop', () => audio.pause()],
+      [
+        'seekto',
+        (details) => {
+          if (typeof details.seekTime === 'number') seek(details.seekTime)
+        },
+      ],
+    ]
+    for (const [action, handler] of handlers) {
+      try {
+        session.setActionHandler(action, handler)
+      } catch {
+        /* unsupported on this platform */
+      }
+    }
   }, [current, client, next, prev, seek])
+
+  // Keeps the lock screen / control centre in sync, and lets the service worker
+  // know not to reload the app in the middle of a track.
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+  }, [playing])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -453,6 +510,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       volume,
       muted,
+      volumeSupported,
       currentTime,
       duration,
       queueOpen,

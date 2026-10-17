@@ -38,6 +38,7 @@ export function NowPlaying() {
     cycleRepeat,
     volume,
     setVolume,
+    volumeSupported,
     expanded,
     setExpanded,
     queue,
@@ -241,8 +242,12 @@ export function NowPlaying() {
           >
             <IconRadio size={22} />
           </button>
-          <IconVolume size={18} />
-          <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} title="Lautstärke" aria-label="Lautstärke" />
+          {volumeSupported ? (
+            <>
+              <IconVolume size={18} />
+              <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} title="Lautstärke" aria-label="Lautstärke" />
+            </>
+          ) : null}
           <button
             type="button"
             className={`icon-btn np-list-btn ${showList ? 'is-on' : ''}`}

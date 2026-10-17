@@ -2,24 +2,51 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#140e1f" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Navideck" />
     <title>Navideck</title>
+    <meta
+      name="description"
+      content="Touch-freundlicher Navidrome-Client für Desktop, Tablet und Steam Deck."
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#140e1f" />
+    <!--
+      iOS/macOS: "black-translucent" lets the app paint behind the status bar,
+      the safe-area insets in index.css keep the content clear of it.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Navideck" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Track and album titles like "Folge 1" must not turn into phone links. -->
+    <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <style>
+      /* Painted before the bundle loads: no white flash on a cold start. */
+      html {
+        background: #140e1f;
+      }
+      html[data-theme='light'] {
+        background: #f3eefb;
+      }
+    </style>
     <script>
       (function () {
         try {
+          var root = document.documentElement
+
+          root.setAttribute(
+            'data-theme',
+            localStorage.getItem('navideck.theme') === 'light' ? 'light' : 'dark',
+          )
+
           var saved = localStorage.getItem('navideck.uiMode')
           if (saved === 'deck' || saved === 'desktop') {
-            document.documentElement.setAttribute('data-ui', saved)
+            root.setAttribute('data-ui', saved)
             return
           }
           var ua = navigator.userAgent
@@ -43,13 +70,20 @@
               handheld = true
             }
           }
-          document.documentElement.setAttribute('data-ui', handheld ? 'deck' : 'desktop')
-          if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
-            document.documentElement.classList.add('standalone')
-          }
+          root.setAttribute('data-ui', handheld ? 'deck' : 'desktop')
         } catch (e) {}
+        if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+          document.documentElement.classList.add('standalone')
+        }
       })()
     </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
