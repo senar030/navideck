@@ -3245,6 +3245,22 @@ html[data-ui='deck'] .pw-row input {
     gap: 0;
   }
 
+  /*
+   * The floating player is the only thing that should cover the page
+   * background here, and it has to read as a pill. Two things used to get in
+   * the way:
+   *
+   *   - `backdrop-filter` on a rounded box is not clipped to the border radius
+   *     on iOS, and the big `--shadow` gets composited over the whole grid row,
+   *     so a full-width bar appeared around and behind the pill. Both are gone
+   *     (an opaque fill is also cheaper to composite on touch devices). What is
+   *     left — the hairline and the inset top highlight — lives *inside* the
+   *     radius, so only the pill's own silhouette covers the background.
+   *   - `--bg-2` at 88% came out nearly identical to the nav bar right below it
+   *     (in the dark palettes the two differ by ~1/255), so the pill did not
+   *     separate from the bottom chrome. `--surface` is a clear step up from
+   *     both the page background and the nav.
+   */
   .player-bar,
   html[data-ui='deck'] .player-bar {
     position: relative;
@@ -3258,12 +3274,10 @@ html[data-ui='deck'] .pw-row input {
     width: auto;
     margin: 0.1rem 0.7rem 0.4rem;
     padding: 0.4rem 0.45rem 0.4rem 0.4rem;
-    border: 0;
+    border: 1px solid var(--line-strong);
     border-radius: 1.4rem;
-    background: color-mix(in srgb, var(--bg-2) 88%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.25);
-    backdrop-filter: blur(20px) saturate(1.25);
-    box-shadow: var(--shadow);
+    background: var(--surface);
+    box-shadow: inset 0 1px 0 var(--hair);
   }
 
   .player-now,
