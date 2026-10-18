@@ -7,11 +7,12 @@ import { ArtistDetail, ArtistList } from './ArtistViews'
 import { SectionPage } from './DashboardSections'
 import { GenreDetail, GenreList } from './GenreViews'
 import { HomeDashboard } from './HomeDashboard'
-import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconLogo, IconStar } from './Icons'
+import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconLogo, IconRadio, IconStar } from './Icons'
 import { NowPlaying } from './NowPlaying'
 import { PlayerBar } from './PlayerBar'
 import { PlaylistDetail, PlaylistList } from './PlaylistViews'
 import { QueuePanel } from './QueuePanel'
+import { RadioView } from './RadioView'
 import { SettingsSheet } from './SettingsSheet'
 import { StarredView } from './StarredView'
 
@@ -35,6 +36,7 @@ export function Shell() {
         <NavBtn active={view.name === 'albums'} onClick={() => go({ name: 'albums' })} icon={<IconAlbums />} label="Alben" />
         <NavBtn active={view.name === 'artists'} onClick={() => go({ name: 'artists' })} icon={<IconArtists />} label="Künstler" />
         <NavBtn active={view.name === 'genres' || view.name === 'genre'} onClick={() => go({ name: 'genres' })} icon={<IconGenres />} label="Genres" />
+        <NavBtn active={view.name === 'radio'} onClick={() => go({ name: 'radio' })} icon={<IconRadio />} label="Radio" />
         <NavBtn
           active={view.name === 'playlists'}
           onClick={() => go({ name: 'playlists' })}
@@ -62,6 +64,7 @@ export function Shell() {
           {view.name === 'playlists' ? <PlaylistList /> : null}
           {view.name === 'starred' ? <StarredView /> : null}
           {view.name === 'genres' ? <GenreList /> : null}
+          {view.name === 'radio' ? <RadioView /> : null}
           {view.name === 'album' ? <AlbumDetail id={view.id} /> : null}
           {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
           {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}

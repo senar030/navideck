@@ -78,13 +78,13 @@ export function QueuePanel() {
           {queue.map((song, i) => (
             <div key={`${song.id}-${i}`} className={`queue-row ${i === index ? 'is-active' : ''}`}>
               <button type="button" className="queue-main" onClick={() => playIndex(i)}>
-                <CoverArt coverArt={song.coverArt} alt="" size={80} className="track-cover" />
+                <CoverArt coverArt={song.coverArt} src={song.radio?.logo} alt="" size={80} className="track-cover" />
                 <span className="track-meta">
                   <MarqueeText className="track-title">{song.title}</MarqueeText>
                   <span className="track-sub">{song.artist}</span>
                 </span>
               </button>
-              <span className="track-time">{formatTime(song.duration)}</span>
+              <span className="track-time">{song.radio ? 'LIVE' : formatTime(song.duration)}</span>
               <button type="button" className="icon-btn" aria-label="Entfernen" onClick={() => removeFromQueue(i)}>
                 <IconClose size={18} />
               </button>

@@ -19,6 +19,7 @@ import {
   IconStar,
   IconVolume,
 } from './Icons'
+import { LiveBadge } from './LiveBadge'
 import { MarqueeText } from './MarqueeText'
 
 export function NowPlaying() {
@@ -91,7 +92,8 @@ export function NowPlaying() {
 
   if (!expanded || !current) return null
 
-  const bg = client?.coverUrl(current.coverArt, 80)
+  const live = Boolean(current.radio)
+  const bg = current.radio?.logo ?? client?.coverUrl(current.coverArt, 80)
   const progress = duration ? (currentTime / duration) * 100 : 0
 
   function open(view: Parameters<typeof go>[0]) {
@@ -133,11 +135,12 @@ export function NowPlaying() {
             <button
               type="button"
               className="np-flip-face np-flip-front"
-              aria-label="Songtext anzeigen"
-              data-tip="Songtext anzeigen"
+              aria-label={live ? undefined : 'Songtext anzeigen'}
+              data-tip={live ? undefined : 'Songtext anzeigen'}
+              disabled={live}
               onClick={() => setShowLyrics(true)}
             >
-              <CoverArt coverArt={current.coverArt} alt="" size={900} className="np-cover" />
+              <CoverArt coverArt={current.coverArt} src={current.radio?.logo} alt="" size={900} className="np-cover" />
             </button>
             <div className="np-flip-face np-flip-back">
               <div
@@ -166,15 +169,17 @@ export function NowPlaying() {
           <h2>
             <MarqueeText className="np-title-text">{current.title}</MarqueeText>
           </h2>
-          <button
-            type="button"
-            className={`icon-btn ${current.starred ? 'is-on' : ''}`}
-            aria-label={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
-            data-tip={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
-            onClick={toggleStar}
-          >
-            <IconStar size={22} filled={Boolean(current.starred)} />
-          </button>
+          {live ? null : (
+            <button
+              type="button"
+              className={`icon-btn ${current.starred ? 'is-on' : ''}`}
+              aria-label={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+              data-tip={current.starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+              onClick={toggleStar}
+            >
+              <IconStar size={22} filled={Boolean(current.starred)} />
+            </button>
+          )}
         </div>
         <div className="np-links">
           {current.artistId ? (
@@ -196,20 +201,31 @@ export function NowPlaying() {
               {current.genre}
             </button>
           ) : null}
+          {current.radio?.homepage ? (
+            <a className="link-btn" href={current.radio.homepage} target="_blank" rel="noreferrer noopener">
+              Webseite
+            </a>
+          ) : null}
         </div>
-        <label className="seek">
-          <span>{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.5}
-            value={Math.min(currentTime, duration || 0)}
-            onChange={(e) => seek(Number(e.target.value))}
-            style={{ ['--progress' as string]: `${progress}%` }}
-          />
-          <span>{formatTime(duration)}</span>
-        </label>
+        {live ? (
+          <div className="np-live">
+            <LiveBadge />
+          </div>
+        ) : (
+          <label className="seek">
+            <span>{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.5}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => seek(Number(e.target.value))}
+              style={{ ['--progress' as string]: `${progress}%` }}
+            />
+            <span>{formatTime(duration)}</span>
+          </label>
+        )}
         <div className="np-transport">
           <button type="button" className={`icon-btn ${shuffle ? 'is-on' : ''}`} aria-label="Zufallswiedergabe" data-tip="Zufallswiedergabe" onClick={toggleShuffle}>
             <IconShuffle size={22} />
@@ -235,16 +251,18 @@ export function NowPlaying() {
           </button>
         </div>
         <div className="vol-row">
-          <button
-            type="button"
-            className="icon-btn mix-btn"
-            disabled={mixBusy}
-            aria-label={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
-            data-tip={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
-            onClick={() => void mixFromSong()}
-          >
-            <IconRadio size={22} />
-          </button>
+          {live ? null : (
+            <button
+              type="button"
+              className="icon-btn mix-btn"
+              disabled={mixBusy}
+              aria-label={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+              data-tip={mixBusy ? 'Mische…' : 'Ähnlichen Mix'}
+              onClick={() => void mixFromSong()}
+            >
+              <IconRadio size={22} />
+            </button>
+          )}
           {volumeSupported ? (
             <>
               <IconVolume size={18} />
@@ -280,7 +298,7 @@ export function NowPlaying() {
                   <MarqueeText className="track-title">{song.title}</MarqueeText>
                   <span className="track-sub">{song.artist}</span>
                 </span>
-                <span className="track-time">{formatTime(song.duration)}</span>
+                <span className="track-time">{song.radio ? 'LIVE' : formatTime(song.duration)}</span>
               </button>
             ))}
           </div>

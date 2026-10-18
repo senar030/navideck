@@ -2195,6 +2195,244 @@ html[data-theme='light'] .hero-banner {
 }
 
 /* ==========================================================================
+   Radio
+   ========================================================================== */
+
+/*
+ * Stations are their own kind of thing: they have no album, no length and no
+ * play count, so they get their own row style instead of borrowing the track
+ * list. The list wraps into as many columns as fit — one on a phone, up to
+ * three on a wide screen.
+ */
+
+.radio-lead,
+.radio-credit {
+  margin: -0.4rem 0 1.15rem;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  max-width: 46rem;
+}
+
+.radio-credit {
+  margin: 0.9rem 0 0;
+  font-size: var(--fs-xs);
+}
+
+.radio-notice {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.radio-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.4rem;
+}
+
+.radio-card {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  transition: background var(--dur) var(--ease);
+}
+
+.radio-card:hover {
+  background: var(--hover);
+}
+
+.radio-hit {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.radio-hit .radio-art {
+  width: 2.9rem;
+  height: 2.9rem;
+  aspect-ratio: auto;
+  border-radius: var(--r-sm);
+}
+
+.radio-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.radio-text strong {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.radio-text em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The play button only appears on the row the pointer is on. */
+.radio-start {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding-left: 0.1rem;
+  border-radius: var(--pill);
+  background: var(--accent);
+  color: var(--play-ink);
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.radio-card:hover .radio-start,
+.radio-hit:focus-visible .radio-start {
+  opacity: 1;
+  transform: none;
+}
+
+.radio-action {
+  flex-shrink: 0;
+}
+
+.radio-followed {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0 0.55rem;
+  min-height: 2.1rem;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.radio-confirm {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.radio-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+  padding: 0.3rem 0.55rem 0.3rem 0.75rem;
+  max-width: 30rem;
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--muted);
+}
+
+.radio-search:focus-within {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--text);
+}
+
+.radio-search input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.3rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+/* A live stream has no timeline, so the badge takes the seek bar's place. */
+.player-seek.is-live,
+.np-live {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 1.15rem;
+  overflow: hidden;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.12rem 0.55rem 0.12rem 0.45rem;
+  border-radius: var(--pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.live-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: live-pulse 2.2s var(--ease) infinite;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-detail {
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}
+
+@media (pointer: coarse) {
+  /* There is no hovering on a touch screen: the play button is always visible. */
+  .radio-start {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
    Dashboard
    ========================================================================== */
 
@@ -3693,7 +3931,9 @@ html[data-ui='deck'] .pw-row input {
   .player-now,
   .player-controls,
   .player-extra,
-  .player-seek {
+  .player-seek,
+  /* The live badge would take the slim pill's room from the station name. */
+  .player-seek.is-live {
     display: none;
   }
 

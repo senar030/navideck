@@ -71,6 +71,21 @@ npm run icons
 
 That rewrites `public/icons/*` (192/512, maskable variants, 180px iOS icon).
 
+## Radio
+
+The **Radio** nav point looks up internet radio stations through
+[radio-browser.info](https://www.radio-browser.info/), a free, community-run
+directory, and hands the ones you follow to Navidrome — so they turn up there and
+in every other Subsonic client. Three things are worth knowing:
+
+- Following and removing a station needs a Navidrome **admin** account. The
+  station list itself is visible to everybody, and any user can play from it.
+- Only **HTTPS** streams are listed. Navidrome stores a station as a URL and the
+  browser plays it directly; a page served over HTTPS refuses to load a plain
+  `http://` stream, and Navidrome does not proxy streams itself.
+- Station logos come from the directory and are remembered per browser, because
+  a station in Navidrome only carries a logo if somebody uploaded one there.
+
 ## TrueNAS + Portainer
 
 Portainer on TrueNAS cannot build this image (`mkdir /.docker: permission denied`). GitHub Actions builds it; Portainer only pulls `ghcr.io/senar030/navideck:latest`.

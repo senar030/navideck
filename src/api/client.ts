@@ -8,8 +8,10 @@ import type {
   Genre,
   MusicFolder,
   Playlist,
+  RadioStation,
   SearchResult,
   Song,
+  SubsonicUser,
 } from './types'
 
 type SubsonicResponse = {
@@ -32,6 +34,22 @@ type SubsonicResponse = {
   similarSongs2?: { song?: Song[] }
   lyrics?: { artist?: string; title?: string; value?: string }
   lyricsList?: { structuredLyrics?: StructuredLyrics | StructuredLyrics[] }
+  internetRadioStations?: { internetRadioStation?: RadioStation | RadioStation[] }
+  users?: { user?: SubsonicUser | SubsonicUser[] }
+}
+
+/**
+ * A refused request, with the numeric code the server answered with. Callers use
+ * it to tell "you are not an admin" (50) apart from a plain failure.
+ */
+export class SubsonicError extends Error {
+  readonly code: number
+
+  constructor(code: number, message: string) {
+    super(message)
+    this.name = 'SubsonicError'
+    this.code = code
+  }
 }
 
 type LyricLine = { start?: number; value?: string }
@@ -74,6 +92,8 @@ export class NavidromeClient {
   private artistScan: CacheEntry<ArtistLookup> | null = null
   private genresCache: CacheEntry<Genre[]> | null = null
   private playlistsCache: CacheEntry<Playlist[]> | null = null
+  private radioCache: CacheEntry<RadioStation[]> | null = null
+  private me: Promise<SubsonicUser | null> | null = null
   private albumLists = new Map<string, { at: number; data: Promise<Album[]> }>()
   private playlistLists = new Map<string, { at: number; data: Promise<Playlist> }>()
 
@@ -564,6 +584,63 @@ export class NavidromeClient {
     await this.request('unstar', { [kind]: id })
   }
 
+  /**
+   * The radio stations Navidrome knows about. They belong to the server, not to
+   * a library, so the folder filter plays no part here.
+   */
+  async getRadioStations(refresh = false): Promise<RadioStation[]> {
+    if (!refresh && isFresh(this.radioCache, '', LIST_TTL)) return this.radioCache.data
+    const data = this.fetchRadioStations().catch((err: unknown) => {
+      this.radioCache = null
+      throw err
+    })
+    this.radioCache = { key: '', at: Date.now(), data }
+    return data
+  }
+
+  private async fetchRadioStations(): Promise<RadioStation[]> {
+    const data = await this.request('getInternetRadioStations')
+    return asList(data.internetRadioStations?.internetRadioStation)
+  }
+
+  /** Adds a station to Navidrome. Only an admin account is allowed to do this. */
+  async createRadioStation(station: {
+    name: string
+    streamUrl: string
+    homePageUrl?: string
+  }): Promise<void> {
+    await this.request('createInternetRadioStation', {
+      name: station.name,
+      streamUrl: station.streamUrl,
+      homepageUrl: station.homePageUrl ?? '',
+    })
+    this.radioCache = null
+  }
+
+  /** Removes a station from Navidrome — for everybody using that server. */
+  async deleteRadioStation(id: string): Promise<void> {
+    await this.request('deleteInternetRadioStation', { id })
+    this.radioCache = null
+  }
+
+  /**
+   * The logged-in account. The admin flag decides whether the radio view offers
+   * to add and remove stations at all.
+   */
+  async getMe(): Promise<SubsonicUser | null> {
+    if (this.me) return this.me
+    const pending = this.request('getUsers').then(
+      (data) => asList(data.users?.user)[0] ?? null,
+      () => null,
+    )
+    this.me = pending
+    void pending.then((user) => {
+      // A failed lookup is not remembered, so the next visit tries again.
+      if (!user && this.me === pending) this.me = null
+    })
+    return pending
+  }
+
   async scrobble(id: string, submission: boolean): Promise<void> {
     try {
       await this.request('scrobble', {
@@ -619,7 +696,10 @@ export class NavidromeClient {
     const data = json['subsonic-response']
     if (!data) throw new Error('Unerwartete Antwort vom Server')
     if (data.status === 'failed') {
-      throw new Error(data.error?.message ?? 'Anmeldung oder Anfrage fehlgeschlagen')
+      throw new SubsonicError(
+        data.error?.code ?? 0,
+        data.error?.message ?? 'Anmeldung oder Anfrage fehlgeschlagen',
+      )
     }
     return data
   }

@@ -115,6 +115,11 @@ function saveData(): boolean {
   return Boolean(connection?.saveData)
 }
 
+/** A live stream answers with `Infinity` — or nothing — when asked how long it is. */
+function finiteDuration(element: HTMLAudioElement, fallback = 0): number {
+  return Number.isFinite(element.duration) ? element.duration : fallback
+}
+
 const volumeSupported = supportsVolume(first)
 
 /**
@@ -214,8 +219,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const loadAndPlay = useCallback(
     (song: Song) => {
       if (!client) return
-      const url = client.streamUrl(song.id)
-      scrobbled.current = false
+      /*
+       * A radio entry carries its own stream URL; anything else is a file that
+       * Navidrome hands out. Live streams are never scrobbled — they have no
+       * length and belong to no user account.
+       */
+      const url = song.radio?.url ?? client.streamUrl(song.id)
+      scrobbled.current = Boolean(song.radio)
 
       const holds = (element: HTMLAudioElement) =>
         element.dataset.songId === song.id &&
@@ -225,7 +235,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (holds(active)) {
         // The same track again (repeat one, or tapping what already plays):
         // the audio is right here, so start it over instead of fetching it.
-        active.currentTime = 0
+        // A live stream has no beginning to jump back to, so it reconnects.
+        if (song.radio) active.load()
+        else active.currentTime = 0
         setCurrentTime(0)
         start(active, song)
       } else if (holds(idle())) {
@@ -236,7 +248,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         active.volume = previous.volume
         active.muted = previous.muted
         setCurrentTime(active.currentTime || 0)
-        setDuration(active.duration || song.duration || 0)
+        setDuration(finiteDuration(active, song.duration ?? 0))
         void active.play().then(
           () => setPlaying(true),
           () => {
@@ -267,7 +279,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         start(active, song)
       }
 
-      void client.scrobble(song.id, false)
+      if (!song.radio) void client.scrobble(song.id, false)
     },
     [client, start],
   )
@@ -312,7 +324,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggleStar = useCallback(() => {
     const song = queueRef.current[indexRef.current]
-    if (!song || !client) return
+    // A station has no id Navidrome could star.
+    if (!song || !client || song.radio) return
     const next = !song.starred
     void (next ? client.star(song.id) : client.unstar(song.id)).then(
       () => {
@@ -356,6 +369,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [playIndex])
 
   const prev = useCallback(() => {
+    if (queueRef.current[indexRef.current]?.radio) {
+      // A live stream has no start to go back to: reconnect to the live edge.
+      active.load()
+      void active.play().then(
+        () => setPlaying(true),
+        () => setPlaying(false),
+      )
+      return
+    }
     if (active.currentTime > 3) {
       active.currentTime = 0
       return
@@ -366,6 +388,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [playIndex])
 
   const seek = useCallback((time: number) => {
+    // A live stream cannot be seeked — the bar is not shown for it either.
+    if (queueRef.current[indexRef.current]?.radio) return
     active.currentTime = time
     setCurrentTime(time)
   }, [])
@@ -455,13 +479,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!client || !song) return
     const element = active
     element.dataset.songId = song.id
-    element.src = client.streamUrl(song.id)
+    element.src = song.radio?.url ?? client.streamUrl(song.id)
+    if (song.radio) {
+      /*
+       * A live stream must not be opened just because the app was started: that
+       * would pull the station for a session that never plays it. The URL is in
+       * place, so the play button fetches it when it is really wanted. The live
+       * position from the last session means nothing either.
+       */
+      element.preload = 'none'
+      scrobbled.current = true
+      setCurrentTime(0)
+      setDuration(0)
+      return
+    }
     element.preload = 'auto'
     const onMeta = () => {
       if (queueRef.current[indexRef.current]?.id !== song.id) return
-      const t = Math.min(saved.time, Number.isFinite(element.duration) ? element.duration : saved.time)
+      const t = Math.min(saved.time, finiteDuration(element, saved.time))
       if (t > 0) element.currentTime = t
-      setDuration(element.duration || 0)
+      setDuration(finiteDuration(element))
       setCurrentTime(element.currentTime)
     }
     element.addEventListener('loadedmetadata', onMeta, { once: true })
@@ -526,8 +563,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const now = performance.now()
       if (now - lastTick.current < 200) return
       lastTick.current = now
-      setCurrentTime(active.currentTime)
       const song = queueRef.current[indexRef.current]
+      // A live stream has no progress to show and nothing to scrobble.
+      if (song?.radio) return
+      setCurrentTime(active.currentTime)
       if (
         song &&
         !scrobbled.current &&
@@ -539,7 +578,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
     const onMeta = (event: Event) => {
-      if (mine(event)) setDuration(active.duration || 0)
+      if (mine(event)) setDuration(finiteDuration(active))
     }
     const onEnded = (event: Event) => {
       if (mine(event)) next()
@@ -579,7 +618,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!client) return
     const song = queue[index]
     const upcoming = queue[index + 1] ?? (repeat === 'all' ? queue[0] : undefined)
-    const wanted = repeat !== 'one' && upcoming && upcoming.id !== song?.id ? upcoming.id : null
+    // A station is never preloaded: there is no beginning to buffer ahead of the
+    // live edge, and an open connection would pull it for a track maybe skipped.
+    const wanted =
+      repeat !== 'one' && upcoming && !upcoming.radio && upcoming.id !== song?.id ? upcoming.id : null
 
     // A preload for a track this queue no longer plays must not keep running.
     const target = idle()
@@ -624,8 +666,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         title: song.title,
         artist: song.artist ?? '',
         album: song.album ?? '',
-        artwork:
-          song.coverArt && client
+        artwork: song.radio?.logo
+          ? [{ src: song.radio.logo, sizes: '512x512' }]
+          : song.coverArt && client
             ? [{ src: client.coverUrl(song.coverArt, 512) ?? '', sizes: '512x512' }]
             : [],
       })
@@ -640,13 +683,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ['previoustrack', () => prev()],
       ['nexttrack', () => next()],
       ['stop', () => active.pause()],
-      [
+    ]
+    // A live stream has no timeline to jump around in.
+    if (!song.radio) {
+      handlers.push([
         'seekto',
         (details) => {
           if (typeof details.seekTime === 'number') seek(details.seekTime)
         },
-      ],
-    ]
+      ])
+    }
     for (const [action, handler] of handlers) {
       try {
         session.setActionHandler(action, handler)

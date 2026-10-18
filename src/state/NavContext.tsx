@@ -8,6 +8,7 @@ export type View =
   | { name: 'starred' }
   | { name: 'search' }
   | { name: 'genres' }
+  | { name: 'radio' }
   | { name: 'album'; id: string }
   | { name: 'artist'; id: string }
   | { name: 'playlist'; id: string }
@@ -26,7 +27,7 @@ type NavContextValue = {
 
 const NavContext = createContext<NavContextValue | null>(null)
 
-const ROOTS = new Set(['home', 'albums', 'artists', 'playlists', 'starred', 'search', 'genres'])
+const ROOTS = new Set(['home', 'albums', 'artists', 'playlists', 'starred', 'search', 'genres', 'radio'])
 
 /** Views whose address carries a single id segment. */
 const DETAILS = new Set(['album', 'artist', 'playlist', 'genre', 'section'])

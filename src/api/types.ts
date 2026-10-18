@@ -1,3 +1,16 @@
+/**
+ * An internet radio stream standing in for a song in the player queue: it has
+ * no length, cannot be seeked, and must not be preloaded or scrobbled.
+ */
+export type RadioTrack = {
+  /** The station's stream URL — played instead of a Navidrome stream. */
+  url: string
+  /** Station logo, when one is known. */
+  logo?: string
+  /** The station's website, when one is known. */
+  homepage?: string
+}
+
 export type Song = {
   id: string
   title: string
@@ -13,6 +26,8 @@ export type Song = {
   discNumber?: number
   genre?: string
   playCount?: number
+  /** Set when this queue entry is a live radio stream rather than a file. */
+  radio?: RadioTrack
 }
 
 export type Album = {
@@ -86,4 +101,21 @@ export type ArtistInfo = {
   mediumImageUrl?: string
   largeImageUrl?: string
   similarArtist?: Artist[]
+}
+
+/** An internet radio station as Navidrome stores it. */
+export type RadioStation = {
+  id: string
+  name: string
+  streamUrl: string
+  /** Navidrome answers with `homePageUrl`, but the create call takes `homepageUrl`. */
+  homePageUrl?: string
+  /** Only set once somebody uploaded a logo for the station in Navidrome. */
+  coverArt?: string
+}
+
+/** The part of Navidrome's user record the app has a use for. */
+export type SubsonicUser = {
+  username: string
+  adminRole?: boolean
 }

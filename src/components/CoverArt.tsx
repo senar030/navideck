@@ -3,14 +3,16 @@ import { useAuth } from '../state/AuthContext'
 
 type Props = {
   coverArt?: string
+  /** A ready-made image URL, used by radio: station logos are not cover art. */
+  src?: string
   alt: string
   size?: number
   className?: string
 }
 
-export function CoverArt({ coverArt, alt, size = 300, className = '' }: Props) {
+export function CoverArt({ coverArt, src: url, alt, size = 300, className = '' }: Props) {
   const { client } = useAuth()
-  const src = client?.coverUrl(coverArt, size)
+  const src = url ?? client?.coverUrl(coverArt, size)
   // Remember which src failed so a later, different cover can still load.
   const [failedSrc, setFailedSrc] = useState<string>()
 
@@ -18,7 +20,7 @@ export function CoverArt({ coverArt, alt, size = 300, className = '' }: Props) {
     setFailedSrc(src)
     // The service worker keeps cover art around; a cover that failed must not
     // stay in there forever, or the album would never recover.
-    navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_COVER', url: src })
+    if (!url) navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_COVER', url: src })
   }
 
   return (
