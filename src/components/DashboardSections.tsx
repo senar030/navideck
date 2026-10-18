@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALBUM_PAGE } from '../api/client'
 import type { Album, AlbumListType, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
@@ -26,12 +26,14 @@ import {
 } from './DashboardData'
 
 /*
- * Every block on the start page is one entry in `SECTIONS`. A section owns the
- * whole `<section class="dash-block">` — heading, optional action button and
- * body — so a section that needs a control next to its title (the reshuffle
- * button) keeps that state in one place. Adding a new category means writing one
- * component, adding one registry entry at the bottom, and optionally a `Page`
- * for the "Weitere laden…" tile.
+ * The blocks the start page is built from: each one owns a whole
+ * `<section class="dash-block">` — heading, optional action button and body — so
+ * a block that needs a control next to its title (the reshuffle button) keeps
+ * that state in one place.
+ *
+ * Which blocks a start page shows, in which order and under which name is not
+ * decided here: that is the registry in `DashboardRegistry.tsx`, which keeps this
+ * module to components only.
  */
 
 /** Albums per step when a full song page walks an album list. */
@@ -41,7 +43,7 @@ const SONG_ALBUM_STEP = 6
    Sections
    ========================================================================== */
 
-function RecentAlbumsSection(props: SectionProps) {
+export function RecentAlbumsSection(props: SectionProps) {
   const { albums, loading } = useAlbums('recent')
 
   return (
@@ -51,7 +53,7 @@ function RecentAlbumsSection(props: SectionProps) {
   )
 }
 
-function NewAlbumsSection(props: SectionProps) {
+export function NewAlbumsSection(props: SectionProps) {
   const { albums, loading } = useAlbums('newest')
 
   return (
@@ -61,7 +63,7 @@ function NewAlbumsSection(props: SectionProps) {
   )
 }
 
-function FrequentAlbumsSection(props: SectionProps) {
+export function FrequentAlbumsSection(props: SectionProps) {
   const { albums, loading } = useAlbums('frequent')
 
   return (
@@ -105,7 +107,7 @@ function SongRowBody({
   )
 }
 
-function RecentSongsSection(props: SectionProps) {
+export function RecentSongsSection(props: SectionProps) {
   const { songs, loading } = useAlbumSongs('recent', 3)
 
   return (
@@ -115,7 +117,7 @@ function RecentSongsSection(props: SectionProps) {
   )
 }
 
-function StarredArtistsSection(props: SectionProps) {
+export function StarredArtistsSection(props: SectionProps) {
   const { data, loading } = useStarred()
   const artists = data.artist ?? []
 
@@ -136,7 +138,7 @@ function StarredArtistsSection(props: SectionProps) {
   )
 }
 
-function StarredAlbumsSection(props: SectionProps) {
+export function StarredAlbumsSection(props: SectionProps) {
   const { data, loading } = useStarred()
   const albums = data.album ?? []
 
@@ -157,7 +159,7 @@ function StarredAlbumsSection(props: SectionProps) {
   )
 }
 
-function StarredSongsSection(props: SectionProps) {
+export function StarredSongsSection(props: SectionProps) {
   const { data, loading } = useStarred()
   const songs = data.song ?? []
 
@@ -168,7 +170,7 @@ function StarredSongsSection(props: SectionProps) {
   )
 }
 
-function RandomAlbumsSection(props: SectionProps) {
+export function RandomAlbumsSection(props: SectionProps) {
   const { items, loading, failed, refresh } = useRandom(randomAlbumStore)
 
   return (
@@ -190,7 +192,7 @@ function RandomAlbumsSection(props: SectionProps) {
   )
 }
 
-function RandomArtistsSection(props: SectionProps) {
+export function RandomArtistsSection(props: SectionProps) {
   const { items, loading, failed, refresh } = useRandom(randomArtistStore)
 
   return (
@@ -212,7 +214,7 @@ function RandomArtistsSection(props: SectionProps) {
   )
 }
 
-function GenrePlaylistsSection(props: SectionProps) {
+export function GenrePlaylistsSection(props: SectionProps) {
   const genres = useGenres()
 
   return (
@@ -235,7 +237,7 @@ function GenrePlaylistsSection(props: SectionProps) {
    ========================================================================== */
 
 /** Paged album grid, used by "Zuletzt gehört" and "Meist gespielte Alben". */
-function AlbumFeed({ type }: { type: AlbumListType }) {
+export function AlbumFeed({ type }: { type: AlbumListType }) {
   const { client, selectedFolderIds } = useAuth()
   const [albums, setAlbums] = useState<Album[]>([])
   const [error, setError] = useState('')
@@ -243,28 +245,45 @@ function AlbumFeed({ type }: { type: AlbumListType }) {
   const [more, setMore] = useState(false)
   const sentinel = useRef<HTMLDivElement>(null)
   const busy = useRef(false)
+  /*
+   * The list and the library the grid on screen answers. A different one starts
+   * from an empty grid and a spinner, adjusted while rendering so the previous
+   * albums never paint as if they belonged to the new request.
+   */
+  const requested = `${type}|${selectedFolderIds.join(',')}`
+  const [shown, setShown] = useState(requested)
+
+  if (shown !== requested) {
+    setShown(requested)
+    setAlbums([])
+    setError('')
+    setLoading(true)
+  }
 
   const load = useCallback(
-    async (offset: number, append: boolean) => {
+    (offset: number, append: boolean) => {
       if (!client || busy.current) return
       busy.current = true
-      setLoading(true)
-      try {
-        const page = await client.getAlbumList(type, offset)
-        setAlbums((prev) => (append ? [...prev, ...page] : page))
-        setMore(page.length === ALBUM_PAGE)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Alben konnten nicht geladen werden')
-      } finally {
-        busy.current = false
-        setLoading(false)
-      }
+      void client
+        .getAlbumList(type, offset)
+        .then((page) => {
+          setAlbums((prev) => (append ? [...prev, ...page] : page))
+          setMore(page.length === ALBUM_PAGE)
+          setError('')
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Alben konnten nicht geladen werden')
+        })
+        .finally(() => {
+          busy.current = false
+          setLoading(false)
+        })
     },
     [client, type],
   )
 
   useEffect(() => {
-    void load(0, false)
+    load(0, false)
   }, [load, selectedFolderIds])
 
   useEffect(() => {
@@ -272,7 +291,8 @@ function AlbumFeed({ type }: { type: AlbumListType }) {
     if (!el) return
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting) && more && !loading && !error) {
-        void load(albums.length, true)
+        setLoading(true)
+        load(albums.length, true)
       }
     })
     io.observe(el)
@@ -299,7 +319,7 @@ function AlbumFeed({ type }: { type: AlbumListType }) {
  * songs at a time: the endpoint has no notion of "recently played songs", so the
  * songs inherit the album order and arrive as the reader scrolls.
  */
-function AlbumSongsFeed({ type }: { type: AlbumListType }) {
+export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
   const { client, selectedFolderIds } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
@@ -311,11 +331,24 @@ function AlbumSongsFeed({ type }: { type: AlbumListType }) {
   const albumIndex = useRef(0)
   const hasMoreRef = useRef(true)
   const seen = useRef(new Set<string>())
+  /*
+   * The list and the library the songs on screen answer. A different one starts
+   * empty and loading, adjusted while rendering rather than in the effect that
+   * restarts the walk through the albums.
+   */
+  const requested = `${type}|${selectedFolderIds.join(',')}`
+  const [shown, setShown] = useState(requested)
+
+  if (shown !== requested) {
+    setShown(requested)
+    setSongs([])
+    setHasMore(true)
+    setLoading(true)
+  }
 
   const step = useCallback(async () => {
     if (!client || busy.current || !hasMoreRef.current) return
     busy.current = true
-    setLoading(true)
     try {
       if (albumIndex.current >= albums.current.length) {
         const page = await client.getAlbumList(type, albumPage.current * ALBUM_PAGE)
@@ -341,21 +374,27 @@ function AlbumSongsFeed({ type }: { type: AlbumListType }) {
   }, [client, type])
 
   useEffect(() => {
+    /*
+     * A new list, or a library switch, starts the walk from the beginning: the
+     * album page, the index into it and the songs already collected all belong
+     * to the request that just ended.
+     */
     albums.current = []
     albumPage.current = 0
     albumIndex.current = 0
     hasMoreRef.current = true
     seen.current = new Set()
-    setSongs([])
-    setHasMore(true)
     void step()
-  }, [step, selectedFolderIds])
+  }, [selectedFolderIds, step])
 
   useEffect(() => {
     const el = sentinel.current
     if (!el) return
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) void step()
+      /* Only announce loading when the step below will really run. */
+      if (!entries.some((e) => e.isIntersecting) || busy.current || !hasMoreRef.current) return
+      setLoading(true)
+      void step()
     })
     io.observe(el)
     return () => io.disconnect()
@@ -376,7 +415,7 @@ function AlbumSongsFeed({ type }: { type: AlbumListType }) {
   )
 }
 
-function StarredArtistsPage() {
+export function StarredArtistsPage() {
   const { data, loading } = useStarred()
   const artists = data.artist ?? []
   if (loading) return <Empty>Künstler werden geladen…</Empty>
@@ -390,7 +429,7 @@ function StarredArtistsPage() {
   )
 }
 
-function StarredAlbumsPage() {
+export function StarredAlbumsPage() {
   const { data, loading } = useStarred()
   const albums = data.album ?? []
   if (loading) return <Empty>Alben werden geladen…</Empty>
@@ -404,7 +443,7 @@ function StarredAlbumsPage() {
   )
 }
 
-function StarredSongsPage() {
+export function StarredSongsPage() {
   const { data, loading } = useStarred()
   const songs = data.song ?? []
   if (loading) return <Empty>Songs werden geladen…</Empty>
@@ -415,76 +454,5 @@ function StarredSongsPage() {
         <SongTile key={song.id} song={song} tracks={songs} compact />
       ))}
     </TileRow>
-  )
-}
-
-/* ==========================================================================
-   Registry
-   ========================================================================== */
-
-export type { SectionId }
-
-export type SectionDef = {
-  id: SectionId
-  label: string
-  /** Heading of the page behind the "Weitere laden…" tile. */
-  pageTitle: string
-  Section: (props: SectionProps) => ReactNode
-  Page?: () => ReactNode
-}
-
-export const SECTIONS: SectionDef[] = [
-  { id: 'recentAlbums', label: 'Zuletzt gehört', pageTitle: 'Zuletzt gehört', Section: RecentAlbumsSection, Page: () => <AlbumFeed type="recent" /> },
-  { id: 'newAlbums', label: 'Zuletzt hinzugefügt', pageTitle: 'Zuletzt hinzugefügt', Section: NewAlbumsSection, Page: () => <AlbumFeed type="newest" /> },
-  { id: 'recentSongs', label: 'Letzte Songs', pageTitle: 'Letzte Songs', Section: RecentSongsSection, Page: () => <AlbumSongsFeed type="recent" /> },
-  { id: 'randomAlbums', label: 'Zufällige Alben', pageTitle: 'Zufällige Alben', Section: RandomAlbumsSection },
-  { id: 'randomArtists', label: 'Zufällige Künstler', pageTitle: 'Zufällige Künstler', Section: RandomArtistsSection },
-  { id: 'genrePlaylists', label: 'Genre Radio', pageTitle: 'Genre Radio', Section: GenrePlaylistsSection },
-  { id: 'frequentAlbums', label: 'Meist gespielte Alben', pageTitle: 'Meist gespielte Alben', Section: FrequentAlbumsSection, Page: () => <AlbumFeed type="frequent" /> },
-  { id: 'starredArtists', label: 'Favoriten Künstler', pageTitle: 'Favoriten Künstler', Section: StarredArtistsSection, Page: StarredArtistsPage },
-  { id: 'starredAlbums', label: 'Favoriten Alben', pageTitle: 'Favoriten Alben', Section: StarredAlbumsSection, Page: StarredAlbumsPage },
-  { id: 'starredSongs', label: 'Favoriten Songs', pageTitle: 'Favoriten Songs', Section: StarredSongsSection, Page: StarredSongsPage },
-]
-
-/** Start page order out of the box. */
-export const DEFAULT_SECTIONS: SectionId[] = [
-  'recentAlbums',
-  'newAlbums',
-  'recentSongs',
-  'randomAlbums',
-  'randomArtists',
-  'genrePlaylists',
-  'frequentAlbums',
-  'starredArtists',
-  'starredAlbums',
-  'starredSongs',
-]
-
-export function sectionById(id: string): SectionDef | undefined {
-  return SECTIONS.find((section) => section.id === id)
-}
-
-export function SectionPage({ id }: { id: string }) {
-  const def = sectionById(id)
-
-  if (!def?.Page) {
-    return (
-      <div className="view">
-        <header className="view-head">
-          <h2>Unbekannte Kategorie</h2>
-        </header>
-        <Empty>Diese Kategorie gibt es nicht (mehr).</Empty>
-      </div>
-    )
-  }
-
-  const Page = def.Page
-  return (
-    <div className="view">
-      <header className="view-head">
-        <h2>{def.pageTitle}</h2>
-      </header>
-      <Page />
-    </div>
   )
 }

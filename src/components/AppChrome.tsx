@@ -27,8 +27,21 @@ export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
+  const [lastView, setLastView] = useState(view)
   const moreRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  /*
+   * Going somewhere else closes whatever the chrome had open. Adjusted while
+   * rendering rather than in an effect, so a new view never paints once with
+   * the search box of the previous one still sitting over it.
+   */
+  if (lastView !== view) {
+    setLastView(view)
+    setSearchOpen(false)
+    setQuery('')
+    setMoreOpen(false)
+  }
 
   useEffect(() => {
     if (!moreOpen) return
@@ -42,12 +55,6 @@ export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
   }, [searchOpen])
-
-  useEffect(() => {
-    setSearchOpen(false)
-    setQuery('')
-    setMoreOpen(false)
-  }, [view])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

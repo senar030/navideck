@@ -30,38 +30,54 @@ export function AlbumGrid() {
   const [more, setMore] = useState(false)
   const sentinel = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
+  /*
+   * The filter and the library the grid on screen was asked for. A different one
+   * starts from an empty grid and a spinner, adjusted while rendering so the old
+   * albums never paint under the new chip; the effect below only fetches.
+   */
+  const requested = `${type}|${selectedFolderIds.join(',')}`
+  const [shown, setShown] = useState(requested)
+
+  if (shown !== requested) {
+    setShown(requested)
+    setAlbums([])
+    setError('')
+    setLoading(true)
+  }
 
   const load = useCallback(
-    async (listType: AlbumListType, offset: number, append: boolean) => {
-      if (!client) return
-      if (loadingRef.current) return
+    (listType: AlbumListType, offset: number, append: boolean) => {
+      if (!client || loadingRef.current) return
       loadingRef.current = true
-      setLoading(true)
-      setError('')
-      try {
-        const page = await client.getAlbumList(listType, offset)
-        setAlbums((prev) => (append ? [...prev, ...page] : page))
-        setMore(page.length === ALBUM_PAGE)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Alben konnten nicht geladen werden')
-      } finally {
-        setLoading(false)
-        loadingRef.current = false
-      }
+      void client
+        .getAlbumList(listType, offset)
+        .then((page) => {
+          setAlbums((prev) => (append ? [...prev, ...page] : page))
+          setMore(page.length === ALBUM_PAGE)
+          setError('')
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Alben konnten nicht geladen werden')
+        })
+        .finally(() => {
+          setLoading(false)
+          loadingRef.current = false
+        })
     },
-    [client, selectedFolderIds],
+    [client],
   )
 
   useEffect(() => {
-    void load(type, 0, false)
-  }, [load, type])
+    load(type, 0, false)
+  }, [load, selectedFolderIds, type])
 
   useEffect(() => {
     const el = sentinel.current
     if (!el) return
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting) && more && !loading && !error) {
-        void load(type, albums.length, true)
+        setLoading(true)
+        load(type, albums.length, true)
       }
     })
     io.observe(el)

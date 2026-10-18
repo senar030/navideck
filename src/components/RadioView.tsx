@@ -23,8 +23,14 @@ export function RadioView() {
   const { playTracks } = usePlayer()
 
   const [stations, setStations] = useState<RadioStation[]>([])
-  const [stationsBusy, setStationsBusy] = useState(true)
+  const [stationsLoaded, setStationsLoaded] = useState(false)
   const [stationsError, setStationsError] = useState('')
+  /*
+   * Nothing to show and nothing has failed yet means the first list is still on
+   * its way. Derived rather than flagged, so the render that starts the request
+   * already knows it is loading.
+   */
+  const stationsBusy = !stationsLoaded && !stationsError
   const [admin, setAdmin] = useState<boolean | null>(null)
   const [logos, setLogos] = useState(readRadioLogos)
   /** Streams the directory was already asked about, so a reload does not ask twice. */
@@ -32,28 +38,33 @@ export function RadioView() {
 
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<RadioHit[]>([])
-  const [hitsBusy, setHitsBusy] = useState(true)
+  /** The query the hits on screen answer; `null` until the first answer is in. */
+  const [hitsQuery, setHitsQuery] = useState<string | null>(null)
+  const [hitsMoreBusy, setHitsMoreBusy] = useState(false)
   const [hitsError, setHitsError] = useState('')
   const [hitsMore, setHitsMore] = useState(false)
+  /* Still busy while the hits belong to an earlier query, or while "mehr" loads. */
+  const hitsBusy = hitsMoreBusy || hitsQuery !== query.trim()
 
   const [busyId, setBusyId] = useState('')
   const [confirmId, setConfirmId] = useState('')
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const loadStations = useCallback(async () => {
+  const loadStations = useCallback(() => {
     if (!client) return
-    setStationsBusy(true)
-    try {
-      setStations(await client.getRadioStations(true))
-      setStationsError('')
-    } catch (err) {
-      setStationsError(
-        `${describe(err)} Sender folgen braucht Navidrome 0.49 oder neuer — ältere Server kennen die Radio-Schnittstelle nicht.`,
-      )
-    } finally {
-      setStationsBusy(false)
-    }
+    return client
+      .getRadioStations(true)
+      .then((list) => {
+        setStations(list)
+        setStationsError('')
+      })
+      .catch((err: unknown) => {
+        setStationsError(
+          `${describe(err)} Sender folgen braucht Navidrome 0.49 oder neuer — ältere Server kennen die Radio-Schnittstelle nicht.`,
+        )
+      })
+      .finally(() => setStationsLoaded(true))
   }, [client])
 
   useEffect(() => {
@@ -106,20 +117,18 @@ export function RadioView() {
             setHits(found)
             setHitsError('')
             setHitsMore(found.length === RADIO_PAGE)
+            setHitsQuery(term)
           })
           .catch((err: unknown) => {
             if (cancelled) return
             setHits([])
             setHitsMore(false)
             setHitsError(describe(err))
-          })
-          .finally(() => {
-            if (!cancelled) setHitsBusy(false)
+            setHitsQuery(term)
           })
       },
       term ? SEARCH_DELAY_MS : 0,
     )
-    setHitsBusy(true)
     return () => {
       cancelled = true
       window.clearTimeout(timer)
@@ -189,7 +198,7 @@ export function RadioView() {
 
   async function loadMoreHits() {
     if (hitsBusy) return
-    setHitsBusy(true)
+    setHitsMoreBusy(true)
     try {
       const found = await searchRadioStations({ term: query, offset: hits.length })
       setHits((previous) => {
@@ -202,7 +211,7 @@ export function RadioView() {
       setHitsError(describe(err))
       setHitsMore(false)
     } finally {
-      setHitsBusy(false)
+      setHitsMoreBusy(false)
     }
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import { MIX_SIZES, usePrefs } from '../state/PrefsContext'
 import { PALETTES, useTheme } from '../state/ThemeContext'
@@ -127,12 +127,15 @@ export function SettingsSheet({ open, onClose }: Props) {
  * indicator.
  */
 function BuildInfo() {
-  const [shell, setShell] = useState('…')
-  useEffect(() => {
+  /*
+   * Measured once, while rendering — the sheet is drawn inside `.app`, so the
+   * element is there and both numbers describe the moment the settings open.
+   */
+  const [shell] = useState(() => {
     const app = document.querySelector('.app')
     const height = app ? Math.round(app.getBoundingClientRect().height) : 0
-    setShell(`${window.innerWidth}×${Math.round(window.innerHeight)} · Shell ${height}px`)
-  }, [])
+    return `${window.innerWidth}×${Math.round(window.innerHeight)} · Shell ${height}px`
+  })
   const build = String(import.meta.env.VITE_BUILD ?? 'dev').slice(0, 7)
   return (
     <p className="settings-hint build-info">

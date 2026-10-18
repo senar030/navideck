@@ -19,30 +19,33 @@ const RANDOM_ARTISTS = 10
 
 export function useAlbums(type: AlbumListType, limit = 0) {
   const { client, selectedFolderIds } = useAuth()
-  const [albums, setAlbums] = useState<Album[]>([])
-  const [loading, setLoading] = useState(true)
+  const [state, setState] = useState<{ key: string; albums: Album[] }>({ key: '', albums: [] })
+  const key = `${type}|${limit}|${selectedFolderIds.join(',')}`
+  /*
+   * "Loading" is not a flag of its own here: the strip is still loading as long
+   * as the albums it holds belong to a different request than the one the props
+   * describe. That way the render that changes `type` already shows the spinner
+   * instead of the previous list — an effect could only tell us one render late.
+   */
+  const loading = state.key !== key
 
   useEffect(() => {
     if (!client) return
     let alive = true
-    setLoading(true)
     void client
       .getAlbumList(type)
       .then((list) => {
-        if (alive) setAlbums(limit ? list.slice(0, limit) : list)
+        if (alive) setState({ key, albums: limit ? list.slice(0, limit) : list })
       })
       .catch(() => {
-        if (alive) setAlbums([])
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
+        if (alive) setState({ key, albums: [] })
       })
     return () => {
       alive = false
     }
-  }, [client, limit, selectedFolderIds, type])
+  }, [client, key, limit, type])
 
-  return { albums, loading }
+  return { albums: state.albums, loading }
 }
 
 /*
@@ -65,30 +68,27 @@ function loadStarred(client: NavidromeClient, key: string): Promise<SearchResult
 
 export function useStarred() {
   const { client, selectedFolderIds } = useAuth()
-  const key = selectedFolderIds.join(',')
-  const [data, setData] = useState<SearchResult>({})
-  const [loading, setLoading] = useState(true)
+  const folderKey = selectedFolderIds.join(',')
+  const [state, setState] = useState<{ key: string; data: SearchResult }>({ key: '', data: {} })
+  /* Loading for as long as the favourites on screen are another library's. */
+  const loading = state.key !== folderKey
 
   useEffect(() => {
     if (!client) return
     let alive = true
-    setLoading(true)
-    void loadStarred(client, key)
+    void loadStarred(client, folderKey)
       .then((next) => {
-        if (alive) setData(next)
+        if (alive) setState({ key: folderKey, data: next })
       })
       .catch(() => {
-        if (alive) setData({})
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
+        if (alive) setState({ key: folderKey, data: {} })
       })
     return () => {
       alive = false
     }
-  }, [client, key])
+  }, [client, folderKey])
 
-  return { data, loading }
+  return { data: state.data, loading }
 }
 
 /*
@@ -205,29 +205,26 @@ export function useGenres() {
  */
 export function useAlbumSongs(type: AlbumListType, albumCount: number) {
   const { client, selectedFolderIds } = useAuth()
-  const [songs, setSongs] = useState<Song[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = `${type}|${albumCount}|${selectedFolderIds.join(',')}`
+  const [state, setState] = useState<{ key: string; songs: Song[] }>({ key: '', songs: [] })
+  const loading = state.key !== key
 
   useEffect(() => {
     if (!client) return
     let alive = true
-    setLoading(true)
     void client
       .getAlbumList(type)
       .then((albums) => client.getSongsOfAlbums(albums.slice(0, albumCount)))
       .then((list) => {
-        if (alive) setSongs(list)
+        if (alive) setState({ key, songs: list })
       })
       .catch(() => {
-        if (alive) setSongs([])
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
+        if (alive) setState({ key, songs: [] })
       })
     return () => {
       alive = false
     }
-  }, [albumCount, client, selectedFolderIds, type])
+  }, [albumCount, client, key, type])
 
-  return { songs, loading }
+  return { songs: state.songs, loading }
 }

@@ -18,21 +18,29 @@ export function SearchResults({ query, onPick }: Props) {
   const { layout } = usePrefs()
   const [result, setResult] = useState<SearchResult>({})
   const [busy, setBusy] = useState(false)
+  const trimmed = query.trim()
+  const [lastQuery, setLastQuery] = useState(query)
+
+  /*
+   * Dropping below the two-character minimum clears the previous hits while
+   * rendering, so none of them can flash back the moment the query grows again.
+   */
+  if (lastQuery !== query) {
+    setLastQuery(query)
+    if (trimmed.length < 2) setResult({})
+  }
 
   useEffect(() => {
-    if (!client || query.trim().length < 2) {
-      setResult({})
-      return
-    }
+    if (!client || trimmed.length < 2) return
     const t = window.setTimeout(() => {
       setBusy(true)
       void client
-        .search(query.trim())
+        .search(trimmed)
         .then(setResult)
         .finally(() => setBusy(false))
     }, 280)
     return () => window.clearTimeout(t)
-  }, [client, query, selectedFolderIds])
+  }, [client, selectedFolderIds, trimmed])
 
   function open(view: Parameters<typeof go>[0]) {
     onPick?.()
@@ -40,7 +48,6 @@ export function SearchResults({ query, onPick }: Props) {
   }
 
   const songs = result.song ?? []
-  const trimmed = query.trim()
 
   if (trimmed.length < 2) {
     return <p className="muted">Mindestens zwei Zeichen eingeben…</p>

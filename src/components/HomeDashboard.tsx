@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DEFAULT_SECTIONS, SECTIONS, sectionById, type SectionId } from './DashboardSections'
+import { DEFAULT_SECTIONS, SECTIONS, sectionById, type SectionId } from './DashboardRegistry'
 import { ResumePlaying } from './ResumePlaying'
 
 /**

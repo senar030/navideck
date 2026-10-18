@@ -49,14 +49,15 @@ export function MarqueeText({ children, className = '', enabled = true, delay = 
   const textWidth = useRef(0)
   const [shift, setShift] = useState(0)
   const [onScreen, setOnScreen] = useState(false)
+  /*
+   * Whether a title may move at all is decided while rendering, so the effect
+   * below has nothing to undo and only ever measures.
+   */
+  const still = !enabled || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
 
   useEffect(() => {
     const element = box.current
-    if (!element) return
-    if (!enabled || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setShift(0)
-      return
-    }
+    if (!element || still) return
 
     const measure = () => {
       /*
@@ -73,17 +74,23 @@ export function MarqueeText({ children, className = '', enabled = true, delay = 
       setShift(hidden > TOLERANCE ? Math.round(hidden) : 0)
     }
 
-    measure()
+    /*
+     * The first measurement waits a frame, both because the box has to be laid
+     * out before its width means anything and because the effect itself must not
+     * set state.
+     */
+    const frame = requestAnimationFrame(measure)
     const resize = new ResizeObserver(measure)
     resize.observe(element)
     const stop = watch(element, setOnScreen)
     /* Web fonts arrive after the first paint and change the text width. */
     void element.ownerDocument.fonts?.ready.then(measure).catch(() => {})
     return () => {
+      cancelAnimationFrame(frame)
       resize.disconnect()
       stop()
     }
-  }, [children, enabled])
+  }, [children, still])
 
   const running = shift > 0 && onScreen
   const duration = shift ? Math.min(26, Math.max(8, Math.round(shift / SPEED))) : 0

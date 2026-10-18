@@ -18,21 +18,32 @@ export function QueuePanel() {
   const { queue, index, playIndex, removeFromQueue, reorderQueue, queueOpen, setQueueOpen } = usePlayer()
   const [sort, setSort] = useState<SongSort>('original')
   const [desc, setDesc] = useState(false)
-  const snapshot = useRef(queue)
+  const [snapshot, setSnapshot] = useState(queue)
+  const [wasOpen, setWasOpen] = useState(queueOpen)
   const listRef = useRef<HTMLDivElement>(null)
   const jumped = useRef(false)
 
-  useEffect(() => {
+  /*
+   * Opening the panel starts from the order the queue had at that moment — the
+   * one "Standard" puts back — and resets the sorting. Both are adjusted while
+   * rendering the change rather than in an effect, so the panel is drawn from
+   * the fresh values on its first paint instead of a second render.
+   */
+  if (wasOpen !== queueOpen) {
+    setWasOpen(queueOpen)
     if (queueOpen) {
-      snapshot.current = queue
+      setSnapshot(queue)
       setSort('original')
       setDesc(false)
-      jumped.current = false
     }
-  }, [queueOpen])
+  }
 
   useEffect(() => {
-    if (!queueOpen) return
+    if (!queueOpen) {
+      /* The next open jumps to the current track instead of easing towards it. */
+      jumped.current = false
+      return
+    }
     const root = listRef.current
     const item = root?.querySelector('.is-active') as HTMLElement | null
     const smooth = jumped.current
@@ -47,7 +58,7 @@ export function QueuePanel() {
     const nextDesc = next === sort ? !desc : false
     setSort(next)
     setDesc(nextDesc)
-    reorderQueue(sortSongs(snapshot.current, next, nextDesc))
+    reorderQueue(sortSongs(snapshot, next, nextDesc))
   }
 
   return (

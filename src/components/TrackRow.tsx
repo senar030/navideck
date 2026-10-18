@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Song } from '../api/types'
 import { formatTime } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
@@ -17,12 +17,22 @@ type Props = {
 export function TrackRow({ tracks, song, index, showCover = false }: Props) {
   const { client } = useAuth()
   const { current, playing, playTracks, addToQueue } = usePlayer()
-  const [starred, setStarred] = useState(Boolean(song.starred))
   const active = current?.id === song.id
+  /* What Navidrome says: the row's own song, or the playing one when it is this. */
+  const external = Boolean(song.starred) || (active && Boolean(current?.starred))
+  const [starred, setStarred] = useState(external)
+  const [known, setKnown] = useState(external)
 
-  useEffect(() => {
-    setStarred(Boolean(song.starred) || (current?.id === song.id && Boolean(current.starred)))
-  }, [song.id, song.starred, current?.id, current?.starred])
+  /*
+   * A star set here only has to hold until Navidrome reports the new state back,
+   * which is what `external` then carries. Adjusted while rendering rather than
+   * in an effect, so the row is never painted once with the star it is about to
+   * replace.
+   */
+  if (known !== external) {
+    setKnown(external)
+    setStarred(external)
+  }
 
   async function toggleStar() {
     if (!client) return

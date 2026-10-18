@@ -52,16 +52,22 @@ export function NowPlaying() {
   const { mixSize } = usePrefs()
   const [showList, setShowList] = useState(false)
   const [showLyrics, setShowLyrics] = useState(false)
-  const [lyrics, setLyrics] = useState('')
-  const [lyricsBusy, setLyricsBusy] = useState(false)
+  /** The lyrics that arrived, with the track they belong to. */
+  const [lyrics, setLyrics] = useState<{ id: string; text: string } | null>(null)
+  const [lastSong, setLastSong] = useState(current?.id)
   const [mixBusy, setMixBusy] = useState(false)
   const queueRef = useRef<HTMLDivElement>(null)
   const queueJumped = useRef(false)
 
-  useEffect(() => {
+  /*
+   * A new track starts with its cover showing, not with the lyrics panel of the
+   * one before it. Adjusted while rendering the change, so the flip never paints
+   * as open over a cover it does not belong to.
+   */
+  if (lastSong !== current?.id) {
+    setLastSong(current?.id)
     setShowLyrics(false)
-    setLyrics('')
-  }, [current?.id])
+  }
 
   useEffect(() => {
     if (!showList) {
@@ -78,12 +84,11 @@ export function NowPlaying() {
 
   useEffect(() => {
     if (!showLyrics || !client || !current) return
+    const song = current
     let cancelled = false
-    setLyricsBusy(true)
-    void client.getLyricsForSong(current).then((text) => {
+    void client.getLyricsForSong(song).then((text) => {
       if (cancelled) return
-      setLyrics(text)
-      setLyricsBusy(false)
+      setLyrics({ id: song.id, text })
     })
     return () => {
       cancelled = true
@@ -93,6 +98,9 @@ export function NowPlaying() {
   if (!expanded || !current) return null
 
   const live = Boolean(current.radio)
+  /* Whether a request is still out is just "the lyrics are not this track's yet". */
+  const lyricsBusy = showLyrics && lyrics?.id !== current.id
+  const lyricsText = lyrics?.id === current.id ? lyrics.text : ''
   const bg = current.radio?.logo ?? client?.coverUrl(current.coverArt, 80)
   const progress = duration ? (currentTime / duration) * 100 : 0
 
@@ -155,8 +163,8 @@ export function NowPlaying() {
               >
                 {lyricsBusy ? (
                   <p className="muted">Songtext wird geladen…</p>
-                ) : lyrics ? (
-                  <pre>{lyrics}</pre>
+                ) : lyricsText ? (
+                  <pre>{lyricsText}</pre>
                 ) : (
                   <p className="muted">Kein Songtext gefunden.</p>
                 )}

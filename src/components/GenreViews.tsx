@@ -144,29 +144,45 @@ export function GenreDetail({ name }: { name: string }) {
   const [loading, setLoading] = useState(true)
   const [moreAlbums, setMoreAlbums] = useState(false)
   const loadingRef = useRef(false)
+  const [shown, setShown] = useState(name)
+
+  /*
+   * Opening another genre starts from an empty list and a spinner. Adjusted while
+   * rendering, so the previous genre's albums and artists are never painted
+   * under the new heading — an effect could only clear them one render later.
+   */
+  if (shown !== name) {
+    setShown(name)
+    setArtists([])
+    setAlbums([])
+    setError('')
+    setLoading(true)
+  }
 
   const load = useCallback(
-    async (offset: number, append: boolean) => {
+    (offset: number, append: boolean) => {
       if (!client || loadingRef.current) return
       loadingRef.current = true
-      setLoading(true)
-      setError('')
-      try {
-        const albumPage = await client.getAlbumsByGenre(name, offset)
-        setAlbums((prev) => (append ? [...prev, ...albumPage] : albumPage))
-        setMoreAlbums(albumPage.length === ALBUM_PAGE)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Genre konnte nicht geladen werden')
-      } finally {
-        setLoading(false)
-        loadingRef.current = false
-      }
+      void client
+        .getAlbumsByGenre(name, offset)
+        .then((albumPage) => {
+          setAlbums((prev) => (append ? [...prev, ...albumPage] : albumPage))
+          setMoreAlbums(albumPage.length === ALBUM_PAGE)
+          setError('')
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Genre konnte nicht geladen werden')
+        })
+        .finally(() => {
+          setLoading(false)
+          loadingRef.current = false
+        })
     },
     [client, name],
   )
 
   useEffect(() => {
-    void load(0, false)
+    load(0, false)
   }, [load])
 
   useEffect(() => {
@@ -244,7 +260,10 @@ export function GenreDetail({ name }: { name: string }) {
           type="button"
           className="primary-btn ghost"
           disabled={loading}
-          onClick={() => void load(albums.length, true)}
+          onClick={() => {
+            setLoading(true)
+            load(albums.length, true)
+          }}
         >
           {loading ? 'Wird geladen…' : 'Mehr laden'}
         </button>
