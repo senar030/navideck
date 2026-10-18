@@ -2,7 +2,7 @@
 
 A browser-based Navidrome client built for a desktop mouse and a Steam Deck touchscreen. Large hit targets, a persistent player bar, and a full-screen now-playing view.
 
-> **Hinweis:** Navideck wurde per **Vibe Coding** entwickelt – also im Dialog mit KI-Coding-Assistenten statt Zeile für Zeile von Hand.
+> **Note:** Navideck is a **vibe coding** project — it was built in dialogue with AI coding assistants rather than written line by line by hand.
 
 ## Run
 
