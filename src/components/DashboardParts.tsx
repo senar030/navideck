@@ -1,4 +1,13 @@
-import { Children, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import {
+  Children,
+  cloneElement,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import type { Album, Artist, Genre, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
@@ -12,8 +21,8 @@ import { IconArrowRight, IconPlay, IconRefresh } from './Icons'
  * that caps itself at two lines of tiles, and the tiles themselves.
  */
 
-/** Tiles shown per category before the "Weitere laden…" tile. */
-export const PREVIEW = 15
+/** Tiles shown per category on phones, where a row scrolls sideways. */
+const PREVIEW = 15
 
 /** Categories behind a start-page "Weitere laden…" tile. */
 export type SectionId =
@@ -129,23 +138,40 @@ const TILE_CLASS: Record<'row' | 'grid', string> = { row: 'tile-row', grid: 'alb
 
 /**
  * The body of a category. On the start page it is at most two rows of tiles on
- * wide screens and one horizontally scrollable row on phones; the "Weitere
- * laden…" tile always keeps a slot, taking the place of the last tile when the
- * two rows are full.
+ * wide screens and one horizontally scrollable row on phones.
+ *
+ * How many tiles fit is measured, not guessed: `capacity` tiles go into two
+ * rows, and the "Weitere laden…" tile takes the last of those slots as soon as
+ * the category holds more than that. On phones, where the row scrolls sideways,
+ * the preview length is the limit instead. Nothing is ever dropped silently —
+ * either the whole category fits, or the "more" tile follows it.
+ *
+ * `compact` switches to the list-row shape used by the song and genre
+ * categories, where a thumbnail carries no information of its own.
  */
-export function TileRow({ more, full = false, children }: { more?: ReactNode; full?: boolean; children: ReactNode }) {
+export function TileRow({
+  more,
+  full = false,
+  compact = false,
+  children,
+}: {
+  more?: ReactElement<{ compact?: boolean }>
+  full?: boolean
+  compact?: boolean
+  children: ReactNode
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const columns = useGridColumns(ref)
   const items = Children.toArray(children)
-  const capacity = columns * 2
-  const total = items.length + (more ? 1 : 0)
-  const visible =
-    !full && capacity > 0 && total > capacity ? items.slice(0, Math.max(1, capacity - 1)) : items
+  const limit = columns > 0 ? columns * 2 : PREVIEW
+  const overflow = !full && items.length > limit
+  const tail = more && compact ? cloneElement(more, { compact: true }) : more
+  const visible = overflow && !tail ? items.slice(0, limit) : overflow ? items.slice(0, limit - 1) : items
 
   return (
-    <div className={full ? TILE_CLASS.grid : TILE_CLASS.row} ref={ref}>
+    <div className={`${full ? TILE_CLASS.grid : TILE_CLASS.row}${compact ? ' is-compact' : ''}`} ref={ref}>
       {visible}
-      {!full ? more : null}
+      {overflow && tail ? tail : null}
     </div>
   )
 }
@@ -181,9 +207,28 @@ export function AlbumTile({ album }: { album: Album }) {
   )
 }
 
-export function SongTile({ song, tracks }: { song: Song; tracks: Song[] }) {
+export function SongTile({ song, tracks, compact }: { song: Song; tracks: Song[]; compact?: boolean }) {
   const { playTracks } = usePlayer()
   const index = Math.max(0, tracks.findIndex((t) => t.id === song.id))
+
+  if (compact) {
+    return (
+      <article className="album-card list-card">
+        <button
+          type="button"
+          className="album-hit"
+          aria-label={`${song.title} abspielen`}
+          onClick={() => playTracks(tracks, index)}
+        >
+          <CoverArt coverArt={song.coverArt} alt="" size={96} className="list-art" />
+          <span className="list-text">
+            <span className="album-name">{song.title}</span>
+            <span className="album-artist">{song.artist ?? song.album}</span>
+          </span>
+        </button>
+      </article>
+    )
+  }
 
   return (
     <article className="album-card song-card">
@@ -226,7 +271,7 @@ export function ArtistTile({ artist }: { artist: Artist }) {
  * every time it is pressed, which is as close as Subsonic gets to "surprise me
  * within this genre".
  */
-export function GenrePlayTile({ genre }: { genre: Genre }) {
+export function GenrePlayTile({ genre, compact }: { genre: Genre; compact?: boolean }) {
   const { client } = useAuth()
   const { playTracks } = usePlayer()
   const { mixSize } = usePrefs()
@@ -243,27 +288,55 @@ export function GenrePlayTile({ genre }: { genre: Genre }) {
     }
   }
 
+  const label = `Zufällige Playlist aus ${genre.value} starten`
+  const count = busy ? 'Wird gemischt…' : `${genre.songCount ?? 0} Titel`
+
+  if (compact) {
+    return (
+      <article className="album-card list-card">
+        <button type="button" className="album-hit" disabled={busy} aria-label={label} onClick={() => void start()}>
+          <span className="list-art genre-play-face">
+            <IconPlay size={20} />
+          </span>
+          <span className="list-text">
+            <span className="album-name">{genre.value}</span>
+            <span className="album-artist">{count}</span>
+          </span>
+        </button>
+      </article>
+    )
+  }
+
   return (
     <article className="album-card genre-play-card">
-      <button
-        type="button"
-        className="album-hit"
-        disabled={busy}
-        aria-label={`Zufällige Playlist aus ${genre.value} starten`}
-        onClick={() => void start()}
-      >
+      <button type="button" className="album-hit" disabled={busy} aria-label={label} onClick={() => void start()}>
         <span className="genre-play-face">
           <IconPlay size={34} />
         </span>
         <span className="album-name">{genre.value}</span>
-        <span className="album-artist">{busy ? 'Wird gemischt…' : `${genre.songCount ?? 0} Titel`}</span>
+        <span className="album-artist">{count}</span>
       </button>
     </article>
   )
 }
 
-export function MoreTile({ to }: { to: SectionId }) {
+export function MoreTile({ to, compact }: { to: SectionId; compact?: boolean }) {
   const { go } = useNav()
+
+  if (compact) {
+    return (
+      <article className="album-card list-card more-card">
+        <button type="button" className="album-hit" onClick={() => go({ name: 'section', id: to })}>
+          <span className="list-art more-face">
+            <IconArrowRight size={18} />
+          </span>
+          <span className="list-text">
+            <span className="album-name">Weitere laden…</span>
+          </span>
+        </button>
+      </article>
+    )
+  }
 
   return (
     <article className="album-card more-card">

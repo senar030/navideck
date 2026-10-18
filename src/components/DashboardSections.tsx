@@ -13,7 +13,6 @@ import {
   Empty,
   GenrePlayTile,
   MoreTile,
-  PREVIEW,
   ReshuffleButton,
   SongTile,
   TileRow,
@@ -71,9 +70,11 @@ function FrequentAlbumsSection(props: SectionProps) {
 function AlbumRowBody({ albums, loading, moreTo }: { albums: Album[]; loading: boolean; moreTo: SectionId }) {
   if (loading) return <Empty>Alben werden geladen…</Empty>
   if (!albums.length) return <Empty>Noch nichts hier.</Empty>
+  // The row decides how many tiles fit; the "more" tile shows up by itself when
+  // the category is longer than that.
   return (
-    <TileRow more={albums.length > PREVIEW ? <MoreTile to={moreTo} /> : undefined}>
-      {albums.slice(0, PREVIEW).map((album) => (
+    <TileRow more={<MoreTile to={moreTo} />}>
+      {albums.map((album) => (
         <AlbumTile key={album.id} album={album} />
       ))}
     </TileRow>
@@ -92,9 +93,9 @@ function SongRowBody({
   if (loading) return <Empty>Songs werden geladen…</Empty>
   if (!songs.length) return <Empty>Noch nichts hier.</Empty>
   return (
-    <TileRow more={songs.length > PREVIEW ? <MoreTile to={moreTo} /> : undefined}>
-      {songs.slice(0, PREVIEW).map((song) => (
-        <SongTile key={song.id} song={song} tracks={songs} />
+    <TileRow compact more={<MoreTile to={moreTo} />}>
+      {songs.map((song) => (
+        <SongTile key={song.id} song={song} tracks={songs} compact />
       ))}
     </TileRow>
   )
@@ -131,8 +132,8 @@ function StarredArtistsSection(props: SectionProps) {
       ) : !artists.length ? (
         <Empty>Noch keine Favoriten.</Empty>
       ) : (
-        <TileRow more={artists.length > PREVIEW ? <MoreTile to="starredArtists" /> : undefined}>
-          {artists.slice(0, PREVIEW).map((artist) => (
+        <TileRow more={<MoreTile to="starredArtists" />}>
+          {artists.map((artist) => (
             <ArtistTile key={artist.id} artist={artist} />
           ))}
         </TileRow>
@@ -152,8 +153,8 @@ function StarredAlbumsSection(props: SectionProps) {
       ) : !albums.length ? (
         <Empty>Noch keine Favoriten.</Empty>
       ) : (
-        <TileRow more={albums.length > PREVIEW ? <MoreTile to="starredAlbums" /> : undefined}>
-          {albums.slice(0, PREVIEW).map((album) => (
+        <TileRow more={<MoreTile to="starredAlbums" />}>
+          {albums.map((album) => (
             <AlbumTile key={album.id} album={album} />
           ))}
         </TileRow>
@@ -223,9 +224,9 @@ function GenrePlaylistsSection(props: SectionProps) {
   return (
     <DashBlock label="Zufällige Playlists" {...props}>
       {genres.length ? (
-        <TileRow more={genres.length > PREVIEW ? <MoreTile to="genrePlaylists" /> : undefined}>
-          {genres.slice(0, PREVIEW).map((genre) => (
-            <GenrePlayTile key={genre.value} genre={genre} />
+        <TileRow compact more={<MoreTile to="genrePlaylists" />}>
+          {genres.map((genre) => (
+            <GenrePlayTile key={genre.value} genre={genre} compact />
           ))}
         </TileRow>
       ) : (
@@ -430,9 +431,9 @@ function AlbumSongsFeed({ type, byPlayCount = false }: { type: AlbumListType; by
 
   return (
     <>
-      <TileRow full>
+      <TileRow full compact>
         {songs.map((song) => (
-          <SongTile key={song.id} song={song} tracks={songs} />
+          <SongTile key={song.id} song={song} tracks={songs} compact />
         ))}
       </TileRow>
       <div ref={sentinel} className="sentinel" />
@@ -477,9 +478,9 @@ function StarredSongsPage() {
   if (loading) return <Empty>Songs werden geladen…</Empty>
   if (!songs.length) return <Empty>Noch keine Favoriten.</Empty>
   return (
-    <TileRow full>
+    <TileRow full compact>
       {songs.map((song) => (
-        <SongTile key={song.id} song={song} tracks={songs} />
+        <SongTile key={song.id} song={song} tracks={songs} compact />
       ))}
     </TileRow>
   )
@@ -489,9 +490,9 @@ function GenrePlaylistsPage() {
   const genres = useGenres()
   if (!genres.length) return <Empty>Keine Genres gefunden.</Empty>
   return (
-    <TileRow full>
+    <TileRow full compact>
       {genres.map((genre) => (
-        <GenrePlayTile key={genre.value} genre={genre} />
+        <GenrePlayTile key={genre.value} genre={genre} compact />
       ))}
     </TileRow>
   )
