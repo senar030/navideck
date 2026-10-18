@@ -1614,6 +1614,12 @@ html[data-theme='light'] .hero-banner {
   margin: 0;
 }
 
+/* The track count / runtime line sits directly above the buttons. Left to its
+   own devices its default paragraph margins would open a gap on both sides. */
+.hero-meta {
+  margin: 0;
+}
+
 .hero-actions {
   justify-content: flex-start;
   margin-top: 0.55rem;
@@ -3423,6 +3429,10 @@ html[data-ui='deck'] .pw-row input {
 
   .hero-banner {
     z-index: 0;
+    /* Sit a little closer under the chrome and end sooner, so the taller cover
+       below still leaves room for the track list. */
+    padding-top: calc(var(--main-top) + 0.5rem);
+    padding-bottom: 1.5rem;
   }
 
   .hero-copy {
@@ -3577,8 +3587,8 @@ html[data-ui='deck'] .pw-row input {
 
   .cover.hero-cover,
   html[data-ui='deck'] .cover.hero-cover {
-    width: min(42vw, 9.6rem);
-    height: min(42vw, 9.6rem);
+    width: min(54vw, 14rem);
+    height: min(54vw, 14rem);
   }
 }
 

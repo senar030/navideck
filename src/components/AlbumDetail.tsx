@@ -5,7 +5,7 @@ import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
-import { IconPlay, IconStar } from './Icons'
+import { IconPlay, IconQueue, IconStar } from './Icons'
 import { TrackList } from './TrackList'
 
 export function AlbumDetail({ id }: { id: string }) {
@@ -56,20 +56,17 @@ export function AlbumDetail({ id }: { id: string }) {
               {[album.genre, album.year].filter(Boolean).join(' · ')}
             </p>
           ) : null}
-          <p className="muted">
+          <p className="hero-meta muted">
             {[songs.length ? `${songs.length} Titel` : null, formatTime(album.duration)].filter(Boolean).join(' · ')}
           </p>
+          {/* Star – play – queue, so the play button ends up centred between the
+              two icons instead of being pushed left by the queue label. */}
           <div className="hero-actions">
-            <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-              <IconPlay size={22} /> Abspielen
-            </button>
-            <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
-              Album einreihen
-            </button>
             <button
               type="button"
               className={`icon-btn ${starred ? 'is-on' : ''}`}
               aria-label={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
+              data-tip={starred ? 'Favorit entfernen' : 'Als Favorit merken'}
               onClick={() => {
                 if (!client) return
                 const next = !starred
@@ -78,6 +75,18 @@ export function AlbumDetail({ id }: { id: string }) {
               }}
             >
               <IconStar filled={starred} />
+            </button>
+            <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
+              <IconPlay size={22} /> Abspielen
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Album einreihen"
+              data-tip="Album einreihen"
+              onClick={() => addToQueue(songs)}
+            >
+              <IconQueue />
             </button>
           </div>
         </div>
