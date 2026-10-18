@@ -3519,6 +3519,22 @@ html[data-theme='light'] .hero-banner {
     width: min(80vw, 18rem);
   }
 
+  /*
+   * The song lists keep the three rows they have on a wide screen: the tiles run
+   * sideways in three rows, so three songs are in view instead of one per
+   * screen. The column count is left to the (wide) tile, which is why the row
+   * has no column template of its own.
+   */
+  .tile-row.song-tiles {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(80vw, 18rem);
+    grid-template-rows: repeat(3, auto);
+    gap: 0.4rem;
+    align-items: stretch;
+  }
+
   /* On a phone the "Weiterhören" button gets its own full-width line. */
   .resume {
     grid-template-columns: auto minmax(0, 1fr);

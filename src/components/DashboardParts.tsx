@@ -122,6 +122,18 @@ function useGridColumns(ref: RefObject<HTMLDivElement | null>) {
         setColumns(0)
         return
       }
+      /*
+       * A row that scrolls sideways is a grid whose columns the tile width
+       * decides, and the browser reports the columns it ended up using — for a
+       * three-row strip that is however many the tiles needed, not how many are
+       * on screen. Counting them would let the row grow past the preview length
+       * and swallow the "Weitere laden…" tile, so the direction of the flow
+       * decides instead: sideways rows are measured by their preview length.
+       */
+      if (style.gridAutoFlow.includes('column')) {
+        setColumns(0)
+        return
+      }
       setColumns(style.gridTemplateColumns.split(' ').filter(Boolean).length)
     }
     measure()
@@ -137,7 +149,9 @@ const TILE_CLASS: Record<'row' | 'grid', string> = { row: 'tile-row', grid: 'alb
 
 /**
  * The body of a category. On the start page it is at most `rows` rows of tiles
- * on wide screens and one horizontally scrollable row on phones.
+ * on wide screens, and on phones it is a strip that scrolls sideways — one tile
+ * per row for the broad tiles, three rows for the song lists, which ask for a
+ * `className` of their own to get that shape.
  *
  * How many tiles fit is measured, not guessed: `columns * rows` tiles fit, and
  * the "Weitere laden…" tile takes the last of those slots as soon as the
@@ -155,6 +169,7 @@ export function TileRow({
   compact = false,
   rows = 2,
   all = false,
+  className,
   children,
 }: {
   more?: ReactElement<{ compact?: boolean }>
@@ -164,6 +179,8 @@ export function TileRow({
   rows?: number
   /** Show every tile, however many rows that takes. */
   all?: boolean
+  /** Extra class on the row, for shapes only some categories use. */
+  className?: string
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -173,9 +190,10 @@ export function TileRow({
   const overflow = !full && !all && items.length > limit
   const tail = more && compact ? cloneElement(more, { compact: true }) : more
   const visible = overflow && !tail ? items.slice(0, limit) : overflow ? items.slice(0, limit - 1) : items
+  const row = `${full ? TILE_CLASS.grid : TILE_CLASS.row}${compact ? ' is-compact' : ''}`
 
   return (
-    <div className={`${full ? TILE_CLASS.grid : TILE_CLASS.row}${compact ? ' is-compact' : ''}`} ref={ref}>
+    <div className={className ? `${row} ${className}` : row} ref={ref}>
       {visible}
       {overflow && tail ? tail : null}
     </div>

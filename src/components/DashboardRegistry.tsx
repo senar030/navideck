@@ -2,13 +2,13 @@ import type { ReactNode } from 'react'
 import type { SectionId, SectionProps } from './DashboardParts'
 import {
   AlbumFeed,
-  AlbumSongsFeed,
   FrequentAlbumsSection,
   GenrePlaylistsSection,
   NewAlbumsSection,
   RandomAlbumsSection,
   RandomArtistsSection,
   RecentAlbumsSection,
+  RecentSongsFeed,
   RecentSongsSection,
   StarredAlbumsPage,
   StarredAlbumsSection,
@@ -38,7 +38,7 @@ export type SectionDef = {
 export const SECTIONS: SectionDef[] = [
   { id: 'recentAlbums', label: 'Zuletzt gehört', pageTitle: 'Zuletzt gehört', Section: RecentAlbumsSection, Page: () => <AlbumFeed type="recent" /> },
   { id: 'newAlbums', label: 'Zuletzt hinzugefügt', pageTitle: 'Zuletzt hinzugefügt', Section: NewAlbumsSection, Page: () => <AlbumFeed type="newest" /> },
-  { id: 'recentSongs', label: 'Letzte Songs', pageTitle: 'Letzte Songs', Section: RecentSongsSection, Page: () => <AlbumSongsFeed type="recent" /> },
+  { id: 'recentSongs', label: 'Letzte Songs', pageTitle: 'Letzte Songs', Section: RecentSongsSection, Page: RecentSongsFeed },
   { id: 'randomAlbums', label: 'Zufällige Alben', pageTitle: 'Zufällige Alben', Section: RandomAlbumsSection },
   { id: 'randomArtists', label: 'Zufällige Künstler', pageTitle: 'Zufällige Künstler', Section: RandomArtistsSection },
   { id: 'genrePlaylists', label: 'Genre Radio', pageTitle: 'Genre Radio', Section: GenrePlaylistsSection },

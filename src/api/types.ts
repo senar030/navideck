@@ -26,6 +26,8 @@ export type Song = {
   discNumber?: number
   genre?: string
   playCount?: number
+  /** The date the server last registered a play, if this song ever had one. */
+  played?: string
   /** Set when this queue entry is a live radio stream rather than a file. */
   radio?: RadioTrack
 }

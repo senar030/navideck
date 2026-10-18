@@ -67,12 +67,37 @@ const PAGE = 48
 const LIST_TTL = 30_000
 /** Genre and playlist lists scoped to a library cost a full scan, so keep them longer. */
 const LIBRARY_TTL = 300_000
+/**
+ * How many of the most recently played albums "Letzte Songs" looks through. A
+ * song that was played recently sits in an album that was played recently, so
+ * those albums' songs carry the newest play dates.
+ */
+const RECENT_ALBUMS = 8
 
 type CacheEntry<T> = { key: string; at: number; data: Promise<T> }
 type ArtistLookup = { ids: Set<string>; art: Map<string, string | undefined> }
 
 function isFresh<T>(entry: CacheEntry<T> | null, key: string, ttl: number): entry is CacheEntry<T> {
   return Boolean(entry && entry.key === key && Date.now() - entry.at < ttl)
+}
+
+/** Song play dates arrive as a date string; the sort wants the number behind it. */
+function playedAt(song: Song): number {
+  const at = song.played ? Date.parse(song.played) : 0
+  return Number.isNaN(at) ? 0 : at
+}
+
+/**
+ * Keeps the songs the server registered a play for, newest first. A song
+ * without a play date was only ever queued, and asking for one was a play too
+ * late: the server never saw it. Not every Subsonic server hands play dates
+ * out, so a list that carries none at all is left as it came — album order,
+ * which is what "Letzte Songs" showed before play dates were read.
+ */
+export function playedSongs(songs: Song[]): Song[] {
+  const played = songs.filter((song) => song.played)
+  if (!played.length) return songs
+  return played.sort((a, b) => playedAt(b) - playedAt(a))
 }
 
 export class NavidromeClient {
@@ -404,6 +429,18 @@ export class NavidromeClient {
       full.flatMap((album) => album?.song ?? []),
       (song) => song.id,
     )
+  }
+
+  /**
+   * The songs that were really played, newest first. Subsonic has no endpoint
+   * for "recently played songs", so the recently played albums are asked for
+   * their songs and the play date each one carries decides the order — a song
+   * that was only queued has none and is dropped.
+   */
+  async getRecentSongs(limit = 30): Promise<Song[]> {
+    const albums = await this.getAlbumList('recent')
+    const songs = await this.getSongsOfAlbums(albums.slice(0, RECENT_ALBUMS))
+    return playedSongs(songs).slice(0, limit)
   }
 
   async getArtists(): Promise<ArtistIndex[]> {

@@ -200,12 +200,13 @@ export function useGenres() {
 }
 
 /**
- * Subsonic has no "recently played songs" endpoint, so the songs come from the
- * albums of a list — in this case the recently played ones.
+ * The songs that were really played, newest first. The queue a song came from
+ * says nothing about whether it was listened to; the play date the server keeps
+ * for it does.
  */
-export function useAlbumSongs(type: AlbumListType, albumCount: number) {
+export function useRecentSongs(limit = 30) {
   const { client, selectedFolderIds } = useAuth()
-  const key = `${type}|${albumCount}|${selectedFolderIds.join(',')}`
+  const key = `${limit}|${selectedFolderIds.join(',')}`
   const [state, setState] = useState<{ key: string; songs: Song[] }>({ key: '', songs: [] })
   const loading = state.key !== key
 
@@ -213,8 +214,7 @@ export function useAlbumSongs(type: AlbumListType, albumCount: number) {
     if (!client) return
     let alive = true
     void client
-      .getAlbumList(type)
-      .then((albums) => client.getSongsOfAlbums(albums.slice(0, albumCount)))
+      .getRecentSongs(limit)
       .then((list) => {
         if (alive) setState({ key, songs: list })
       })
@@ -224,7 +224,7 @@ export function useAlbumSongs(type: AlbumListType, albumCount: number) {
     return () => {
       alive = false
     }
-  }, [albumCount, client, key, type])
+  }, [client, key, limit])
 
   return { songs: state.songs, loading }
 }

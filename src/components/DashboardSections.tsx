@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ALBUM_PAGE } from '../api/client'
+import { ALBUM_PAGE, playedSongs } from '../api/client'
 import type { Album, AlbumListType, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 import {
@@ -18,10 +18,10 @@ import {
 import {
   randomAlbumStore,
   randomArtistStore,
-  useAlbumSongs,
   useAlbums,
   useGenres,
   useRandom,
+  useRecentSongs,
   useStarred,
 } from './DashboardData'
 
@@ -36,8 +36,14 @@ import {
  * module to components only.
  */
 
-/** Albums per step when a full song page walks an album list. */
-const SONG_ALBUM_STEP = 6
+/**
+ * Albums per step when the "Letzte Songs" page walks the recent album list. A
+ * step has to cover a few albums: a song that was played is easily the only one
+ * in its album, so a single album per step would not fill a screen.
+ */
+const SONG_ALBUM_STEP = 12
+/** Songs the "Letzte Songs" row loads: enough for three rows of tiles. */
+const RECENT_SONGS = 30
 
 /* ==========================================================================
    Sections
@@ -99,7 +105,7 @@ function SongRowBody({
   if (loading) return <Empty>Songs werden geladen…</Empty>
   if (!songs.length) return <Empty>Noch nichts hier.</Empty>
   return (
-    <TileRow compact rows={3} more={<MoreTile to={moreTo} />}>
+    <TileRow className="song-tiles" compact rows={3} more={<MoreTile to={moreTo} />}>
       {songs.map((song) => (
         <SongTile key={song.id} song={song} tracks={songs} compact />
       ))}
@@ -108,7 +114,7 @@ function SongRowBody({
 }
 
 export function RecentSongsSection(props: SectionProps) {
-  const { songs, loading } = useAlbumSongs('recent', 3)
+  const { songs, loading } = useRecentSongs(RECENT_SONGS)
 
   return (
     <DashBlock label="Letzte Songs" {...props}>
@@ -315,11 +321,13 @@ export function AlbumFeed({ type }: { type: AlbumListType }) {
 }
 
 /**
- * The album list behind a song category is walked in pages, taking a few albums'
- * songs at a time: the endpoint has no notion of "recently played songs", so the
- * songs inherit the album order and arrive as the reader scrolls.
+ * "Letzte Songs" as a page. The recently played albums are walked in steps and
+ * every step keeps only the songs that carry a play date, so a song that was
+ * queued but never listened to stays out. The steps arrive newest first: the
+ * server sorts the album list by play date, and within a step the songs sort
+ * themselves by theirs.
  */
-export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
+export function RecentSongsFeed() {
   const { client, selectedFolderIds } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
@@ -336,7 +344,7 @@ export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
    * empty and loading, adjusted while rendering rather than in the effect that
    * restarts the walk through the albums.
    */
-  const requested = `${type}|${selectedFolderIds.join(',')}`
+  const requested = selectedFolderIds.join(',')
   const [shown, setShown] = useState(requested)
 
   if (shown !== requested) {
@@ -351,7 +359,7 @@ export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
     busy.current = true
     try {
       if (albumIndex.current >= albums.current.length) {
-        const page = await client.getAlbumList(type, albumPage.current * ALBUM_PAGE)
+        const page = await client.getAlbumList('recent', albumPage.current * ALBUM_PAGE)
         albumPage.current += 1
         albums.current = page
         albumIndex.current = 0
@@ -363,7 +371,7 @@ export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
       }
       const batch = albums.current.slice(albumIndex.current, albumIndex.current + SONG_ALBUM_STEP)
       albumIndex.current += batch.length
-      const next = await client.getSongsOfAlbums(batch)
+      const next = playedSongs(await client.getSongsOfAlbums(batch))
       const fresh = next.filter((song) => !seen.current.has(song.id))
       for (const song of fresh) seen.current.add(song.id)
       setSongs((prev) => [...prev, ...fresh])
@@ -371,7 +379,7 @@ export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
       busy.current = false
       setLoading(false)
     }
-  }, [client, type])
+  }, [client])
 
   useEffect(() => {
     /*
@@ -398,7 +406,13 @@ export function AlbumSongsFeed({ type }: { type: AlbumListType }) {
     })
     io.observe(el)
     return () => io.disconnect()
-  }, [step])
+    /*
+     * Observed anew after every step: a step that brought only a song or two
+     * leaves the sentinel on screen, where no new intersection is ever reported,
+     * so the walk would stop on its own. The guard in the callback keeps this
+     * from stacking up while a step is still running.
+     */
+  }, [songs.length, step])
 
   return (
     <>
