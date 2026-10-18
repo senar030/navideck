@@ -118,11 +118,14 @@ function saveData(): boolean {
 const volumeSupported = supportsVolume(first)
 
 /**
- * Latest point at which the next track starts buffering, counted from the
- * moment the current one starts playing. Short tracks and slow links would
- * otherwise reach the end before the preload ever got going.
+ * How close to the end of a track the next one starts buffering, in seconds.
+ * Long before that the download would compete with the audio that is playing
+ * (and with whatever else the app is fetching at the same time), which is
+ * exactly what makes a freshly started playlist feel slower.
  */
-const PRELOAD_AFTER_MS = 8000
+const PRELOAD_LEAD_S = 60
+/** ... and never earlier than this share of the track, whatever its length. */
+const PRELOAD_EARLIEST = 0.4
 
 type Session = {
   user: string
@@ -252,6 +255,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // heavy enough to be heard as a gap when it runs first.
         release(previous)
       } else {
+        /*
+         * Whatever the other element was buffering belongs to a queue that is
+         * no longer playing: it would steal bandwidth from this track right
+         * when it needs its first bytes — the one moment where it is noticed.
+         */
+        const other = idle()
+        if (other.dataset.songId && other.dataset.songId !== song.id) release(other)
         active.src = url
         active.load()
         start(active, song)
@@ -559,47 +569,49 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [client, next, volume])
 
   /*
-   * Buffers the next track while the current one plays. Waiting for the current
-   * one to be buffered enough keeps the extra request from competing with the
-   * audio that is actually playing; the timer is the fallback for slow links,
-   * where that event arrives late or never.
+   * Buffers the next track while the current one plays, but only once the
+   * current one is far enough along: never in its first 40 %, and at the
+   * latest one minute before it ends. Starting any earlier only competes for
+   * bandwidth with the track that is playing — and with the library requests
+   * that a playlist being opened right now depends on.
    */
   useEffect(() => {
-    if (!client || !playing) return
-    if (repeat === 'one') return
+    if (!client) return
     const song = queue[index]
     const upcoming = queue[index + 1] ?? (repeat === 'all' ? queue[0] : undefined)
-    if (!song || !upcoming || upcoming.id === song.id) return
-    if (saveData()) return
+    const wanted = repeat !== 'one' && upcoming && upcoming.id !== song?.id ? upcoming.id : null
+
+    // A preload for a track this queue no longer plays must not keep running.
+    const target = idle()
+    if (target.dataset.songId && target.dataset.songId !== wanted) release(target)
+    if (!wanted || !playing || saveData()) return
 
     const element = active
-    let timer = 0
     const arm = () => {
-      const target = idle()
-      const url = client.streamUrl(upcoming.id)
-      if (target.dataset.songId === upcoming.id && target.getAttribute('src') === url) return
-      target.dataset.songId = upcoming.id
+      element.removeEventListener('timeupdate', check)
+      element.removeEventListener('progress', check)
+      if (target.dataset.songId === wanted && target.getAttribute('src')) return
+      target.dataset.songId = wanted
       target.preload = 'auto'
-      target.src = url
+      target.src = client.streamUrl(wanted)
       target.load()
     }
-    const onBuffered = () => {
-      if (element.readyState >= 3) {
-        element.removeEventListener('canplay', onBuffered)
-        arm()
+    const check = () => {
+      const duration = element.duration
+      const played = element.currentTime
+      if (!(duration > 0)) {
+        if (played >= 30) arm()
+        return
       }
+      const from = Math.max(duration * PRELOAD_EARLIEST, duration - PRELOAD_LEAD_S)
+      if (played >= from) arm()
     }
-    if (element.readyState >= 3) arm()
-    else {
-      element.addEventListener('canplay', onBuffered)
-      timer = window.setTimeout(() => {
-        element.removeEventListener('canplay', onBuffered)
-        arm()
-      }, PRELOAD_AFTER_MS)
-    }
+    check()
+    element.addEventListener('timeupdate', check)
+    element.addEventListener('progress', check)
     return () => {
-      window.clearTimeout(timer)
-      element.removeEventListener('canplay', onBuffered)
+      element.removeEventListener('timeupdate', check)
+      element.removeEventListener('progress', check)
     }
   }, [client, queue, index, repeat, playing])
 
