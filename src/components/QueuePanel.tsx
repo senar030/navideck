@@ -4,6 +4,7 @@ import { centerInScroller } from '../lib/scroll'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconClose } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 const OPTIONS: { id: SongSort; label: string }[] = [
   { id: 'original', label: 'Standard' },
@@ -79,7 +80,7 @@ export function QueuePanel() {
               <button type="button" className="queue-main" onClick={() => playIndex(i)}>
                 <CoverArt coverArt={song.coverArt} alt="" size={80} className="track-cover" />
                 <span className="track-meta">
-                  <span className="track-title">{song.title}</span>
+                  <MarqueeText className="track-title">{song.title}</MarqueeText>
                   <span className="track-sub">{song.artist}</span>
                 </span>
               </button>

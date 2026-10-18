@@ -1,6 +1,7 @@
 import { formatTime } from '../lib/format'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
+import { MarqueeText } from './MarqueeText'
 import {
   IconNext,
   IconPause,
@@ -44,7 +45,7 @@ export function PlayerBar() {
         >
           <CoverArt coverArt={current?.coverArt} alt="" size={120} className="player-cover" />
           <span className="track-meta">
-            <span className="track-title">{current?.title ?? 'Nichts spielt'}</span>
+            <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
             <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
           </span>
         </button>
@@ -82,7 +83,7 @@ export function PlayerBar() {
       >
         <CoverArt coverArt={current?.coverArt} alt="" size={160} className="player-cover" />
         <span className="track-meta">
-          <span className="track-title">{current?.title ?? 'Nichts spielt'}</span>
+          <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
           <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
         </span>
       </button>

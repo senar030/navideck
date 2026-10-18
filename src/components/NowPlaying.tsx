@@ -19,6 +19,7 @@ import {
   IconStar,
   IconVolume,
 } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 export function NowPlaying() {
   const { client } = useAuth()
@@ -162,7 +163,9 @@ export function NowPlaying() {
         </div>
         <div className="np-title">
           <span className="np-title-slot" aria-hidden />
-          <h2>{current.title}</h2>
+          <h2>
+            <MarqueeText className="np-title-text">{current.title}</MarqueeText>
+          </h2>
           <button
             type="button"
             className={`icon-btn ${current.starred ? 'is-on' : ''}`}
@@ -274,7 +277,7 @@ export function NowPlaying() {
                   {i === index ? <IconPlay size={16} /> : String(i + 1).padStart(2, '0')}
                 </span>
                 <span className="track-meta">
-                  <span className="track-title">{song.title}</span>
+                  <MarqueeText className="track-title">{song.title}</MarqueeText>
                   <span className="track-sub">{song.artist}</span>
                 </span>
                 <span className="track-time">{formatTime(song.duration)}</span>

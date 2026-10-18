@@ -5,6 +5,7 @@ import { useAuth } from '../state/AuthContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay, IconQueue, IconStar } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 type Props = {
   tracks: Song[]
@@ -45,7 +46,9 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
           </span>
         )}
         <span className="track-meta">
-          <span className="track-title">{song.title}</span>
+          <MarqueeText className="track-title" delay={1.2 + (index % 5) * 0.5}>
+            {song.title}
+          </MarqueeText>
           <span className="track-sub">{[song.artist, song.album].filter(Boolean).join(' · ')}</span>
         </span>
       </button>
