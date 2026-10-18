@@ -136,34 +136,41 @@ function useGridColumns(ref: RefObject<HTMLDivElement | null>) {
 const TILE_CLASS: Record<'row' | 'grid', string> = { row: 'tile-row', grid: 'album-grid' }
 
 /**
- * The body of a category. On the start page it is at most two rows of tiles on
- * wide screens and one horizontally scrollable row on phones.
+ * The body of a category. On the start page it is at most `rows` rows of tiles
+ * on wide screens and one horizontally scrollable row on phones.
  *
- * How many tiles fit is measured, not guessed: `capacity` tiles go into two
- * rows, and the "Weitere laden…" tile takes the last of those slots as soon as
- * the category holds more than that. On phones, where the row scrolls sideways,
- * the preview length is the limit instead. Nothing is ever dropped silently —
+ * How many tiles fit is measured, not guessed: `columns * rows` tiles fit, and
+ * the "Weitere laden…" tile takes the last of those slots as soon as the
+ * category holds more than that. On phones, where the row scrolls sideways, the
+ * preview length is the limit instead. Nothing is ever dropped silently —
  * either the whole category fits, or the "more" tile follows it.
  *
  * `compact` switches to the list-row shape used by the song and genre
- * categories, where a thumbnail carries no information of its own.
+ * categories, where a thumbnail carries no information of its own. `all` keeps
+ * every tile, for categories that are short enough to show as they are.
  */
 export function TileRow({
   more,
   full = false,
   compact = false,
+  rows = 2,
+  all = false,
   children,
 }: {
   more?: ReactElement<{ compact?: boolean }>
   full?: boolean
   compact?: boolean
+  /** Rows of tiles before the "Weitere laden…" tile steps in. */
+  rows?: number
+  /** Show every tile, however many rows that takes. */
+  all?: boolean
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const columns = useGridColumns(ref)
   const items = Children.toArray(children)
-  const limit = columns > 0 ? columns * 2 : PREVIEW
-  const overflow = !full && items.length > limit
+  const limit = columns > 0 ? columns * rows : PREVIEW
+  const overflow = !full && !all && items.length > limit
   const tail = more && compact ? cloneElement(more, { compact: true }) : more
   const visible = overflow && !tail ? items.slice(0, limit) : overflow ? items.slice(0, limit - 1) : items
 
@@ -267,8 +274,8 @@ export function ArtistTile({ artist }: { artist: Artist }) {
 
 /**
  * One button per genre: it builds a fresh random playlist out of that genre
- * every time it is pressed, which is as close as Subsonic gets to "surprise me
- * within this genre".
+ * every time it is pressed — the "Genre Radio" category, and as close as
+ * Subsonic gets to "surprise me within this genre".
  */
 export function GenrePlayTile({ genre, compact }: { genre: Genre; compact?: boolean }) {
   const { client } = useAuth()
@@ -287,7 +294,7 @@ export function GenrePlayTile({ genre, compact }: { genre: Genre; compact?: bool
     }
   }
 
-  const label = `Zufällige Playlist aus ${genre.value} starten`
+  const label = `Genre Radio: ${genre.value}`
   const count = busy ? 'Wird gemischt…' : `${genre.songCount ?? 0} Titel`
 
   if (compact) {

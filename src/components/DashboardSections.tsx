@@ -97,7 +97,7 @@ function SongRowBody({
   if (loading) return <Empty>Songs werden geladen…</Empty>
   if (!songs.length) return <Empty>Noch nichts hier.</Empty>
   return (
-    <TileRow compact more={<MoreTile to={moreTo} />}>
+    <TileRow compact rows={3} more={<MoreTile to={moreTo} />}>
       {songs.map((song) => (
         <SongTile key={song.id} song={song} tracks={songs} compact />
       ))}
@@ -216,9 +216,9 @@ function GenrePlaylistsSection(props: SectionProps) {
   const genres = useGenres()
 
   return (
-    <DashBlock label="Zufällige Playlists" {...props}>
+    <DashBlock label="Genre Radio" {...props}>
       {genres.length ? (
-        <TileRow compact more={<MoreTile to="genrePlaylists" />}>
+        <TileRow compact all>
           {genres.map((genre) => (
             <GenrePlayTile key={genre.value} genre={genre} compact />
           ))}
@@ -418,18 +418,6 @@ function StarredSongsPage() {
   )
 }
 
-function GenrePlaylistsPage() {
-  const genres = useGenres()
-  if (!genres.length) return <Empty>Keine Genres gefunden.</Empty>
-  return (
-    <TileRow full compact>
-      {genres.map((genre) => (
-        <GenrePlayTile key={genre.value} genre={genre} compact />
-      ))}
-    </TileRow>
-  )
-}
-
 /* ==========================================================================
    Registry
    ========================================================================== */
@@ -451,7 +439,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 'recentSongs', label: 'Letzte Songs', pageTitle: 'Letzte Songs', Section: RecentSongsSection, Page: () => <AlbumSongsFeed type="recent" /> },
   { id: 'randomAlbums', label: 'Zufällige Alben', pageTitle: 'Zufällige Alben', Section: RandomAlbumsSection },
   { id: 'randomArtists', label: 'Zufällige Künstler', pageTitle: 'Zufällige Künstler', Section: RandomArtistsSection },
-  { id: 'genrePlaylists', label: 'Zufällige Playlists', pageTitle: 'Alle Genres', Section: GenrePlaylistsSection, Page: GenrePlaylistsPage },
+  { id: 'genrePlaylists', label: 'Genre Radio', pageTitle: 'Genre Radio', Section: GenrePlaylistsSection },
   { id: 'frequentAlbums', label: 'Meist gespielte Alben', pageTitle: 'Meist gespielte Alben', Section: FrequentAlbumsSection, Page: () => <AlbumFeed type="frequent" /> },
   { id: 'starredArtists', label: 'Favoriten Künstler', pageTitle: 'Favoriten Künstler', Section: StarredArtistsSection, Page: StarredArtistsPage },
   { id: 'starredAlbums', label: 'Favoriten Alben', pageTitle: 'Favoriten Alben', Section: StarredAlbumsSection, Page: StarredAlbumsPage },

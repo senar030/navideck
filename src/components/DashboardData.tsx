@@ -11,7 +11,7 @@ import { useAuth } from '../state/AuthContext'
 
 /** The random strips are deliberately short and have no "more" tile. */
 const RANDOM_ALBUMS = 10
-const RANDOM_ARTISTS = 15
+const RANDOM_ARTISTS = 10
 
 /* ==========================================================================
    Data
