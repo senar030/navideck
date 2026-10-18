@@ -12,6 +12,7 @@ export type Song = {
   starred?: string
   discNumber?: number
   genre?: string
+  playCount?: number
 }
 
 export type Album = {

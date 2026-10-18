@@ -4,6 +4,7 @@ import { AlbumDetail } from './AlbumDetail'
 import { AlbumGrid } from './AlbumGrid'
 import { AppChrome } from './AppChrome'
 import { ArtistDetail, ArtistList } from './ArtistViews'
+import { SectionPage } from './DashboardSections'
 import { GenreDetail, GenreList } from './GenreViews'
 import { HomeDashboard } from './HomeDashboard'
 import { IconAlbums, IconArtists, IconGenres, IconHome, IconLists, IconLogo, IconStar } from './Icons'
@@ -65,6 +66,7 @@ export function Shell() {
           {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
           {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}
           {view.name === 'genre' ? <GenreDetail name={view.id} /> : null}
+          {view.name === 'section' ? <SectionPage id={view.id} /> : null}
         </div>
       </main>
       <PlayerBar />

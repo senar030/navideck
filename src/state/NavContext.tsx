@@ -12,6 +12,8 @@ export type View =
   | { name: 'artist'; id: string }
   | { name: 'playlist'; id: string }
   | { name: 'genre'; id: string }
+  /** Everything behind a start-page "Weitere laden…" tile. */
+  | { name: 'section'; id: string }
 
 type HistState = { stack: View[] }
 
@@ -26,6 +28,9 @@ const NavContext = createContext<NavContextValue | null>(null)
 
 const ROOTS = new Set(['home', 'albums', 'artists', 'playlists', 'starred', 'search', 'genres'])
 
+/** Views whose address carries a single id segment. */
+const DETAILS = new Set(['album', 'artist', 'playlist', 'genre', 'section'])
+
 function isRoot(view: View): boolean {
   return ROOTS.has(view.name)
 }
@@ -39,8 +44,8 @@ function parseHash(): View {
   const raw = window.location.hash.replace(/^#\/?/, '')
   const [name, ...rest] = raw.split('/')
   const id = rest.length ? decodeURIComponent(rest.join('/')) : ''
-  if ((name === 'album' || name === 'artist' || name === 'playlist' || name === 'genre') && id) {
-    return { name, id }
+  if (DETAILS.has(name) && id) {
+    return { name, id } as View
   }
   if (name && ROOTS.has(name)) return { name } as View
   return { name: 'home' }

@@ -370,6 +370,22 @@ export class NavidromeClient {
     return data.album
   }
 
+  /**
+   * Subsonic has no "recently played songs" endpoint. The recently played album
+   * list is the closest thing, so songs are taken from those albums in the order
+   * the albums were played. Albums are fetched together and their order kept;
+   * one that fails is skipped rather than sinking the whole list.
+   */
+  async getSongsOfAlbums(albums: Album[]): Promise<Song[]> {
+    const full = await Promise.all(
+      albums.map((album) => this.getAlbum(album.id).catch(() => null)),
+    )
+    return uniqueBy(
+      full.flatMap((album) => album?.song ?? []),
+      (song) => song.id,
+    )
+  }
+
   async getArtists(): Promise<ArtistIndex[]> {
     const pages = await this.forFolders((folder) => this.request('getArtists', folder))
     const byLetter = new Map<string, Map<string, Artist>>()
