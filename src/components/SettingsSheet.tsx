@@ -58,7 +58,7 @@ export function SettingsSheet({ open, onClose }: Props) {
             ))}
           </div>
           <p className="muted">Sofort-Mix</p>
-          <p className="settings-hint">Anzahl der Titel in Genre-Mix, Stimmungs-Mix und ähnlichem Mix.</p>
+          <p className="settings-hint">Anzahl der Titel in Genre-Mix und ähnlichen Mixen.</p>
           <div className="chip-row wrap mix-size-row">
             {MIX_SIZES.map((n) => (
               <button

@@ -27,16 +27,15 @@ const PREVIEW = 15
 /** Categories behind a start-page "Weitere laden…" tile. */
 export type SectionId =
   | 'recentAlbums'
+  | 'newAlbums'
   | 'recentSongs'
   | 'randomAlbums'
-  | 'genrePlaylists'
   | 'randomArtists'
+  | 'genrePlaylists'
   | 'frequentAlbums'
-  | 'frequentSongs'
   | 'starredArtists'
   | 'starredAlbums'
   | 'starredSongs'
-  | 'mood'
 
 export type SectionProps = {
   editing: boolean

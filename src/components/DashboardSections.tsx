@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { ALBUM_PAGE, type NavidromeClient } from '../api/client'
-import type { Album, AlbumListType, Genre, Song } from '../api/types'
-import { matchMoodGenre, MOODS, type MoodId } from '../lib/moods'
+import { ALBUM_PAGE } from '../api/client'
+import type { Album, AlbumListType, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
-import { usePlayer } from '../state/PlayerContext'
-import { usePrefs } from '../state/PrefsContext'
-import { IconPlay } from './Icons'
 import {
   AlbumTile,
   ArtistTile,
@@ -20,8 +16,6 @@ import {
   type SectionProps,
 } from './DashboardParts'
 import {
-  FREQUENT_SAMPLE,
-  orderSongs,
   randomAlbumStore,
   randomArtistStore,
   useAlbumSongs,
@@ -51,8 +45,18 @@ function RecentAlbumsSection(props: SectionProps) {
   const { albums, loading } = useAlbums('recent')
 
   return (
-    <DashBlock label="Letzte Alben" {...props}>
+    <DashBlock label="Zuletzt gehört" {...props}>
       <AlbumRowBody albums={albums} loading={loading} moreTo="recentAlbums" />
+    </DashBlock>
+  )
+}
+
+function NewAlbumsSection(props: SectionProps) {
+  const { albums, loading } = useAlbums('newest')
+
+  return (
+    <DashBlock label="Zuletzt hinzugefügt" {...props}>
+      <AlbumRowBody albums={albums} loading={loading} moreTo="newAlbums" />
     </DashBlock>
   )
 }
@@ -107,16 +111,6 @@ function RecentSongsSection(props: SectionProps) {
   return (
     <DashBlock label="Letzte Songs" {...props}>
       <SongRowBody songs={songs} loading={loading} moreTo="recentSongs" />
-    </DashBlock>
-  )
-}
-
-function FrequentSongsSection(props: SectionProps) {
-  const { songs, loading } = useAlbumSongs('frequent', FREQUENT_SAMPLE, true)
-
-  return (
-    <DashBlock label="Meist gespielte Songs" {...props}>
-      <SongRowBody songs={songs} loading={loading} moreTo="frequentSongs" />
     </DashBlock>
   )
 }
@@ -236,73 +230,11 @@ function GenrePlaylistsSection(props: SectionProps) {
   )
 }
 
-function MoodSection(props: SectionProps) {
-  const { client, selectedFolderIds } = useAuth()
-  const { playTracks } = usePlayer()
-  const { mixSize } = usePrefs()
-  const [genres, setGenres] = useState<Genre[]>([])
-  const [playlists, setPlaylists] = useState<Awaited<ReturnType<NavidromeClient['getPlaylists']>>>([])
-  const [mood, setMood] = useState<MoodId>('chill')
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (!client) return
-    void client.getGenres().then(setGenres)
-    void client.getPlaylists().then(setPlaylists)
-  }, [client, selectedFolderIds])
-
-  const start = useCallback(async () => {
-    if (!client) return
-    setBusy(true)
-    try {
-      const genre = matchMoodGenre(
-        mood,
-        genres.map((g) => g.value),
-      )
-      let songs = await client.getRandomSongs(mixSize, genre)
-      if (!songs.length && genre) songs = await client.getRandomSongs(mixSize)
-      if (!songs.length) {
-        const moodName = MOODS.find((m) => m.id === mood)?.label.toLowerCase() ?? ''
-        const list = playlists.find((p) => p.name.toLowerCase().includes(moodName))
-        if (list) {
-          const full = await client.getPlaylist(list.id)
-          songs = [...(full.entry ?? [])].sort(() => Math.random() - 0.5)
-        }
-      }
-      if (songs.length) playTracks(songs.slice(0, mixSize), 0)
-    } finally {
-      setBusy(false)
-    }
-  }, [client, genres, mixSize, mood, playlists, playTracks])
-
-  return (
-    <DashBlock label="Playlist nach Stimmung" {...props}>
-      <div className="mood-box">
-        <div className="chip-row wrap">
-          {MOODS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`chip ${mood === m.id ? 'is-on' : ''}`}
-              onClick={() => setMood(m.id)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
-          <IconPlay size={20} /> {busy ? 'Mische…' : 'Zufällige Playlist starten'}
-        </button>
-      </div>
-    </DashBlock>
-  )
-}
-
 /* ==========================================================================
    Full listings behind "Weitere laden…"
    ========================================================================== */
 
-/** Paged album grid, used by "Letzte Alben" and "Meist gespielte Alben". */
+/** Paged album grid, used by "Zuletzt gehört" and "Meist gespielte Alben". */
 function AlbumFeed({ type }: { type: AlbumListType }) {
   const { client, selectedFolderIds } = useAuth()
   const [albums, setAlbums] = useState<Album[]>([])
@@ -367,7 +299,7 @@ function AlbumFeed({ type }: { type: AlbumListType }) {
  * songs at a time: the endpoint has no notion of "recently played songs", so the
  * songs inherit the album order and arrive as the reader scrolls.
  */
-function AlbumSongsFeed({ type, byPlayCount = false }: { type: AlbumListType; byPlayCount?: boolean }) {
+function AlbumSongsFeed({ type }: { type: AlbumListType }) {
   const { client, selectedFolderIds } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
@@ -401,12 +333,12 @@ function AlbumSongsFeed({ type, byPlayCount = false }: { type: AlbumListType; by
       const next = await client.getSongsOfAlbums(batch)
       const fresh = next.filter((song) => !seen.current.has(song.id))
       for (const song of fresh) seen.current.add(song.id)
-      setSongs((prev) => orderSongs([...prev, ...fresh], byPlayCount))
+      setSongs((prev) => [...prev, ...fresh])
     } finally {
       busy.current = false
       setLoading(false)
     }
-  }, [byPlayCount, client, type])
+  }, [client, type])
 
   useEffect(() => {
     albums.current = []
@@ -514,30 +446,27 @@ export type SectionDef = {
 }
 
 export const SECTIONS: SectionDef[] = [
-  { id: 'recentAlbums', label: 'Letzte Alben', pageTitle: 'Letzte Alben', Section: RecentAlbumsSection, Page: () => <AlbumFeed type="recent" /> },
+  { id: 'recentAlbums', label: 'Zuletzt gehört', pageTitle: 'Zuletzt gehört', Section: RecentAlbumsSection, Page: () => <AlbumFeed type="recent" /> },
+  { id: 'newAlbums', label: 'Zuletzt hinzugefügt', pageTitle: 'Zuletzt hinzugefügt', Section: NewAlbumsSection, Page: () => <AlbumFeed type="newest" /> },
   { id: 'recentSongs', label: 'Letzte Songs', pageTitle: 'Letzte Songs', Section: RecentSongsSection, Page: () => <AlbumSongsFeed type="recent" /> },
   { id: 'randomAlbums', label: 'Zufällige Alben', pageTitle: 'Zufällige Alben', Section: RandomAlbumsSection },
-  { id: 'genrePlaylists', label: 'Zufällige Playlists', pageTitle: 'Alle Genres', Section: GenrePlaylistsSection, Page: GenrePlaylistsPage },
   { id: 'randomArtists', label: 'Zufällige Künstler', pageTitle: 'Zufällige Künstler', Section: RandomArtistsSection },
+  { id: 'genrePlaylists', label: 'Zufällige Playlists', pageTitle: 'Alle Genres', Section: GenrePlaylistsSection, Page: GenrePlaylistsPage },
   { id: 'frequentAlbums', label: 'Meist gespielte Alben', pageTitle: 'Meist gespielte Alben', Section: FrequentAlbumsSection, Page: () => <AlbumFeed type="frequent" /> },
-  { id: 'frequentSongs', label: 'Meist gespielte Songs', pageTitle: 'Meist gespielte Songs', Section: FrequentSongsSection, Page: () => <AlbumSongsFeed type="frequent" byPlayCount /> },
   { id: 'starredArtists', label: 'Favoriten Künstler', pageTitle: 'Favoriten Künstler', Section: StarredArtistsSection, Page: StarredArtistsPage },
   { id: 'starredAlbums', label: 'Favoriten Alben', pageTitle: 'Favoriten Alben', Section: StarredAlbumsSection, Page: StarredAlbumsPage },
   { id: 'starredSongs', label: 'Favoriten Songs', pageTitle: 'Favoriten Songs', Section: StarredSongsSection, Page: StarredSongsPage },
-  // Kept for anyone who already used it, but no longer part of the default
-  // start page.
-  { id: 'mood', label: 'Playlist nach Stimmung', pageTitle: 'Playlist nach Stimmung', Section: MoodSection },
 ]
 
-/** Start page order out of the box; `mood` stays available under "Anpassen". */
+/** Start page order out of the box. */
 export const DEFAULT_SECTIONS: SectionId[] = [
   'recentAlbums',
+  'newAlbums',
   'recentSongs',
   'randomAlbums',
-  'genrePlaylists',
   'randomArtists',
+  'genrePlaylists',
   'frequentAlbums',
-  'frequentSongs',
   'starredArtists',
   'starredAlbums',
   'starredSongs',

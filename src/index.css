@@ -2216,6 +2216,14 @@ html[data-theme='light'] .hero-banner {
     color-mix(in srgb, var(--surface) 72%, transparent);
   box-shadow: var(--shadow-sm);
   animation: view-in 0.34s var(--ease);
+  /*
+   * Boxed to its content instead of the full page width: one track does not
+   * need the room of an album row, and the title still decides how wide it gets
+   * (up to the cap, where it ellipsises). The phone override below takes the
+   * full width back.
+   */
+  width: fit-content;
+  max-width: min(100%, 36rem);
 }
 
 .resume-art {
@@ -2294,13 +2302,6 @@ html[data-theme='light'] .hero-banner {
 
 .dash-add {
   margin-bottom: 1rem;
-}
-
-.mood-box {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.85rem;
 }
 
 /*
@@ -3285,6 +3286,9 @@ html[data-theme='light'] .hero-banner {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 0.85rem;
     padding: 0.8rem 0.9rem 0.9rem;
+    /* … and the panel spans the row, unlike on the desktop. */
+    width: 100%;
+    max-width: 100%;
   }
 
   .resume-art {

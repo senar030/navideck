@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { DEFAULT_SECTIONS, SECTIONS, sectionById, type SectionId } from './DashboardSections'
 import { ResumePlaying } from './ResumePlaying'
 
-/** v2: the categories were rebuilt, so old saved orders are not carried over. */
-const DASH_KEY = 'navideck.dashboard.v2'
+/**
+ * v3: the categories changed again — one new, two gone and two swapped — so old
+ * saved orders are not carried over.
+ */
+const DASH_KEY = 'navideck.dashboard.v3'
 
 function readSections(): SectionId[] {
   try {

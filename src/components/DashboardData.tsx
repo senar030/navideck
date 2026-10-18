@@ -12,8 +12,6 @@ import { useAuth } from '../state/AuthContext'
 /** The random strips are deliberately short and have no "more" tile. */
 const RANDOM_ALBUMS = 10
 const RANDOM_ARTISTS = 15
-/** Albums sampled to find the most played songs. */
-export const FREQUENT_SAMPLE = 6
 
 /* ==========================================================================
    Data
@@ -202,16 +200,10 @@ export function useGenres() {
 }
 
 /**
- * Subsonic has no "recently played songs" endpoint, so songs come from the
- * albums of a list — the recently played ones for "letzte", the most played ones
- * for "meist gespielt", where the songs' own play counts then decide the order.
+ * Subsonic has no "recently played songs" endpoint, so the songs come from the
+ * albums of a list — in this case the recently played ones.
  */
-export function orderSongs(songs: Song[], byPlayCount: boolean): Song[] {
-  if (!byPlayCount) return songs
-  return [...songs].sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0))
-}
-
-export function useAlbumSongs(type: AlbumListType, albumCount: number, byPlayCount = false) {
+export function useAlbumSongs(type: AlbumListType, albumCount: number) {
   const { client, selectedFolderIds } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
@@ -224,7 +216,7 @@ export function useAlbumSongs(type: AlbumListType, albumCount: number, byPlayCou
       .getAlbumList(type)
       .then((albums) => client.getSongsOfAlbums(albums.slice(0, albumCount)))
       .then((list) => {
-        if (alive) setSongs(orderSongs(list, byPlayCount))
+        if (alive) setSongs(list)
       })
       .catch(() => {
         if (alive) setSongs([])
@@ -235,7 +227,7 @@ export function useAlbumSongs(type: AlbumListType, albumCount: number, byPlayCou
     return () => {
       alive = false
     }
-  }, [albumCount, byPlayCount, client, selectedFolderIds, type])
+  }, [albumCount, client, selectedFolderIds, type])
 
   return { songs, loading }
 }
