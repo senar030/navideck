@@ -76,12 +76,53 @@ function supportsVolume(audio: HTMLAudioElement): boolean {
 }
 
 /**
- * Exactly one player per page. The element is created once for the whole app
- * instead of on every render, and living outside the component keeps it out of
- * React's dependency tracking.
+ * Two players per page, created once for the whole app instead of on every
+ * render and living outside the component keeps them out of React's dependency
+ * tracking.
+ *
+ * One of them owns the sound; the other one buffers the *next* track in the
+ * background. Handing the sound over to an element that already holds the data
+ * costs no network round trip, which is exactly what used to make the gap
+ * between two tracks so long over a phone network: the request for the next
+ * track only started once the previous one had ended.
  */
-const audio = createAudio()
-const volumeSupported = supportsVolume(audio)
+const first = createAudio()
+const second = createAudio()
+second.preload = 'auto'
+
+/** The element that owns the sound right now; `idle()` is the buffering one. */
+let active: HTMLAudioElement = first
+
+function idle(): HTMLAudioElement {
+  return active === first ? second : first
+}
+
+/** Gives the buffer of an element that is no longer in use back to the browser. */
+function release(element: HTMLAudioElement) {
+  try {
+    element.pause()
+    element.removeAttribute('src')
+    element.load()
+    delete element.dataset.songId
+  } catch {
+    /* nothing to do */
+  }
+}
+
+/** Data saver users asked not to spend mobile data on tracks they may skip. */
+function saveData(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+  return Boolean(connection?.saveData)
+}
+
+const volumeSupported = supportsVolume(first)
+
+/**
+ * Latest point at which the next track starts buffering, counted from the
+ * moment the current one starts playing. Short tracks and slow links would
+ * otherwise reach the end before the preload ever got going.
+ */
+const PRELOAD_AFTER_MS = 8000
 
 type Session = {
   user: string
@@ -155,19 +196,70 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const current = queue[index]
 
+  /*
+   * Starts whatever is already loaded in `element`; used by all three paths
+   * below, so a track that is buffered never waits for the network.
+   */
+  const start = useCallback((element: HTMLAudioElement, song: Song) => {
+    element.dataset.songId = song.id
+    void element.play().then(
+      () => setPlaying(true),
+      () => setPlaying(false),
+    )
+  }, [])
+
   const loadAndPlay = useCallback(
     (song: Song) => {
       if (!client) return
-      audio.src = client.streamUrl(song.id)
-      audio.load()
+      const url = client.streamUrl(song.id)
       scrobbled.current = false
-      void audio.play().then(
-        () => setPlaying(true),
-        () => setPlaying(false),
-      )
+
+      const holds = (element: HTMLAudioElement) =>
+        element.dataset.songId === song.id &&
+        element.getAttribute('src') === url &&
+        element.readyState >= 1
+
+      if (holds(active)) {
+        // The same track again (repeat one, or tapping what already plays):
+        // the audio is right here, so start it over instead of fetching it.
+        active.currentTime = 0
+        setCurrentTime(0)
+        start(active, song)
+      } else if (holds(idle())) {
+        // The other element buffered this track while the last one played:
+        // hand the sound over, there is nothing to download.
+        const previous = active
+        active = idle()
+        active.volume = previous.volume
+        active.muted = previous.muted
+        setCurrentTime(active.currentTime || 0)
+        setDuration(active.duration || song.duration || 0)
+        void active.play().then(
+          () => setPlaying(true),
+          () => {
+            /*
+             * WebKit sometimes refuses a programmatic play() on an element that
+             * was never started by hand. Fall back to a plain load, which is
+             * what the app did for every track before.
+             */
+            active = previous
+            previous.src = url
+            previous.load()
+            start(previous, song)
+          },
+        )
+        // Only after the sound is on its way: emptying the other element is
+        // heavy enough to be heard as a gap when it runs first.
+        release(previous)
+      } else {
+        active.src = url
+        active.load()
+        start(active, song)
+      }
+
       void client.scrobble(song.id, false)
     },
-    [client],
+    [client, start],
   )
 
   const playTracks = useCallback(
@@ -197,13 +289,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const togglePlay = useCallback(() => {
     if (!queueRef.current.length) return
-    if (audio.paused) {
-      void audio.play().then(
+    if (active.paused) {
+      void active.play().then(
         () => setPlaying(true),
         () => setPlaying(false),
       )
     } else {
-      audio.pause()
+      active.pause()
       setPlaying(false)
     }
   }, [])
@@ -248,14 +340,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (i + 1 < q.length) playIndex(i + 1)
     else if (mode === 'all') playIndex(0)
     else {
-      audio.pause()
+      active.pause()
       setPlaying(false)
     }
   }, [playIndex])
 
   const prev = useCallback(() => {
-    if (audio.currentTime > 3) {
-      audio.currentTime = 0
+    if (active.currentTime > 3) {
+      active.currentTime = 0
       return
     }
     const i = indexRef.current
@@ -264,28 +356,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [playIndex])
 
   const seek = useCallback((time: number) => {
-    audio.currentTime = time
+    active.currentTime = time
     setCurrentTime(time)
   }, [])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(1, Math.max(0, v))
     try {
-      audio.volume = clamped
+      active.volume = clamped
+      idle().volume = clamped
     } catch {
       /* iOS only changes the level via the hardware buttons */
     }
     setVolumeState(clamped)
     localStorage.setItem(VOLUME_KEY, String(clamped))
     if (clamped > 0) {
-      audio.muted = false
+      active.muted = false
+      idle().muted = false
       setMuted(false)
     }
   }, [])
 
   const toggleMute = useCallback(() => {
-    audio.muted = !audio.muted
-    setMuted(audio.muted)
+    const value = !active.muted
+    active.muted = value
+    idle().muted = value
+    setMuted(value)
   }, [])
 
   const toggleShuffle = useCallback(() => {
@@ -332,7 +428,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setIndex(cur - 1)
             loadAndPlay(nextQ[cur - 1])
           } else {
-            audio.pause()
+            active.pause()
             setPlaying(false)
             setIndex(0)
           }
@@ -347,19 +443,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const saved = boot.current
     const song = saved?.queue[saved.index]
     if (!client || !song) return
-    audio.src = client.streamUrl(song.id)
-    audio.preload = 'auto'
+    const element = active
+    element.dataset.songId = song.id
+    element.src = client.streamUrl(song.id)
+    element.preload = 'auto'
     const onMeta = () => {
       if (queueRef.current[indexRef.current]?.id !== song.id) return
-      const t = Math.min(saved.time, Number.isFinite(audio.duration) ? audio.duration : saved.time)
-      if (t > 0) audio.currentTime = t
-      setDuration(audio.duration || 0)
-      setCurrentTime(audio.currentTime)
+      const t = Math.min(saved.time, Number.isFinite(element.duration) ? element.duration : saved.time)
+      if (t > 0) element.currentTime = t
+      setDuration(element.duration || 0)
+      setCurrentTime(element.currentTime)
     }
-    audio.addEventListener('loadedmetadata', onMeta, { once: true })
-    audio.load()
+    element.addEventListener('loadedmetadata', onMeta, { once: true })
+    element.load()
     if (saved.time >= 30) scrobbled.current = true
-    return () => audio.removeEventListener('loadedmetadata', onMeta)
+    return () => element.removeEventListener('loadedmetadata', onMeta)
   }, [client])
 
   useEffect(() => {
@@ -377,7 +475,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         user: client.username,
         queue,
         index,
-        time: audio.currentTime || currentTime,
+        time: active.currentTime || currentTime,
         shuffle,
         repeat,
       })
@@ -392,7 +490,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         user: client.username,
         queue: queueRef.current,
         index: indexRef.current,
-        time: audio.currentTime,
+        time: active.currentTime,
         shuffle: shuffleRef.current,
         repeat: repeatRef.current,
       })
@@ -402,41 +500,108 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [client])
 
   useEffect(() => {
-    audio.preload = 'metadata'
-    if (volumeSupported) audio.volume = volume
-    const onTime = () => {
+    /*
+     * Both elements are wired up once. Only the one that currently owns the
+     * sound reports events: the other one is either buffering the next track
+     * (its `play`/`timeupdate` must not touch the UI) or has just been emptied.
+     */
+    const elements = [first, second]
+    const mine = (event: Event) => event.currentTarget === active
+    if (volumeSupported) {
+      first.volume = volume
+      second.volume = volume
+    }
+    const onTime = (event: Event) => {
+      if (!mine(event)) return
       const now = performance.now()
       if (now - lastTick.current < 200) return
       lastTick.current = now
-      setCurrentTime(audio.currentTime)
+      setCurrentTime(active.currentTime)
       const song = queueRef.current[indexRef.current]
       if (
         song &&
         !scrobbled.current &&
-        audio.duration > 0 &&
-        (audio.currentTime >= 30 || audio.currentTime >= audio.duration * 0.5)
+        active.duration > 0 &&
+        (active.currentTime >= 30 || active.currentTime >= active.duration * 0.5)
       ) {
         scrobbled.current = true
         void client?.scrobble(song.id, true)
       }
     }
-    const onMeta = () => setDuration(audio.duration || 0)
-    const onEnded = () => next()
-    const onPlay = () => setPlaying(true)
-    const onPause = () => setPlaying(false)
-    audio.addEventListener('timeupdate', onTime)
-    audio.addEventListener('loadedmetadata', onMeta)
-    audio.addEventListener('ended', onEnded)
-    audio.addEventListener('play', onPlay)
-    audio.addEventListener('pause', onPause)
-    return () => {
-      audio.removeEventListener('timeupdate', onTime)
-      audio.removeEventListener('loadedmetadata', onMeta)
-      audio.removeEventListener('ended', onEnded)
-      audio.removeEventListener('play', onPlay)
-      audio.removeEventListener('pause', onPause)
+    const onMeta = (event: Event) => {
+      if (mine(event)) setDuration(active.duration || 0)
     }
-  }, [client, next])
+    const onEnded = (event: Event) => {
+      if (mine(event)) next()
+    }
+    const onPlay = (event: Event) => {
+      if (mine(event)) setPlaying(true)
+    }
+    const onPause = (event: Event) => {
+      if (mine(event)) setPlaying(false)
+    }
+    for (const element of elements) {
+      element.addEventListener('timeupdate', onTime)
+      element.addEventListener('loadedmetadata', onMeta)
+      element.addEventListener('ended', onEnded)
+      element.addEventListener('play', onPlay)
+      element.addEventListener('pause', onPause)
+    }
+    return () => {
+      for (const element of elements) {
+        element.removeEventListener('timeupdate', onTime)
+        element.removeEventListener('loadedmetadata', onMeta)
+        element.removeEventListener('ended', onEnded)
+        element.removeEventListener('play', onPlay)
+        element.removeEventListener('pause', onPause)
+      }
+    }
+  }, [client, next, volume])
+
+  /*
+   * Buffers the next track while the current one plays. Waiting for the current
+   * one to be buffered enough keeps the extra request from competing with the
+   * audio that is actually playing; the timer is the fallback for slow links,
+   * where that event arrives late or never.
+   */
+  useEffect(() => {
+    if (!client || !playing) return
+    if (repeat === 'one') return
+    const song = queue[index]
+    const upcoming = queue[index + 1] ?? (repeat === 'all' ? queue[0] : undefined)
+    if (!song || !upcoming || upcoming.id === song.id) return
+    if (saveData()) return
+
+    const element = active
+    let timer = 0
+    const arm = () => {
+      const target = idle()
+      const url = client.streamUrl(upcoming.id)
+      if (target.dataset.songId === upcoming.id && target.getAttribute('src') === url) return
+      target.dataset.songId = upcoming.id
+      target.preload = 'auto'
+      target.src = url
+      target.load()
+    }
+    const onBuffered = () => {
+      if (element.readyState >= 3) {
+        element.removeEventListener('canplay', onBuffered)
+        arm()
+      }
+    }
+    if (element.readyState >= 3) arm()
+    else {
+      element.addEventListener('canplay', onBuffered)
+      timer = window.setTimeout(() => {
+        element.removeEventListener('canplay', onBuffered)
+        arm()
+      }, PRELOAD_AFTER_MS)
+    }
+    return () => {
+      window.clearTimeout(timer)
+      element.removeEventListener('canplay', onBuffered)
+    }
+  }, [client, queue, index, repeat, playing])
 
   useEffect(() => {
     const song = current
@@ -458,11 +623,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Not every action exists on every platform, and an unsupported one would
     // otherwise abort the whole effect.
     const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
-      ['play', () => void audio.play()],
-      ['pause', () => audio.pause()],
+      ['play', () => void active.play()],
+      ['pause', () => active.pause()],
       ['previoustrack', () => prev()],
       ['nexttrack', () => next()],
-      ['stop', () => audio.pause()],
+      ['stop', () => active.pause()],
       [
         'seekto',
         (details) => {
