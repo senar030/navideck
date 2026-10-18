@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { SubsonicError } from '../api/client'
 import type { RadioStation } from '../api/types'
 import { followedSource, hostOf, radioSong, radioSubtitle, type RadioSource } from '../lib/radio'
-import { RADIO_PAGE, reportRadioClick, searchRadioStations, type RadioHit } from '../lib/radioBrowser'
+import {
+  lookupRadioLogo,
+  RADIO_PAGE,
+  reportRadioClick,
+  searchRadioStations,
+  type RadioHit,
+} from '../lib/radioBrowser'
 import { readRadioLogos, rememberRadioLogo } from '../lib/radioLogos'
 import { useAuth } from '../state/AuthContext'
 import { usePlayer } from '../state/PlayerContext'
@@ -21,6 +27,8 @@ export function RadioView() {
   const [stationsError, setStationsError] = useState('')
   const [admin, setAdmin] = useState<boolean | null>(null)
   const [logos, setLogos] = useState(readRadioLogos)
+  /** Streams the directory was already asked about, so a reload does not ask twice. */
+  const askedForLogo = useRef(new Set<string>())
 
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<RadioHit[]>([])
@@ -51,6 +59,25 @@ export function RadioView() {
   useEffect(() => {
     void loadStations()
   }, [loadStations])
+
+  /*
+   * A station's logo is not part of what Navidrome stores, so the list a second
+   * device loads has no logos in it: the only device that ever saw them is the
+   * one the stations were followed on. Those devices look the missing ones up in
+   * the directory again and keep them in the same cache.
+   */
+  useEffect(() => {
+    const known = readRadioLogos()
+    const missing = stations.filter(
+      (station) => !station.coverArt && !known[station.streamUrl] && !askedForLogo.current.has(station.streamUrl),
+    )
+    if (!missing.length) return
+    for (const station of missing) askedForLogo.current.add(station.streamUrl)
+    void Promise.all(missing.map((station) => lookupRadioLogo(station.name, station.streamUrl))).then((found) => {
+      found.forEach((logo, index) => rememberRadioLogo(missing[index].streamUrl, logo))
+      setLogos(readRadioLogos())
+    })
+  }, [stations])
 
   useEffect(() => {
     if (!client) return
@@ -337,7 +364,8 @@ function StationRow({
   return (
     <article className="radio-card">
       <button type="button" className="radio-hit" onClick={onPlay} aria-label={`${name} abspielen`}>
-        <CoverArt coverArt={coverArt} src={logo} alt="" size={120} className="radio-art" />
+        {/* A logo uploaded in Navidrome wins over the one the directory told us. */}
+        <CoverArt coverArt={coverArt} src={coverArt ? undefined : logo} alt="" size={120} className="radio-art" />
         <span className="radio-text">
           <strong>{name}</strong>
           {subtitle ? <em>{subtitle}</em> : null}

@@ -1,8 +1,12 @@
 /*
  * Navidrome stores a radio station's name, stream and homepage, but no logo —
- * unless somebody uploaded one for it. The directory we search in knows a logo
- * for nearly every station, so the one we followed is remembered here, per
- * device, keyed by the stream URL Navidrome holds.
+ * unless somebody uploaded one for it. The directory knows a logo for nearly
+ * every station, so the one belonging to a station is kept here, keyed by the
+ * stream URL Navidrome holds.
+ *
+ * This is a cache, not the source of truth: the device that followed a station
+ * wrote the logo down from the hit it followed, and any other device fills in the
+ * same entry by looking the station up again (see `lookupRadioLogo`).
  */
 
 const KEY = 'navideck.radio.logos'

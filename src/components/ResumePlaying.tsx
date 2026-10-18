@@ -19,7 +19,7 @@ export function ResumePlaying() {
 
   return (
     <section className="resume" aria-label="Weiterhören">
-      <CoverArt coverArt={current.coverArt} alt="" size={240} className="resume-art" />
+      <CoverArt coverArt={current.coverArt} src={current.radio?.logo} alt="" size={240} className="resume-art" />
       <div className="resume-text">
         <p className="eyebrow">{playing ? 'Läuft gerade' : 'Weiterhören'}</p>
         <p className="resume-title">{current.title}</p>

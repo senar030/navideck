@@ -83,8 +83,12 @@ in every other Subsonic client. Three things are worth knowing:
 - Only **HTTPS** streams are listed. Navidrome stores a station as a URL and the
   browser plays it directly; a page served over HTTPS refuses to load a plain
   `http://` stream, and Navidrome does not proxy streams itself.
-- Station logos come from the directory and are remembered per browser, because
-  a station in Navidrome only carries a logo if somebody uploaded one there.
+- Station logos come from the directory, because a station in Navidrome only carries
+  a logo if somebody uploaded one there — Navidrome's radio API takes a name, a stream
+  and a homepage, and nothing else. The device that follows a station remembers its
+  logo; every other device looks it up again by stream URL and caches it locally, so
+  the covers show up everywhere. Stations the directory has no logo for fall back to
+  the app's own artwork.
 
 ## TrueNAS + Portainer
 

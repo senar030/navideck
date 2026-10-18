@@ -77,6 +77,66 @@ export async function searchRadioStations({ term = '', offset = 0 }: RadioSearch
 }
 
 /**
+ * The logo the directory knows for a stream, looked up on demand.
+ *
+ * A station's logo never reaches Navidrome — its radio API takes a name, a
+ * stream and a homepage and nothing else — so the only device that ever saw the
+ * logo is the one the station was followed on. Every other device knows just the
+ * stream URL, and asks the directory again with it.
+ *
+ * The exact lookup misses half the point: the directory files a station under
+ * the URL of the entry it was found through, which for a playlist wrapper is not
+ * the resolved stream Navidrome stores and plays. Those entries are only
+ * reachable by name, and only the resolved stream tells the right one from the
+ * many stations that share a name.
+ */
+export async function lookupRadioLogo(name: string, streamUrl: string): Promise<string | undefined> {
+  const stream = streamUrl.trim()
+  if (!stream) return undefined
+
+  const byUrl = await fetchStations(`/json/stations/byurl?${new URLSearchParams({ url: stream })}`)
+  const direct = pickLogo(byUrl, name)
+  if (direct) return direct
+
+  const term = name.trim()
+  if (!term) return undefined
+  const params = new URLSearchParams({
+    name: term,
+    limit: '30',
+    hidebroken: 'true',
+    order: 'votes',
+    reverse: 'true',
+  })
+  const byName = await fetchStations(`/json/stations/search?${params}`)
+  const sameStream = byName.filter((raw) => (raw.url_resolved || raw.url || '').trim() === stream)
+  return pickLogo(sameStream, name)
+}
+
+/** An answer we could not get counts as "the directory knows no logo". */
+async function fetchStations(path: string): Promise<RawStation[]> {
+  try {
+    return await getJson<RawStation[]>(path)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * The first https logo in the answer. An entry carrying the station's name wins
+ * over one that merely shares its stream: a single URL can be filed under
+ * several entries, and only the one we followed is the station being drawn.
+ */
+function pickLogo(entries: RawStation[], name: string): string | undefined {
+  const term = name.trim().toLowerCase()
+  const named = term ? entries.filter((raw) => (raw.name ?? '').trim().toLowerCase() === term) : []
+  for (const raw of [...named, ...entries]) {
+    const logo = httpsOrNothing(raw.favicon)
+    if (logo) return logo
+  }
+  return undefined
+}
+
+/**
  * The directory asks every client to report which station it played: it is what
  * the vote count is built from, and it costs one fire-and-forget request.
  */
