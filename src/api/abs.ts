@@ -68,6 +68,18 @@ export type AbsTrack = {
   mimeType?: string
 }
 
+/**
+ * A file on the server. The item detail answers with these rather than with
+ * ready-made tracks, and its contents are what a track is built from.
+ */
+export type AbsAudioFile = {
+  ino: string
+  duration?: number
+  mimeType?: string
+  exclude?: boolean
+  metadata?: { filename?: string; path?: string; size?: number }
+}
+
 export type AbsChapter = { start: number; end: number; title: string }
 
 export type AbsBook = {
@@ -77,6 +89,7 @@ export type AbsBook = {
   numTracks?: number
   numAudioFiles?: number
   numChapters?: number
+  audioFiles?: AbsAudioFile[] | null
   tracks?: AbsTrack[]
   chapters?: AbsChapter[]
 }
@@ -94,7 +107,7 @@ export type AbsEpisode = {
   pubDate?: string | null
   publishedAt?: number | null
   addedAt?: number
-  audioFile?: { duration?: number; mimeType?: string } | null
+  audioFile?: AbsAudioFile | null
   audioTrack?: AbsTrack | null
 }
 
@@ -179,6 +192,66 @@ export type AbsShelf = {
   label: string
   type: string
   entities: AbsLibraryItem[]
+}
+
+/** A player-ready track built from a file the server listed. */
+function trackOf(itemId: string, file: AbsAudioFile, index: number, startOffset: number): AbsTrack {
+  return {
+    index,
+    startOffset,
+    duration: file.duration ?? 0,
+    title: file.metadata?.filename || `Datei ${index + 1}`,
+    contentUrl: `/api/items/${encodeURIComponent(itemId)}/file/${encodeURIComponent(file.ino)}`,
+    mimeType: file.mimeType,
+  }
+}
+
+/**
+ * Fills in what the player needs and the server may not send: `tracks` for a
+ * book, `audioTrack` for an episode, and a duration for a book. The item detail
+ * only lists audio files unless it is asked to expand them, and a book without
+ * tracks simply played nothing at all.
+ */
+export function expandItem(item: AbsLibraryItem): AbsLibraryItem {
+  if (item.mediaType === 'book') {
+    const book = item.media as AbsBook
+    if (!book) return item
+    const files = (book.audioFiles ?? []).filter((file) => file.ino && !file.exclude)
+    let startOffset = 0
+    const tracks = book.tracks?.length
+      ? book.tracks
+      : files.map((file, index) => {
+          const track = trackOf(item.id, file, index, startOffset)
+          startOffset += track.duration
+          return track
+        })
+    const duration = book.duration || tracks.reduce((sum, track) => sum + (track.duration || 0), 0)
+    return {
+      ...item,
+      media: {
+        ...book,
+        tracks: tracks.length ? tracks : book.tracks,
+        duration,
+        numTracks: book.numTracks ?? (tracks.length || undefined),
+      },
+    }
+  }
+
+  if (item.mediaType === 'podcast') {
+    const podcast = item.media as AbsPodcast
+    const episodes = podcast.episodes?.map(expandEpisode)
+    return episodes ? { ...item, media: { ...podcast, episodes } } : item
+  }
+
+  return item
+}
+
+/** An episode that only carries its file still needs the track to be playable. */
+function expandEpisode(episode: AbsEpisode): AbsEpisode {
+  if (episode.audioTrack?.contentUrl || !episode.audioFile?.ino || !episode.libraryItemId) {
+    return episode
+  }
+  return { ...episode, audioTrack: trackOf(episode.libraryItemId, episode.audioFile, 0, 0) }
 }
 
 /** An answer from the server that was not what the app asked for. */
@@ -324,15 +397,15 @@ export class AbsClient {
     const data = await this.request<{ results: AbsLibraryItem[] }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/items?${query.toString()}`,
     )
-    return data.results ?? []
+    return (data.results ?? []).map(expandItem)
   }
 
   async getItem(itemId: string): Promise<AbsLibraryItem> {
     const data = await this.request<{ libraryItem?: AbsLibraryItem } | AbsLibraryItem>(
-      `/api/items/${encodeURIComponent(itemId)}`,
+      `/api/items/${encodeURIComponent(itemId)}?expanded=1`,
     )
-    if ('libraryItem' in data && data.libraryItem) return data.libraryItem
-    return data as AbsLibraryItem
+    const item = 'libraryItem' in data && data.libraryItem ? data.libraryItem : (data as AbsLibraryItem)
+    return expandItem(item)
   }
 
   async getAuthors(libraryId: string): Promise<AbsAuthor[]> {
@@ -377,7 +450,7 @@ export class AbsClient {
     const data = await this.request<{ episodes: AbsEpisode[] }>(
       `/api/libraries/${encodeURIComponent(libraryId)}/recent-episodes`,
     )
-    return data.episodes ?? []
+    return (data.episodes ?? []).map(expandEpisode)
   }
 
   /* --------------------------------------------------------------- podcasts */
