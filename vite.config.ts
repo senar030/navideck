@@ -6,9 +6,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    /* Reached through a tailnet, the host header is a MagicDNS name, not localhost. */
+    allowedHosts: true,
   },
   preview: {
     host: true,
     port: 4173,
+    allowedHosts: true,
   },
 })

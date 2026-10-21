@@ -33,6 +33,40 @@
       html[data-theme='light'] {
         background: #f3eefb;
       }
+      /* Shown only if the bundle never starts; a white page tells nobody why. */
+      #boot-error {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        font: 15px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        text-align: center;
+        color: #f2ecfd;
+        background: #140e1f;
+      }
+      #boot-error[hidden] {
+        display: none;
+      }
+      #boot-error p {
+        margin: 0;
+        max-width: 34rem;
+      }
+      #boot-error a {
+        color: #c3a5ff;
+      }
+      @media (prefers-color-scheme: light) {
+        #boot-error {
+          color: #2e2540;
+          background: #f3eefb;
+        }
+        #boot-error a {
+          color: #7a4fd6;
+        }
+      }
     </style>
     <script>
       (function () {
@@ -87,6 +121,31 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-error" hidden>
+      <p><strong>Navideck konnte nicht starten.</strong></p>
+      <p>
+        Meist liegt noch eine alte Datei im Cache. Lade die Seite neu – hilft das nicht, leere den
+        Cache für diese Adresse (in den Einstellungen des Browsers).
+      </p>
+      <p><a href="/">Neu laden</a></p>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      /*
+       * Runs whether or not the module above ever arrives: `load` also fires when
+       * the bundle 404s, so nothing here can hang on a broken build.
+       */
+      (function () {
+        function reveal() {
+          window.setTimeout(function () {
+            var root = document.getElementById('root')
+            var box = document.getElementById('boot-error')
+            if (root && box && !root.childElementCount) box.hidden = false
+          }, 1500)
+        }
+        if (document.readyState === 'complete') reveal()
+        else window.addEventListener('load', reveal)
+      })()
+    </script>
   </body>
 </html>

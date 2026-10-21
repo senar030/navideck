@@ -12,7 +12,7 @@
  * changes: that is what makes the shell and cover caches refresh.
  */
 
-const VERSION = 'v3'
+const VERSION = 'v4'
 const SHELL_CACHE = `navideck-shell-${VERSION}`
 const RUNTIME_CACHE = `navideck-runtime-${VERSION}`
 const COVER_CACHE = `navideck-covers-${VERSION}`
@@ -117,8 +117,17 @@ async function forgetCover(rawUrl) {
   }
 }
 
-function isCacheable(response) {
-  return Boolean(response) && response.ok && response.type === 'basic'
+/*
+ * A static server answers a missing file with index.html and a 200. Storing that
+ * under an asset URL pins the app to a module that is not JavaScript, and since
+ * hashed bundles are served cache-first, the blank page would survive every
+ * reload until the cache is dropped. HTML is therefore only ever stored for a
+ * navigation, never in place of a bundle.
+ */
+function isCacheable(response, allowHtml = false) {
+  if (!response || !response.ok || response.type !== 'basic') return false
+  if (allowHtml) return true
+  return !(response.headers.get('content-type') || '').includes('text/html')
 }
 
 /** Navigations: always try the network so a new build is picked up immediately. */
@@ -126,7 +135,7 @@ async function handleNavigation(request) {
   const cache = await caches.open(SHELL_CACHE)
   try {
     const response = await fetch(request)
-    if (isCacheable(response)) {
+    if (isCacheable(response, true)) {
       await cache.put('/index.html', response.clone())
       return response
     }
