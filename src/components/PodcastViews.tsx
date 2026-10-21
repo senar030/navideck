@@ -8,7 +8,12 @@ import {
   type PodcastSort,
 } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
-import { useAllEpisodes, usePodcastItems, type EpisodeRef } from '../lib/useAbsLibrary'
+import {
+  useAllEpisodes,
+  usePodcastItems,
+  useProgressEpisodes,
+  useRecentEpisodes,
+} from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import {
@@ -36,31 +41,23 @@ const EPISODE_SORTS: { id: EpisodeSort; label: string }[] = [
 ]
 
 export function PodcastHome() {
-  const { abs, progress } = useAccount()
+  const { abs } = useAccount()
   const { go } = useNav()
   const { playEpisode } = useAbsPlayer()
-  const episodes = useAllEpisodes()
+  const shows = usePodcastItems()
+  const latestFeed = useRecentEpisodes(32)
+  const continuingFeed = useProgressEpisodes()
 
-  const refs = useMemo(() => episodes.data ?? [], [episodes.data])
-  const showCount = useMemo(() => new Set(refs.map((ref) => ref.item.id)).size, [refs])
-  const byKey = useMemo(() => {
-    const map = new Map<string, EpisodeRef>()
-    for (const ref of refs) map.set(`${ref.item.id}:${ref.episode.id}`, ref)
-    return map
-  }, [refs])
-
-  const continuing = useMemo(
-    () =>
-      Object.values(progress)
-        .filter((entry) => entry.episodeId && !entry.isFinished && (entry.currentTime ?? 0) > 5)
-        .sort((a, b) => (b.lastUpdate ?? 0) - (a.lastUpdate ?? 0))
-        .map((entry) => byKey.get(`${entry.libraryItemId}:${entry.episodeId ?? ''}`))
-        .filter((ref): ref is EpisodeRef => Boolean(ref))
-        .slice(0, 10),
-    [byKey, progress],
+  const refs = useMemo(() => latestFeed.data ?? [], [latestFeed.data])
+  const showCount = useMemo(
+    () => (shows.data?.length ? shows.data.length : new Set(refs.map((ref) => ref.item.id)).size),
+    [shows.data, refs],
   )
 
+  /* The server already sends them newest first; the shelf still sorts, so a
+     mixed list from a proxy or a cache cannot look out of order. */
   const latest = useMemo(() => sortEpisodeRefs(refs, 'newest', false).slice(0, 12), [refs])
+  const continuing = useMemo(() => continuingFeed.data ?? [], [continuingFeed.data])
 
   if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
 
@@ -78,8 +75,8 @@ export function PodcastHome() {
         </div>
       </header>
 
-      {episodes.error ? <p className="error">{episodes.error}</p> : null}
-      {episodes.loading && !episodes.data ? <p className="muted">Wird geladen …</p> : null}
+      {latestFeed.error ? <p className="error">{latestFeed.error}</p> : null}
+      {latestFeed.loading && !latestFeed.data ? <p className="muted">Wird geladen …</p> : null}
 
       {continuing.length ? (
         <Shelf title="Weiterhören" hint="Angefangene Folgen">
@@ -109,7 +106,7 @@ export function PodcastHome() {
         </Shelf>
       ) : null}
 
-      {!episodes.loading && !episodes.error && !refs.length ? (
+      {!latestFeed.loading && !latestFeed.error && !refs.length && !continuing.length ? (
         <p className="muted">Noch keine Episoden auf dem Server.</p>
       ) : null}
     </div>

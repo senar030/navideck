@@ -107,6 +107,9 @@ export type AbsEpisode = {
   pubDate?: string | null
   publishedAt?: number | null
   addedAt?: number
+  libraryId?: string
+  /** The show, as the recent-episodes endpoint sends it with every episode. */
+  podcast?: (AbsPodcast & { libraryItemId?: string }) | null
   audioFile?: AbsAudioFile | null
   audioTrack?: AbsTrack | null
 }
@@ -446,9 +449,21 @@ export class AbsClient {
     return this.request(`/api/libraries/${encodeURIComponent(libraryId)}/personalized`)
   }
 
-  async getRecentEpisodes(libraryId: string): Promise<AbsEpisode[]> {
+  /**
+   * The server's own "what is new": unfinished episodes, newest first. This is
+   * the only endpoint that lists episodes across shows — the item list is
+   * always minified and carries no episodes at all.
+   */
+  async getRecentEpisodes(
+    libraryId: string,
+    opts: { limit?: number; page?: number } = {},
+  ): Promise<AbsEpisode[]> {
+    const query = new URLSearchParams()
+    if (opts.limit) query.set('limit', String(opts.limit))
+    if (opts.page) query.set('page', String(opts.page))
+    const suffix = query.toString()
     const data = await this.request<{ episodes: AbsEpisode[] }>(
-      `/api/libraries/${encodeURIComponent(libraryId)}/recent-episodes`,
+      `/api/libraries/${encodeURIComponent(libraryId)}/recent-episodes${suffix ? `?${suffix}` : ''}`,
     )
     return (data.episodes ?? []).map(expandEpisode)
   }
