@@ -471,30 +471,26 @@ h4 {
   overflow-x: hidden;
 }
 
-.brand {
+/* The rail's top slot: where the logo used to be sits the way in. */
+.nav-brand {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0 0.85rem;
-  margin-bottom: 0.25rem;
+  justify-content: center;
+  padding: 0.45rem 0 0.75rem;
+  margin-bottom: 0.2rem;
 }
 
-.brand-name {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
+/*
+ * Only one way in at a time: the rail owns the button when the navigation
+ * stands on the left, the top bar has it when the navigation lies below.
+ * The shell records the shape as `data-nav` — a flex direction cannot be asked
+ * for in a media query, and deck and desktop disagree about which is which.
+ */
+html[data-nav='rail'] .chrome-start .space-switch {
+  display: none;
 }
 
-.logo-dot {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 12px var(--accent-2);
+html[data-nav='bar'] .nav-brand {
+  display: none;
 }
 
 .nav-btn {
@@ -3397,7 +3393,6 @@ html[data-theme='light'] .hero-banner {
     gap: 0;
   }
 
-  .brand,
   .nav-user,
   .nav-spacer {
     display: none;
@@ -4343,15 +4338,15 @@ html[data-ui='deck'] .pw-row input {
 .space-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  max-width: 100%;
-  min-height: 2.4rem;
-  padding: 0 0.7rem 0 0.45rem;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: var(--pill);
   background: transparent;
   color: var(--text);
-  font-weight: 600;
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
@@ -4372,23 +4367,6 @@ html[data-ui='deck'] .pw-row input {
   color: var(--accent);
 }
 
-.space-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.space-btn > svg {
-  flex: 0 0 auto;
-  color: var(--muted);
-  transition: transform var(--dur) var(--ease);
-}
-
-.space-btn.is-on > svg {
-  transform: rotate(180deg);
-}
-
 .space-menu {
   position: absolute;
   top: calc(100% + 0.4rem);
@@ -4406,6 +4384,16 @@ html[data-ui='deck'] .pw-row input {
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   backdrop-filter: blur(20px) saturate(1.4);
   animation: space-in 0.18s var(--ease);
+}
+
+/*
+ * The menu is drawn in a portal: the desktop rail clips its children and its
+ * frosted panel would capture a fixed child, so the popover places itself.
+ */
+.space-menu.is-floating {
+  position: fixed;
+  z-index: 60;
+  transform-origin: top left;
 }
 
 @keyframes space-in {
@@ -5264,10 +5252,6 @@ html[data-ui='deck'] .pw-row input {
 
   .abs-person-art {
     width: 6.5rem;
-  }
-
-  .space-name {
-    max-width: 6.5rem;
   }
 
   .account-card {

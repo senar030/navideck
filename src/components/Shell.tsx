@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { useAccount } from '../state/AccountContext'
 import { spaceOf, useNav } from '../state/NavContext'
 import { AlbumDetail } from './AlbumDetail'
@@ -26,7 +26,6 @@ import {
   IconGenres,
   IconHome,
   IconLists,
-  IconLogo,
   IconPlus,
   IconPodcast,
   IconRadio,
@@ -45,6 +44,7 @@ import { AccountView } from './AccountView'
 import { SettingsSheet } from './SettingsSheet'
 import { StarredView } from './StarredView'
 import { StartHub } from './StartHub'
+import { SpaceSwitcher } from './SpaceSwitcher'
 import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
@@ -62,12 +62,34 @@ export function Shell() {
   const showBooks = Boolean(abs && (abs.books || !abs.libraries.length))
   const showPodcasts = Boolean(abs && (abs.podcasts || !abs.libraries.length))
 
+  /*
+   * Where the way-in button belongs follows the shape of the navigation, and
+   * that shape is decided in CSS (a rail on the left, a bar below on narrow
+   * screens and on the deck). CSS cannot ask for a flex direction, so record
+   * it; both buttons are rendered and exactly one is shown.
+   */
+  useLayoutEffect(() => {
+    const nav = document.querySelector('.nav')
+    if (!nav) return
+    const apply = () => {
+      const bar = getComputedStyle(nav).flexDirection === 'row'
+      document.documentElement.dataset.nav = bar ? 'bar' : 'rail'
+    }
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(nav)
+    window.addEventListener('resize', apply)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', apply)
+    }
+  }, [])
+
   return (
     <div className="app">
       <nav className="nav" aria-label="Hauptnavigation">
-        <div className="brand">
-          <IconLogo size={30} />
-          <span className="brand-name">Navideck</span>
+        <div className="nav-brand">
+          <SpaceSwitcher />
         </div>
 
         {space === 'music' ? (
