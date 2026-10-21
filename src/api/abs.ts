@@ -290,9 +290,17 @@ export class AbsClient {
     return data.user
   }
 
+  /**
+   * The account. Audiobookshelf sends the user bare from /api/me; only /login
+   * wraps it in `user`. A proxy or an older server may still wrap it, so both
+   * shapes are read — reading the wrong one used to hand back undefined and
+   * take the whole app down.
+   */
   async getMe(): Promise<AbsUser> {
-    const data = await this.request<{ user: AbsUser }>('/api/me')
-    return data.user
+    const data = await this.request<AbsUser | { user?: AbsUser }>('/api/me')
+    if (data && typeof data === 'object' && 'user' in data && data.user) return data.user
+    if (data && typeof data === 'object' && 'id' in data) return data as AbsUser
+    throw new AbsError(0, 'Der Server hat kein Benutzerprofil zurückgegeben.')
   }
 
   async getLibraries(): Promise<AbsLibrary[]> {

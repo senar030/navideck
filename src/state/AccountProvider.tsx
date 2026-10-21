@@ -101,7 +101,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           const list = await client.getLibraries()
           setUsers((u) => ({ ...u, [source.id]: user }))
           setLibraries((l) => ({ ...l, [source.id]: list }))
-          setProgress((p) => mergeProgress(p, user.mediaProgress))
+          setProgress((p) => mergeProgress(p, user?.mediaProgress))
         }
         setHealth((h) => ({ ...h, [source.id]: { status: 'ok' } }))
       } catch (err) {
@@ -156,7 +156,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         } satisfies AbsSource
         setLibraries((l) => ({ ...l, [source.id]: list }))
         setUsers((u) => ({ ...u, [source.id]: user }))
-        setProgress((p) => mergeProgress(p, user.mediaProgress))
+        setProgress((p) => mergeProgress(p, user?.mediaProgress))
       }
 
       asked.current.add(source.id)
