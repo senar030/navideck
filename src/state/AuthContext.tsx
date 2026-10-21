@@ -3,11 +3,8 @@ import type { NavidromeClient } from '../api/client'
 import type { MusicFolder } from '../api/types'
 
 type AuthContextValue = {
+  /** Null while the account has no Navidrome server, or none that answers. */
   client: NavidromeClient | null
-  login: (server: string, username: string, password: string) => Promise<void>
-  logout: () => void
-  lastServer: string
-  lastUser: string
   folders: MusicFolder[]
   selectedFolderIds: string[]
   setSelectedFolderIds: (ids: string[]) => void

@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Navideck",
   "short_name": "Navideck",
-  "description": "Touch-freundlicher Navidrome-Client für Desktop, Tablet und Steam Deck.",
+  "description": "Musik, Hörbücher und Podcasts von Navidrome und Audiobookshelf – für Desktop, Tablet und Steam Deck.",
   "lang": "de",
   "dir": "ltr",
   "start_url": "/",
@@ -47,6 +47,18 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Hörbücher",
+      "short_name": "Hörbücher",
+      "url": "/#/ab-home",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Podcasts",
+      "short_name": "Podcasts",
+      "url": "/#/pod-home",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
     {
       "name": "Alben",
       "short_name": "Alben",

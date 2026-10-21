@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { AbsClient } from '../api/abs'
 import type { Song } from '../api/types'
 import { readRadioNow, type RadioNow } from '../lib/radioNow'
+import { useAccount } from './AccountContext'
 import { useAuth } from './AuthContext'
 import { PlayerContext, type RepeatMode } from './PlayerContext'
 
@@ -140,12 +142,15 @@ function writeSession(session: Session) {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { client } = useAuth()
+  const { abs, noteProgress } = useAccount()
+  /** The account a saved session belongs to; music and books share one queue. */
+  const sessionUser = client?.username ?? (abs ? 'konto' : null)
   /*
    * The session is read once, when the provider mounts, and never written to —
    * state rather than a ref, so the initializers below can read it during render
    * and the stored queue is not parsed again on every render.
    */
-  const [boot] = useState(() => readSession(client?.username))
+  const [boot] = useState(() => readSession(sessionUser ?? undefined))
   /** What the last session left behind, if anything: the track the app opens on. */
   const restored = boot?.queue[boot.index]
   const [queue, setQueue] = useState<Song[]>(() => boot?.queue ?? [])
@@ -165,6 +170,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const scrobbled = useRef(false)
   const lastTick = useRef(0)
+  const lastAbs = useRef(0)
+  const absRef = useRef<{ client: AbsClient; note: typeof noteProgress } | null>(null)
   const queueRef = useRef(queue)
   const indexRef = useRef(index)
   const repeatRef = useRef(repeat)
@@ -184,6 +191,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [index, queue, repeat, shuffle])
 
   const current = queue[index]
+
+  /*
+   * Listening progress for books and episodes is reported to the server that
+   * owns them, not to Navidrome. The session lives in a ref because the audio
+   * element's listeners are bound once and must always see the current one.
+   */
+  useEffect(() => {
+    absRef.current = abs ? { client: abs.client, note: noteProgress } : null
+  }, [abs, noteProgress])
+
+  const reportAbs = useCallback((song: Song, seconds: number, finished = false) => {
+    const entry = song.abs
+    const live = absRef.current
+    if (!entry || !live) return
+    const total = entry.total > 0 ? entry.total : seconds
+    const at = Math.max(0, Math.min(total, seconds))
+    live.note({
+      itemId: entry.itemId,
+      episodeId: entry.episodeId,
+      currentTime: at,
+      duration: total,
+      isFinished: finished,
+    })
+    void live.client
+      .updateProgress({
+        itemId: entry.itemId,
+        episodeId: entry.episodeId,
+        currentTime: at,
+        duration: total,
+        isFinished: finished,
+      })
+      .catch(() => undefined)
+  }, [])
 
   /*
    * A live stream says what it plays every few minutes, and only through its own
@@ -229,6 +269,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    */
   const start = useCallback((element: HTMLAudioElement, song: Song) => {
     element.dataset.songId = song.id
+    /*
+     * A book resumes somewhere inside its file; the offset is applied as soon
+     * as the element knows how long the file is. Only the entry that carries it
+     * jumps — the following files of the same book start at zero.
+     */
+    if (song.startAt) {
+      const at = song.startAt
+      const jump = () => {
+        try {
+          element.currentTime = at
+        } catch {
+          /* not seekable yet */
+        }
+      }
+      if (element.readyState >= 1) jump()
+      else element.addEventListener('loadedmetadata', jump, { once: true })
+    }
     void element.play().then(
       () => setPlaying(true),
       () => setPlaying(false),
@@ -237,14 +294,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const loadAndPlay = useCallback(
     (song: Song) => {
-      if (!client) return
+      // Music needs Navidrome; a book or a station carries its own stream.
+      if (!client && !song.radio && !song.abs) return
       /*
-       * A radio entry carries its own stream URL; anything else is a file that
-       * Navidrome hands out. Live streams are never scrobbled — they have no
-       * length and belong to no user account.
+       * A radio entry and an Audiobookshelf entry carry their own stream URL;
+       * anything else is a file that Navidrome hands out. Neither is scrobbled
+       * to Navidrome — it does not own them.
        */
-      const url = song.radio?.url ?? client.streamUrl(song.id)
-      scrobbled.current = Boolean(song.radio)
+      const url = song.radio?.url ?? song.abs?.url ?? client!.streamUrl(song.id)
+      scrobbled.current = Boolean(song.radio || song.abs)
 
       const holds = (element: HTMLAudioElement) =>
         element.dataset.songId === song.id &&
@@ -298,7 +356,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         start(active, song)
       }
 
-      if (!song.radio) void client.scrobble(song.id, false)
+      if (!song.radio && !song.abs) void client?.scrobble(song.id, false)
     },
     [client, start],
   )
@@ -343,8 +401,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggleStar = useCallback(() => {
     const song = queueRef.current[indexRef.current]
-    // A station has no id Navidrome could star.
-    if (!song || !client || song.radio) return
+    // A station has no id Navidrome could star, and a book belongs elsewhere.
+    if (!song || !client || song.radio || song.abs) return
     const next = !song.starred
     void (next ? client.star(song.id) : client.unstar(song.id)).then(
       () => {
@@ -495,10 +553,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = boot
     const song = saved?.queue[saved.index]
-    if (!client || !song) return
+    if (!song || (!client && !song.radio && !song.abs)) return
     const element = active
     element.dataset.songId = song.id
-    element.src = song.radio?.url ?? client.streamUrl(song.id)
+    element.src = song.radio?.url ?? song.abs?.url ?? client!.streamUrl(song.id)
     if (song.radio) {
       /*
        * A live stream must not be opened just because the app was started: that
@@ -512,7 +570,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     element.preload = 'auto'
     const onMeta = () => {
       if (queueRef.current[indexRef.current]?.id !== song.id) return
-      const t = Math.min(saved.time, finiteDuration(element, saved.time))
+      const t = song.abs
+        ? saved.time || song.startAt || 0
+        : Math.min(saved.time, finiteDuration(element, saved.time))
       if (t > 0) element.currentTime = t
       setDuration(finiteDuration(element))
       setCurrentTime(element.currentTime)
@@ -524,7 +584,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [boot, client])
 
   useEffect(() => {
-    if (!client) return
+    if (!sessionUser) return
     const id = window.setTimeout(() => {
       if (!queue.length) {
         try {
@@ -535,7 +595,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return
       }
       writeSession({
-        user: client.username,
+        user: sessionUser,
         queue,
         index,
         time: active.currentTime || currentTime,
@@ -544,13 +604,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       })
     }, 400)
     return () => window.clearTimeout(id)
-  }, [client, queue, index, currentTime, shuffle, repeat])
+  }, [sessionUser, queue, index, currentTime, shuffle, repeat])
 
   useEffect(() => {
     const save = () => {
-      if (!client || !queueRef.current.length) return
+      if (!sessionUser || !queueRef.current.length) return
       writeSession({
-        user: client.username,
+        user: sessionUser,
         queue: queueRef.current,
         index: indexRef.current,
         time: active.currentTime,
@@ -560,7 +620,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('pagehide', save)
     return () => window.removeEventListener('pagehide', save)
-  }, [client])
+  }, [sessionUser])
 
   useEffect(() => {
     /*
@@ -583,6 +643,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // A live stream has no progress to show and nothing to scrobble.
       if (song?.radio) return
       setCurrentTime(active.currentTime)
+      if (song?.abs) {
+        // Every ten seconds is enough for another device to pick up here.
+        if (now - lastAbs.current >= 10_000) {
+          lastAbs.current = now
+          reportAbs(song, song.abs.startOffset + active.currentTime)
+        }
+        return
+      }
       if (
         song &&
         !scrobbled.current &&
@@ -597,13 +665,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (mine(event)) setDuration(finiteDuration(active))
     }
     const onEnded = (event: Event) => {
-      if (mine(event)) next()
+      if (!mine(event)) return
+      const song = queueRef.current[indexRef.current]
+      if (song?.abs) {
+        const entry = song.abs
+        // The last file of a book, or the only file of an episode, is the end.
+        const last = !entry.tracks || entry.track === entry.tracks
+        reportAbs(song, entry.total, last)
+        lastAbs.current = 0
+      }
+      next()
     }
     const onPlay = (event: Event) => {
       if (mine(event)) setPlaying(true)
     }
     const onPause = (event: Event) => {
-      if (mine(event)) setPlaying(false)
+      if (!mine(event)) return
+      setPlaying(false)
+      const song = queueRef.current[indexRef.current]
+      if (song?.abs) reportAbs(song, song.abs.startOffset + active.currentTime)
     }
     for (const element of elements) {
       element.addEventListener('timeupdate', onTime)
@@ -621,7 +701,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         element.removeEventListener('pause', onPause)
       }
     }
-  }, [client, next, volume])
+  }, [client, next, reportAbs, volume])
 
   /*
    * Buffers the next track while the current one plays, but only once the
@@ -631,18 +711,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    * that a playlist being opened right now depends on.
    */
   useEffect(() => {
-    if (!client) return
     const song = queue[index]
     const upcoming = queue[index + 1] ?? (repeat === 'all' ? queue[0] : undefined)
     // A station is never preloaded: there is no beginning to buffer ahead of the
     // live edge, and an open connection would pull it for a track maybe skipped.
-    const wanted =
-      repeat !== 'one' && upcoming && !upcoming.radio && upcoming.id !== song?.id ? upcoming.id : null
+    // A book file is long enough that its successor is not wanted early either.
+    const wantedSong =
+      repeat !== 'one' && upcoming && !upcoming.radio && !upcoming.abs && upcoming.id !== song?.id
+        ? upcoming
+        : null
+    const wanted = wantedSong?.id ?? null
+    const wantedUrl = wantedSong ? (wantedSong.abs?.url ?? client?.streamUrl(wantedSong.id)) : undefined
 
     // A preload for a track this queue no longer plays must not keep running.
     const target = idle()
     if (target.dataset.songId && target.dataset.songId !== wanted) release(target)
-    if (!wanted || !playing || saveData()) return
+    if (!wanted || !wantedUrl || !playing || saveData()) return
 
     const element = active
     const arm = () => {
@@ -651,7 +735,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (target.dataset.songId === wanted && target.getAttribute('src')) return
       target.dataset.songId = wanted
       target.preload = 'auto'
-      target.src = client.streamUrl(wanted)
+      target.src = wantedUrl
       target.load()
     }
     const check = () => {
@@ -683,16 +767,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
      * the album line so it is not lost.
      */
     const now = song.radio ? radioNow : null
+    const artwork = song.radio?.logo
+      ? song.radio.logo
+      : song.abs?.cover
+        ? song.abs.cover
+        : song.coverArt && client
+          ? client.coverUrl(song.coverArt, 512)
+          : null
     try {
       session.metadata = new MediaMetadata({
         title: now?.title ?? song.title,
         artist: now?.artist ?? song.artist ?? '',
         album: now ? song.title : song.album ?? '',
-        artwork: song.radio?.logo
-          ? [{ src: song.radio.logo, sizes: '512x512' }]
-          : song.coverArt && client
-            ? [{ src: client.coverUrl(song.coverArt, 512) ?? '', sizes: '512x512' }]
-            : [],
+        artwork: artwork ? [{ src: artwork, sizes: '512x512' }] : [],
       })
     } catch {
       /* some WebKit builds reject MediaMetadata */

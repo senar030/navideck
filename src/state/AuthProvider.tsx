@@ -1,54 +1,57 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavidromeClient } from '../api/client'
 import type { MusicFolder } from '../api/types'
-import { normalizeServerUrl } from '../lib/format'
 import { AuthContext } from './AuthContext'
+import { useAccount } from './AccountContext'
 
-const STORAGE_KEY = 'navideck.auth'
-const LAST_KEY = 'navideck.last'
 const LIB_KEY = 'navideck.libraries'
 
-type StoredAuth = {
-  baseUrl: string
-  username: string
-  password: string
-}
+/** Kept at module level so a missing client does not hand out a new array. */
+const NO_FOLDERS: MusicFolder[] = []
 
-function readJson<T>(key: string): T | null {
+function readLibraries(): string[] {
   try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return null
-    return JSON.parse(raw) as T
+    const raw = localStorage.getItem(LIB_KEY)
+    if (!raw) return []
+    const data: unknown = JSON.parse(raw)
+    return Array.isArray(data) ? (data as string[]) : []
   } catch {
-    return null
+    return []
   }
 }
 
+/**
+ * Turns the account's Navidrome server into the client the music side uses.
+ * Everything musical in the app still speaks Subsonic; this is the one place
+ * that knows which server it speaks to.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const stored = readJson<StoredAuth>(STORAGE_KEY)
-  const last = readJson<Pick<StoredAuth, 'baseUrl' | 'username'>>(LAST_KEY)
-  const [client, setClient] = useState<NavidromeClient | null>(() => {
-    if (!stored) return null
-    const next = new NavidromeClient(stored.baseUrl, stored.username, stored.password)
-    next.folderIds = readJson<string[]>(LIB_KEY) ?? []
-    return next
-  })
+  const { music } = useAccount()
   const [folders, setFolders] = useState<MusicFolder[]>([])
-  const [selectedFolderIds, setSelected] = useState<string[]>(() => readJson<string[]>(LIB_KEY) ?? [])
+  const [selectedFolderIds, setSelected] = useState<string[]>(readLibraries)
+
+  /*
+   * The client is rebuilt when the chosen libraries change: a client carries
+   * its folder filter, and every music view should fetch with the new one.
+   */
+  const client = useMemo(() => {
+    if (!music) return null
+    const next = new NavidromeClient(music.baseUrl, music.username, music.password)
+    next.folderIds = selectedFolderIds
+    return next
+  }, [music, selectedFolderIds])
 
   useEffect(() => {
     if (!client) return
     let cancelled = false
-    void client.ping().catch(() => {
-      if (cancelled) return
-      localStorage.removeItem(STORAGE_KEY)
-      setClient(null)
-    })
-    void client.getMusicFolders().then((list) => {
-      if (!cancelled) setFolders(list)
-    }).catch(() => {
-      if (!cancelled) setFolders([])
-    })
+    void client
+      .getMusicFolders()
+      .then((list) => {
+        if (!cancelled) setFolders(list)
+      })
+      .catch(() => {
+        if (!cancelled) setFolders([])
+      })
     return () => {
       cancelled = true
     }
@@ -56,60 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSelectedFolderIds = useCallback((ids: string[]) => {
     setSelected(ids)
-    localStorage.setItem(LIB_KEY, JSON.stringify(ids))
-    setClient((c) => {
-      if (!c) return c
-      c.folderIds = ids
-      return c
-    })
-  }, [])
-
-  const login = useCallback(async (server: string, username: string, password: string) => {
-    const baseUrl = normalizeServerUrl(server)
-    const next = new NavidromeClient(baseUrl, username.trim(), password)
-    await next.ping()
-    next.folderIds = readJson<string[]>(LIB_KEY) ?? []
-    const payload = {
-      baseUrl: next.baseUrl,
-      username: next.username,
-      password,
-    } satisfies StoredAuth
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-    localStorage.setItem(
-      LAST_KEY,
-      JSON.stringify({ baseUrl: next.baseUrl, username: next.username }),
-    )
-    setClient(next)
-  }, [])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
-    setClient(null)
+    try {
+      localStorage.setItem(LIB_KEY, JSON.stringify(ids))
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const value = useMemo(
     () => ({
       client,
-      login,
-      logout,
-      lastServer: stored?.baseUrl ?? last?.baseUrl ?? '',
-      lastUser: stored?.username ?? last?.username ?? '',
-      folders,
+      folders: client ? folders : NO_FOLDERS,
       selectedFolderIds,
       setSelectedFolderIds,
     }),
-    [
-      client,
-      login,
-      logout,
-      stored?.baseUrl,
-      stored?.username,
-      last?.baseUrl,
-      last?.username,
-      folders,
-      selectedFolderIds,
-      setSelectedFolderIds,
-    ],
+    [client, folders, selectedFolderIds, setSelectedFolderIds],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

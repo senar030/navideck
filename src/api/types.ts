@@ -11,6 +11,29 @@ export type RadioTrack = {
   homepage?: string
 }
 
+/**
+ * A queue entry that comes from Audiobookshelf instead of Navidrome. A book can
+ * be several files, so each file is its own entry and `startOffset` says where
+ * it begins inside the book — that is what progress is reported against.
+ */
+export type AbsPlayback = {
+  itemId: string
+  /** Set for a podcast episode; a book has none. */
+  episodeId?: string
+  /** The file's own URL, token included. */
+  url: string
+  /** Seconds of the book that play before this file starts. */
+  startOffset: number
+  /** Length of the whole book or episode, for progress. */
+  total: number
+  track?: number
+  tracks?: number
+  /** Ready-made cover URL; Audiobookshelf covers need a token. */
+  cover?: string
+  /** What the player bar should call this: usually the book's title. */
+  label?: string
+}
+
 export type Song = {
   id: string
   title: string
@@ -30,6 +53,10 @@ export type Song = {
   played?: string
   /** Set when this queue entry is a live radio stream rather than a file. */
   radio?: RadioTrack
+  /** Set when the entry comes from Audiobookshelf rather than Navidrome. */
+  abs?: AbsPlayback
+  /** Seconds into the file to start at — used when resuming a book. */
+  startAt?: number
 }
 
 export type Album = {

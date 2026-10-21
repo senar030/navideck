@@ -49,7 +49,7 @@ export function PlayerBar() {
           onClick={() => current && setExpanded(true)}
           disabled={!current}
         >
-          <CoverArt coverArt={current?.coverArt} src={current?.radio?.logo} alt="" size={120} className="player-cover" />
+          <CoverArt coverArt={current?.coverArt} src={current?.abs?.cover ?? current?.radio?.logo} alt="" size={120} className="player-cover" />
           <span className="track-meta">
             <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
             <span className="track-sub">{subtitle}</span>
@@ -87,7 +87,7 @@ export function PlayerBar() {
         onClick={() => current && setExpanded(true)}
         disabled={!current}
       >
-        <CoverArt coverArt={current?.coverArt} src={current?.radio?.logo} alt="" size={160} className="player-cover" />
+        <CoverArt coverArt={current?.coverArt} src={current?.abs?.cover ?? current?.radio?.logo} alt="" size={160} className="player-cover" />
         <span className="track-meta">
           <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
           <span className="track-sub">{subtitle}</span>

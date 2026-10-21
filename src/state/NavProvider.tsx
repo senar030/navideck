@@ -3,17 +3,47 @@ import { NavContext, type View } from './NavContext'
 
 type HistState = { stack: View[] }
 
-const ROOTS = new Set(['home', 'albums', 'artists', 'playlists', 'starred', 'search', 'genres', 'radio'])
+const ROOTS = new Set([
+  'start',
+  'account',
+  'home',
+  'albums',
+  'artists',
+  'playlists',
+  'starred',
+  'search',
+  'genres',
+  'radio',
+  'ab-home',
+  'abs-books',
+  'abs-authors',
+  'abs-collections',
+  'pod-home',
+  'podcasts',
+  'pod-episodes',
+  'pod-add',
+])
 
 /** Views whose address carries a single id segment. */
-const DETAILS = new Set(['album', 'artist', 'playlist', 'genre', 'section'])
+const DETAILS = new Set([
+  'album',
+  'artist',
+  'playlist',
+  'genre',
+  'section',
+  'abs-book',
+  'abs-author',
+  'abs-collection',
+  'abs-series',
+  'podcast',
+])
 
 /**
  * What the nav shows before anything has been pushed. One object rather than a
  * fresh literal per render, so `view` keeps its identity and the memo below can
  * hold on to it.
  */
-const HOME: View = { name: 'home' }
+const HOME: View = { name: 'start' }
 
 function isRoot(view: View): boolean {
   return ROOTS.has(view.name)

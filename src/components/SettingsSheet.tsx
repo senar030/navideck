@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../state/AuthContext'
+import { useNav } from '../state/NavContext'
 import { MIX_SIZES, usePrefs } from '../state/PrefsContext'
 import { PALETTES, useTheme } from '../state/ThemeContext'
 import { isIos, isIosSafari, isSecureOrigin, useInstallState } from '../lib/pwa'
@@ -11,7 +12,8 @@ type Props = {
 }
 
 export function SettingsSheet({ open, onClose }: Props) {
-  const { client, logout, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
+  const { client, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
+  const { go } = useNav()
   const { palette, setPalette } = useTheme()
   const { mixSize, setMixSize, uiMode, setUiMode } = usePrefs()
   if (!open) return null
@@ -27,10 +29,14 @@ export function SettingsSheet({ open, onClose }: Props) {
         </header>
         <div className="sheet-body settings-body">
           <InstallSection />
-          <p className="muted">Angemeldet als</p>
-          <p className="settings-user">{client?.username}</p>
-          <p className="muted">Server</p>
-          <p className="settings-url">{client?.baseUrl}</p>
+          {client ? (
+            <>
+              <p className="muted">Angemeldet als</p>
+              <p className="settings-user">{client.username}</p>
+              <p className="muted">Server</p>
+              <p className="settings-url">{client.baseUrl}</p>
+            </>
+          ) : null}
           <p className="muted">Ansicht</p>
           <p className="settings-hint">Die Deck-Ansicht vergrößert die Bedienung für Steam Deck, ROG Ally und ähnliche Handhelds.</p>
           <div className="chip-row wrap mix-size-row">
@@ -57,60 +63,68 @@ export function SettingsSheet({ open, onClose }: Props) {
               </button>
             ))}
           </div>
-          <p className="muted">Sofort-Mix</p>
-          <p className="settings-hint">Anzahl der Titel in Genre-Mix und ähnlichen Mixen.</p>
-          <div className="chip-row wrap mix-size-row">
-            {MIX_SIZES.map((n) => (
-              <button
-                key={n}
-                type="button"
-                className={`chip ${mixSize === n ? 'is-on' : ''}`}
-                onClick={() => setMixSize(n)}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          <p className="muted">Bibliotheken</p>
-          <p className="settings-hint">Keine Auswahl = alle Bibliotheken.</p>
-          <div className="folder-list">
-            {folders.map((folder) => {
-              const checked = selectedFolderIds.length === 0 || selectedFolderIds.includes(folder.id)
-              return (
-                <label key={folder.id} className="folder-row">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      const allIds = folders.map((f) => f.id)
-                      const current = selectedFolderIds.length === 0 ? allIds : selectedFolderIds
-                      const next = current.includes(folder.id)
-                        ? current.filter((x) => x !== folder.id)
-                        : [...current, folder.id]
-                      if (!next.length) return
-                      setSelectedFolderIds(next.length === allIds.length ? [] : next)
-                    }}
-                  />
-                  <span>{folder.name}</span>
-                </label>
-              )
-            })}
-            {!folders.length ? <p className="muted">Keine Bibliotheken gefunden.</p> : null}
-          </div>
-          {selectedFolderIds.length > 0 ? (
-            <button type="button" className="text-btn" onClick={() => setSelectedFolderIds([])}>
-              Alle Bibliotheken
-            </button>
+          {client ? (
+            <>
+              <p className="muted">Sofort-Mix</p>
+              <p className="settings-hint">Anzahl der Titel in Genre-Mix und ähnlichen Mixen.</p>
+              <div className="chip-row wrap mix-size-row">
+                {MIX_SIZES.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`chip ${mixSize === n ? 'is-on' : ''}`}
+                    onClick={() => setMixSize(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {client ? (
+            <>
+              <p className="muted">Bibliotheken</p>
+              <p className="settings-hint">Keine Auswahl = alle Bibliotheken.</p>
+              <div className="folder-list">
+                {folders.map((folder) => {
+                  const checked = selectedFolderIds.length === 0 || selectedFolderIds.includes(folder.id)
+                  return (
+                    <label key={folder.id} className="folder-row">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const allIds = folders.map((f) => f.id)
+                          const current = selectedFolderIds.length === 0 ? allIds : selectedFolderIds
+                          const next = current.includes(folder.id)
+                            ? current.filter((x) => x !== folder.id)
+                            : [...current, folder.id]
+                          if (!next.length) return
+                          setSelectedFolderIds(next.length === allIds.length ? [] : next)
+                        }}
+                      />
+                      <span>{folder.name}</span>
+                    </label>
+                  )
+                })}
+                {!folders.length ? <p className="muted">Keine Bibliotheken gefunden.</p> : null}
+              </div>
+              {selectedFolderIds.length > 0 ? (
+                <button type="button" className="text-btn" onClick={() => setSelectedFolderIds([])}>
+                  Alle Bibliotheken
+                </button>
+              ) : null}
+            </>
           ) : null}
           <button
             type="button"
             className="primary-btn"
             onClick={() => {
-              logout()
               onClose()
+              go({ name: 'account' })
             }}
           >
-            Trennen
+            Konto &amp; Server
           </button>
           <BuildInfo />
         </div>

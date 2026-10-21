@@ -105,7 +105,7 @@ export function NowPlaying() {
   /* Whether a request is still out is just "the lyrics are not this track's yet". */
   const lyricsBusy = showLyrics && lyrics?.id !== current.id
   const lyricsText = lyrics?.id === current.id ? lyrics.text : ''
-  const bg = current.radio?.logo ?? client?.coverUrl(current.coverArt, 80)
+  const bg = current.abs?.cover ?? current.radio?.logo ?? client?.coverUrl(current.coverArt, 80)
   const progress = duration ? (currentTime / duration) * 100 : 0
 
   function open(view: Parameters<typeof go>[0]) {
@@ -152,7 +152,7 @@ export function NowPlaying() {
               disabled={live}
               onClick={() => setShowLyrics(true)}
             >
-              <CoverArt coverArt={current.coverArt} src={current.radio?.logo} alt="" size={900} className="np-cover" />
+              <CoverArt coverArt={current.coverArt} src={current.abs?.cover ?? current.radio?.logo} alt="" size={900} className="np-cover" />
             </button>
             <div className="np-flip-face np-flip-back">
               <div

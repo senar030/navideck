@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { useTheme } from '../state/ThemeContext'
+import { useAuth } from '../state/AuthContext'
 import {
   IconBack,
   IconClose,
@@ -14,6 +15,7 @@ import {
   IconSun,
 } from './Icons'
 import { SearchResults } from './SearchResults'
+import { SpaceSwitcher } from './SpaceSwitcher'
 
 type Props = {
   onOpenSettings: () => void
@@ -22,6 +24,7 @@ type Props = {
 
 export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
   const { view, back, canBack } = useNav()
+  const { client } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { uiMode, toggleUiMode } = usePrefs()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -77,40 +80,46 @@ export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
     <>
       <header className={`chrome ${searchOpen ? 'is-search' : ''} ${scrolled && !searchOpen ? 'is-scrolled' : ''}`}>
         <div className="chrome-start">
+          <SpaceSwitcher />
           {canBack ? (
             <button type="button" className="back-btn" onClick={back}>
               <IconBack /> Zurück
             </button>
           ) : null}
         </div>
-        <label className="chrome-search">
-          <IconSearch />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Alben, Künstler, Titel"
-            autoComplete="off"
-            spellCheck={false}
-            tabIndex={searchOpen ? 0 : -1}
-          />
-          <button type="button" className="icon-btn" aria-label="Suche schließen" onClick={closeSearch} tabIndex={searchOpen ? 0 : -1}>
-            <IconClose />
-          </button>
-        </label>
-        <div className="chrome-end">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Suche"
-            data-tip="Suche"
-            onClick={() => {
-              setMoreOpen(false)
-              setSearchOpen(true)
-            }}
-          >
+        {client ? (
+          <label className="chrome-search">
             <IconSearch />
-          </button>
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Alben, Künstler, Titel"
+              autoComplete="off"
+              spellCheck={false}
+              tabIndex={searchOpen ? 0 : -1}
+            />
+            <button type="button" className="icon-btn" aria-label="Suche schließen" onClick={closeSearch} tabIndex={searchOpen ? 0 : -1}>
+              <IconClose />
+            </button>
+          </label>
+        ) : null}
+        <div className="chrome-end">
+          {/* Search speaks Subsonic; without a music server there is nothing to ask. */}
+          {client ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Suche"
+              data-tip="Suche"
+              onClick={() => {
+                setMoreOpen(false)
+                setSearchOpen(true)
+              }}
+            >
+              <IconSearch />
+            </button>
+          ) : null}
           <div className="chrome-more" ref={moreRef}>
             <button
               type="button"
@@ -162,7 +171,7 @@ export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
           </div>
         </div>
       </header>
-      {searchOpen ? (
+      {searchOpen && client ? (
         <div className="search-overlay">
           <SearchResults query={query} onPick={closeSearch} />
         </div>

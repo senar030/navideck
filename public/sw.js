@@ -12,7 +12,7 @@
  * changes: that is what makes the shell and cover caches refresh.
  */
 
-const VERSION = 'v2'
+const VERSION = 'v3'
 const SHELL_CACHE = `navideck-shell-${VERSION}`
 const RUNTIME_CACHE = `navideck-runtime-${VERSION}`
 const COVER_CACHE = `navideck-covers-${VERSION}`
