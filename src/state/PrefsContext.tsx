@@ -3,7 +3,19 @@ import { createContext, useContext } from 'react'
 export const MIX_SIZES = [15, 25, 40, 50, 75, 100] as const
 export type MixSize = (typeof MIX_SIZES)[number]
 export type LayoutMode = 'grid' | 'list'
-export type LayoutKey = 'albums' | 'artists' | 'genres' | 'genreDetail' | 'playlists' | 'starred' | 'search'
+export type LayoutKey =
+  | 'albums'
+  | 'artists'
+  | 'genres'
+  | 'genreDetail'
+  | 'playlists'
+  | 'starred'
+  | 'search'
+  | 'books'
+  | 'absAuthors'
+  | 'absCollections'
+  | 'podcasts'
+  | 'episodes'
 export type UiMode = 'deck' | 'desktop'
 
 type PrefsContextValue = {

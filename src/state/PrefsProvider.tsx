@@ -9,6 +9,11 @@ const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
   playlists: 'list',
   starred: 'grid',
   search: 'grid',
+  books: 'grid',
+  absAuthors: 'list',
+  absCollections: 'grid',
+  podcasts: 'grid',
+  episodes: 'list',
 }
 
 const KEY = 'navideck.mixSize'

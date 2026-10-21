@@ -14,6 +14,7 @@ import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { stripHtml } from '../lib/format'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import { AbsCover, BookCard, MissingAbs, Notice, ProgressBar } from './AbsParts'
 import { IconPlay } from './Icons'
 
@@ -162,6 +163,8 @@ export function BookDetail({ id }: { id: string }) {
 export function AuthorDetail({ id }: { id: string }) {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
+  const { playBook } = useAbsPlayer()
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getAuthor(id) : null, [client, id])
   const author = result.data?.author
@@ -185,9 +188,14 @@ export function AuthorDetail({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="album-grid">
+      <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
         {books.map((item) => (
-          <BookCard key={item.id} item={item} onOpen={() => go({ name: 'abs-book', id: item.id })} />
+          <BookCard
+            key={item.id}
+            item={item}
+            onOpen={() => go({ name: 'abs-book', id: item.id })}
+            onPlay={() => void playBook(item)}
+          />
         ))}
       </div>
     </div>
@@ -199,6 +207,8 @@ export function AuthorDetail({ id }: { id: string }) {
 export function CollectionDetail({ id }: { id: string }) {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
+  const { playBook } = useAbsPlayer()
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getCollection(id) : null, [client, id])
   const collection = result.data
@@ -223,9 +233,14 @@ export function CollectionDetail({ id }: { id: string }) {
       </header>
       {collection.description ? <p className="abs-description">{stripHtml(collection.description)}</p> : null}
       {!books.length ? <Notice title="Diese Sammlung ist noch leer" /> : null}
-      <div className="album-grid">
+      <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
         {books.map((item) => (
-          <BookCard key={item.id} item={item} onOpen={() => go({ name: 'abs-book', id: item.id })} />
+          <BookCard
+            key={item.id}
+            item={item}
+            onOpen={() => go({ name: 'abs-book', id: item.id })}
+            onPlay={() => void playBook(item)}
+          />
         ))}
       </div>
     </div>
@@ -235,6 +250,8 @@ export function CollectionDetail({ id }: { id: string }) {
 export function SeriesDetail({ id }: { id: string }) {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
+  const { playBook } = useAbsPlayer()
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getSeriesById(id) : null, [client, id])
   const series = result.data
@@ -264,9 +281,14 @@ export function SeriesDetail({ id }: { id: string }) {
           </p>
         </div>
       </header>
-      <div className="album-grid">
+      <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
         {books.map((item) => (
-          <BookCard key={item.id} item={item} onOpen={() => go({ name: 'abs-book', id: item.id })} />
+          <BookCard
+            key={item.id}
+            item={item}
+            onOpen={() => go({ name: 'abs-book', id: item.id })}
+            onPlay={() => void playBook(item)}
+          />
         ))}
       </div>
     </div>

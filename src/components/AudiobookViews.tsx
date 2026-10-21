@@ -5,6 +5,7 @@ import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAuthorList, useBookItems, useCollectionList, useSeriesList } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import {
   AuthorCard,
   BookCard,
@@ -15,6 +16,7 @@ import {
   ShuffleButton,
   SortChips,
 } from './AbsParts'
+import { LayoutToggle } from './LayoutToggle'
 
 const BOOK_SORTS: { id: BookSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -126,6 +128,8 @@ export function AudiobookHome() {
 export function BooksView() {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
+  const { playBook } = useAbsPlayer()
   const books = useBookItems()
   const [sort, setSort] = useState<BookSort>('title')
   const [desc, setDesc] = useState(false)
@@ -149,16 +153,23 @@ export function BooksView() {
           onDesc={() => setDesc((d) => !d)}
           ascLabel="↑ Aufsteigend"
           descLabel="↓ Absteigend"
-        />
+        >
+          <LayoutToggle section="books" />
+        </SortChips>
       </header>
 
       {books.error ? <p className="error">{books.error}</p> : null}
       {books.loading && !books.data ? <p className="muted">Wird geladen …</p> : null}
       {!books.loading && !books.error && !list.length ? <p className="muted">Noch keine Bücher.</p> : null}
 
-      <div className="album-grid">
+      <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
         {list.map((item) => (
-          <BookCard key={item.id} item={item} onOpen={() => go({ name: 'abs-book', id: item.id })} />
+          <BookCard
+            key={item.id}
+            item={item}
+            onOpen={() => go({ name: 'abs-book', id: item.id })}
+            onPlay={() => void playBook(item)}
+          />
         ))}
       </div>
     </div>
@@ -168,6 +179,7 @@ export function BooksView() {
 export function AuthorsView() {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const authors = useAuthorList()
   const [byCount, setByCount] = useState(false)
 
@@ -199,6 +211,7 @@ export function AuthorsView() {
               Meiste Bücher
             </button>
           </div>
+          <LayoutToggle section="absAuthors" />
         </div>
       </header>
 
@@ -206,7 +219,7 @@ export function AuthorsView() {
       {authors.loading && !authors.data ? <p className="muted">Wird geladen …</p> : null}
       {!authors.loading && !authors.error && !list.length ? <p className="muted">Noch keine Autoren.</p> : null}
 
-      <div className="artist-list is-grid abs-authors">
+      <div className={`artist-list abs-authors ${layout.absAuthors === 'grid' ? 'is-grid' : ''}`}>
         {list.map((author) => (
           <AuthorCard
             key={author.id}
@@ -222,11 +235,14 @@ export function AuthorsView() {
 export function CollectionsView() {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const collections = useCollectionList()
   const series = useSeriesList()
   const [tab, setTab] = useState<'collections' | 'series'>('collections')
 
   if (!abs?.books) return <MissingAbs noun="Hörbuch" />
+
+  const gridClass = `album-grid abs-collections ${layout.absCollections === 'list' ? 'is-list' : ''}`
 
   return (
     <div className="view abs-view">
@@ -254,6 +270,7 @@ export function CollectionsView() {
               Serien
             </button>
           </div>
+          <LayoutToggle section="absCollections" />
         </div>
       </header>
 
@@ -264,7 +281,7 @@ export function CollectionsView() {
           {!collections.loading && !collections.data?.length ? (
             <p className="muted">Noch keine Sammlungen.</p>
           ) : null}
-          <div className="abs-collections">
+          <div className={gridClass}>
             {(collections.data ?? []).map((collection) => (
               <CollectionCard
                 key={collection.id}
@@ -279,7 +296,7 @@ export function CollectionsView() {
           {series.error ? <p className="error">{series.error}</p> : null}
           {series.loading && !series.data ? <p className="muted">Wird geladen …</p> : null}
           {!series.loading && !series.data?.length ? <p className="muted">Noch keine Serien.</p> : null}
-          <div className="abs-collections">
+          <div className={gridClass}>
             {(series.data ?? []).map((entry) => (
               <SeriesCard
                 key={entry.id}

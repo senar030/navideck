@@ -357,6 +357,14 @@ button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
+  /*
+   * A bare button must not drag the browser's grey box along. Every control in
+   * this app draws its own shape; anything else is a bug in a class name.
+   */
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: inherit;
 }
 
 /* No long-press callout or text selection on chrome — this is an app. */
@@ -838,11 +846,31 @@ h4 {
 
 .view-head-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.55rem;
   flex: 1;
   min-width: 0;
+}
+
+/*
+ * Chips in a page header never squeeze into a column: the whole tool row moves
+ * to its own line instead. A hidden sort option is a sort option the user
+ * cannot pick.
+ */
+.view-head .chip-row {
+  flex-wrap: wrap;
+  overflow: visible;
+  min-width: max-content;
+}
+
+@media (max-width: 700px) {
+  .view-head .chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+  }
 }
 
 .view-head h2,
@@ -1205,6 +1233,9 @@ em {
   overflow-x: auto;
   padding-bottom: 0.2rem;
   scrollbar-width: none;
+  /* Chips scroll instead of pushing the layout toggle out of the header. */
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .chip-row::-webkit-scrollbar {
@@ -1747,16 +1778,13 @@ html[data-theme='light'] .hero-banner {
 .album-grid.is-list .album-card {
   display: flex;
   align-items: center;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding-right: 0.35rem;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease);
 }
 
 .album-grid.is-list .album-card:hover {
-  background: var(--surface);
-  border-color: var(--line-strong);
+  background: var(--hover);
   transform: none;
 }
 
@@ -1805,16 +1833,13 @@ html[data-theme='light'] .hero-banner {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--surface) 74%, transparent);
-  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 .genre-card:hover,
 .genre-card:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
   transform: translateY(-3px);
   box-shadow: var(--shadow);
@@ -2086,20 +2111,15 @@ html[data-theme='light'] .hero-banner {
   align-items: stretch;
   text-align: center;
   padding: 0.65rem;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  border: 1px solid var(--line);
   border-radius: var(--radius);
   gap: 0.55rem;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 
 .artist-list.is-grid .artist-row:hover,
 .playlist-list.is-grid .playlist-row:hover {
-  background: var(--surface);
-  border-color: var(--line-strong);
+  background: var(--hover);
   transform: translateY(-3px);
-  box-shadow: var(--shadow);
 }
 
 .artist-list.is-grid .cover,
@@ -4526,7 +4546,6 @@ html[data-ui='deck'] .pw-row input {
   align-items: flex-start;
   gap: 0.55rem;
   padding: 1.4rem;
-  border: 1px dashed var(--line-strong);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
@@ -4543,80 +4562,14 @@ html[data-ui='deck'] .pw-row input {
   line-height: 1.5;
 }
 
-.abs-authors {
+.abs-authors.is-grid {
   gap: var(--gap);
 }
 
 /* --- collections & series ------------------------------------------------ */
 
 .abs-collections {
-  display: grid;
-  gap: 0.6rem;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-}
-
-.abs-collection {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem;
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
-  color: var(--text);
-  text-align: left;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease);
-}
-
-.abs-collection:hover {
-  background: var(--surface);
-  border-color: var(--line-strong);
-  transform: translateY(-2px);
-}
-
-.abs-collection-art {
-  display: grid;
-  place-items: center;
-  width: 3.4rem;
-  height: 3.4rem;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: var(--r-sm);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.abs-collection-art .cover {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.abs-collection-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.abs-collection-text strong,
-.abs-collection-text em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.abs-shelf-row .abs-collection {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-}
-
-.abs-shelf-row .abs-collection-art {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
 }
 
 /* --- detail pages -------------------------------------------------------- */
@@ -4758,7 +4711,7 @@ html[data-ui='deck'] .pw-row input {
 .abs-episodes {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.15rem;
 }
 
 .episode-row {
@@ -4772,10 +4725,6 @@ html[data-ui='deck'] .pw-row input {
 
 .episode-row:hover {
   background: var(--hover);
-}
-
-.episode-row + .episode-row {
-  border-top: 1px solid var(--line);
 }
 
 .episode-art {

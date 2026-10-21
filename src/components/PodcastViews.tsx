@@ -16,6 +16,7 @@ import {
 } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
+import { usePrefs } from '../state/PrefsContext'
 import {
   EpisodeCard,
   EpisodeRow,
@@ -26,6 +27,7 @@ import {
 } from './AbsParts'
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
 
 const PODCAST_SORTS: { id: PodcastSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -116,6 +118,7 @@ export function PodcastHome() {
 export function PodcastsView() {
   const { abs } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const podcasts = usePodcastItems()
   const [sort, setSort] = useState<PodcastSort>('title')
   const [desc, setDesc] = useState(false)
@@ -139,7 +142,9 @@ export function PodcastsView() {
           onDesc={() => setDesc((d) => !d)}
           ascLabel="↑ Aufsteigend"
           descLabel="↓ Absteigend"
-        />
+        >
+          <LayoutToggle section="podcasts" />
+        </SortChips>
       </header>
 
       {podcasts.error ? <p className="error">{podcasts.error}</p> : null}
@@ -148,7 +153,7 @@ export function PodcastsView() {
         <p className="muted">Noch keine Podcasts. Unter „Hinzufügen“ findest du welche.</p>
       ) : null}
 
-      <div className="album-grid">
+      <div className={`album-grid ${layout.podcasts === 'list' ? 'is-list' : ''}`}>
         {list.map((item) => (
           <PodcastCard key={item.id} item={item} onOpen={() => go({ name: 'podcast', id: item.id })} />
         ))}
@@ -162,6 +167,7 @@ const PAGE = 120
 export function EpisodesView() {
   const { abs, progress } = useAccount()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const { playEpisode } = useAbsPlayer()
   const episodes = useAllEpisodes()
   const [sort, setSort] = useState<EpisodeSort>('newest')
@@ -193,7 +199,9 @@ export function EpisodesView() {
           onChange={setSort}
           ascLabel="Aufsteigend"
           descLabel="Absteigend"
-        />
+        >
+          <LayoutToggle section="episodes" />
+        </SortChips>
       </header>
 
       {episodes.error ? <p className="error">{episodes.error}</p> : null}
@@ -202,18 +210,32 @@ export function EpisodesView() {
         <p className="muted">Noch keine Episoden auf dem Server.</p>
       ) : null}
 
-      <div className="abs-episodes">
-        {shown.map((ref) => (
-          <EpisodeRow
-            key={`${ref.item.id}:${ref.episode.id}`}
-            item={ref.item}
-            episode={ref.episode}
-            progress={progress}
-            onOpen={() => go({ name: 'podcast', id: ref.item.id })}
-            onPlay={() => void playEpisode(ref.item, ref.episode)}
-          />
-        ))}
-      </div>
+      {layout.episodes === 'grid' ? (
+        <div className="album-grid">
+          {shown.map((ref) => (
+            <EpisodeCard
+              key={`${ref.item.id}:${ref.episode.id}`}
+              item={ref.item}
+              episode={ref.episode}
+              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+              onPlay={() => void playEpisode(ref.item, ref.episode)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="abs-episodes">
+          {shown.map((ref) => (
+            <EpisodeRow
+              key={`${ref.item.id}:${ref.episode.id}`}
+              item={ref.item}
+              episode={ref.episode}
+              progress={progress}
+              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+              onPlay={() => void playEpisode(ref.item, ref.episode)}
+            />
+          ))}
+        </div>
+      )}
 
       {list.length > shown.length ? (
         <div className="load-more">

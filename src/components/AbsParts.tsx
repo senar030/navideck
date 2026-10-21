@@ -14,7 +14,7 @@ import {
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { CoverArt } from './CoverArt'
-import { IconLists, IconPlay, IconPodcast, IconRefresh } from './Icons'
+import { IconPlay, IconPodcast, IconRefresh } from './Icons'
 
 /* --------------------------------------------------------------- building blocks */
 
@@ -89,6 +89,7 @@ export function SortChips<T extends string>({
   onDesc,
   ascLabel,
   descLabel,
+  children,
 }: {
   options: SortOption<T>[]
   value: T
@@ -98,6 +99,8 @@ export function SortChips<T extends string>({
   onDesc?: () => void
   ascLabel: string
   descLabel: string
+  /** Controls that belong beside the sort chips, e.g. the layout toggle. */
+  children?: ReactNode
 }) {
   return (
     <div className="view-head-tools">
@@ -123,6 +126,7 @@ export function SortChips<T extends string>({
           {desc ? descLabel : ascLabel}
         </button>
       ) : null}
+      {children}
     </div>
   )
 }
@@ -154,8 +158,8 @@ export function BookCard({
         <button
           type="button"
           className="play-fab"
-          aria-label={`${book.metadata.title} weiterhören`}
-          data-tip="Weiterhören"
+          aria-label={`${book.metadata.title} abspielen`}
+          data-tip="Abspielen"
           onClick={onPlay}
         >
           <IconPlay size={24} />
@@ -277,21 +281,15 @@ export function CollectionCard({
   const books = collection.books ?? []
   const first = books[0]
   return (
-    <button type="button" className="abs-collection" onClick={onOpen}>
-      <span className="abs-collection-art" aria-hidden>
-        {first ? (
-          <AbsCover src={abs?.client.coverUrl(first.id)} alt="" size={200} />
-        ) : (
-          <IconLists size={24} />
-        )}
-      </span>
-      <span className="abs-collection-text">
-        <strong>{collection.name}</strong>
-        <em>
+    <article className="album-card abs-card">
+      <button type="button" className="album-hit" onClick={onOpen}>
+        <AbsCover src={first ? abs?.client.coverUrl(first.id) : undefined} alt="" />
+        <span className="album-name">{collection.name}</span>
+        <span className="album-artist">
           {books.length} {books.length === 1 ? 'Buch' : 'Bücher'}
-        </em>
-      </span>
-    </button>
+        </span>
+      </button>
+    </article>
   )
 }
 
@@ -300,21 +298,15 @@ export function SeriesCard({ series, onOpen }: { series: AbsSeries; onOpen: () =
   const books = series.books ?? []
   const first = books[0]
   return (
-    <button type="button" className="abs-collection" onClick={onOpen}>
-      <span className="abs-collection-art" aria-hidden>
-        {first ? (
-          <AbsCover src={abs?.client.coverUrl(first.id)} alt="" size={200} />
-        ) : (
-          <IconLists size={24} />
-        )}
-      </span>
-      <span className="abs-collection-text">
-        <strong>{series.name}</strong>
-        <em>
+    <article className="album-card abs-card">
+      <button type="button" className="album-hit" onClick={onOpen}>
+        <AbsCover src={first ? abs?.client.coverUrl(first.id) : undefined} alt="" />
+        <span className="album-name">{series.name}</span>
+        <span className="album-artist">
           {books.length} {books.length === 1 ? 'Band' : 'Bände'}
-        </em>
-      </span>
-    </button>
+        </span>
+      </button>
+    </article>
   )
 }
 

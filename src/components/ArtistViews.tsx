@@ -84,6 +84,7 @@ export function ArtistList() {
 export function ArtistDetail({ id }: { id: string }) {
   const { client } = useAuth()
   const { go } = useNav()
+  const { layout } = usePrefs()
   const { playTracks } = usePlayer()
   const [artist, setArtist] = useState<Artist | null>(null)
   const [info, setInfo] = useState<ArtistInfo>({})
@@ -183,7 +184,7 @@ export function ArtistDetail({ id }: { id: string }) {
       ) : null}
       <section className="block">
         <h3>Alben</h3>
-        <div className="album-grid">
+        <div className={`album-grid ${layout.albums === 'list' ? 'is-list' : ''}`}>
           {(artist.album ?? []).map((album) => (
             <article key={album.id} className="album-card">
               <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
