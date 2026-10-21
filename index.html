@@ -58,6 +58,22 @@
       #boot-error a {
         color: #c3a5ff;
       }
+      #boot-detail {
+        max-width: min(90vw, 44rem);
+        max-height: 40vh;
+        overflow: auto;
+        margin: 0.35rem 0 0;
+        padding: 0.6rem 0.75rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.07);
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        text-align: left;
+      }
+      #boot-detail[hidden] {
+        display: none;
+      }
       @media (prefers-color-scheme: light) {
         #boot-error {
           color: #2e2540;
@@ -65,6 +81,9 @@
         }
         #boot-error a {
           color: #7a4fd6;
+        }
+        #boot-detail {
+          background: rgba(46, 37, 64, 0.08);
         }
       }
     </style>
@@ -124,27 +143,83 @@
     <div id="boot-error" hidden>
       <p><strong>Navideck konnte nicht starten.</strong></p>
       <p>
-        Meist liegt noch eine alte Datei im Cache. Lade die Seite neu – hilft das nicht, leere den
-        Cache für diese Adresse (in den Einstellungen des Browsers).
+        Lade die Seite neu. Hilft das nicht, leere den Cache für diese Adresse (in den
+        Einstellungen des Browsers).
       </p>
+      <pre id="boot-detail" hidden></pre>
       <p><a href="/">Neu laden</a></p>
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       /*
        * Runs whether or not the module above ever arrives: `load` also fires when
-       * the bundle 404s, so nothing here can hang on a broken build.
+       * the bundle 404s, so nothing here can hang on a broken build. The first
+       * error is kept and printed, because a page that died for a reason must
+       * name the reason instead of asking the user to guess.
        */
       (function () {
+        var detail = ''
+        var box = function () {
+          return document.getElementById('boot-error')
+        }
+        var rootEmpty = function () {
+          var root = document.getElementById('root')
+          return !root || root.childElementCount === 0
+        }
+        function paint() {
+          var el = box()
+          if (!el) return
+          el.hidden = !rootEmpty()
+          var slot = document.getElementById('boot-detail')
+          if (slot && !slot.hidden) return
+          if (slot && detail) {
+            slot.textContent = detail
+            slot.hidden = false
+          }
+        }
+        function note(text) {
+          if (detail || !text) return
+          detail = text
+          paint()
+        }
+        window.addEventListener(
+          'error',
+          function (e) {
+            var target = e && e.target
+            if (target && target !== window && (target.src || target.href)) {
+              // Only our own files: a blocked font must not read like a crash.
+              var url = target.src || target.href
+              if (url.indexOf(location.origin) === 0) note('Datei nicht geladen:\n' + url)
+              return
+            }
+            if (e && e.error && e.error.message) note(e.error.message)
+            else if (e && e.message) note(e.message)
+          },
+          true,
+        )
+        window.addEventListener('unhandledrejection', function (e) {
+          var reason = e && e.reason
+          if (reason && (reason.message || reason.stack)) note(String(reason.message || reason))
+          else if (reason) note(String(reason))
+        })
         function reveal() {
           window.setTimeout(function () {
-            var root = document.getElementById('root')
-            var box = document.getElementById('boot-error')
-            if (root && box && !root.childElementCount) box.hidden = false
+            if (rootEmpty()) paint()
           }, 1500)
         }
         if (document.readyState === 'complete') reveal()
         else window.addEventListener('load', reveal)
+
+        // A late mount means the page is fine after all; take the notice away.
+        var root = document.getElementById('root')
+        if (root && window.MutationObserver) {
+          new MutationObserver(function () {
+            if (!rootEmpty()) {
+              var el = box()
+              if (el) el.hidden = true
+            }
+          }).observe(root, { childList: true })
+        }
       })()
     </script>
   </body>
