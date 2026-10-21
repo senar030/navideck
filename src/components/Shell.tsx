@@ -45,6 +45,7 @@ import { AccountView } from './AccountView'
 import { SettingsSheet } from './SettingsSheet'
 import { StarredView } from './StarredView'
 import { StartHub } from './StartHub'
+import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
   const { view, go } = useNav()
@@ -132,35 +133,37 @@ export function Shell() {
             setScrolled((prev) => (top > 24 ? true : top < 8 ? false : prev))
           }}
         >
-          {view.name === 'start' ? <StartHub /> : null}
-          {view.name === 'account' ? <AccountView /> : null}
-          {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}
-          {view.name === 'albums' ? <AlbumGrid /> : null}
-          {view.name === 'artists' ? <ArtistList /> : null}
-          {view.name === 'playlists' ? <PlaylistList /> : null}
-          {view.name === 'starred' ? <StarredView /> : null}
-          {view.name === 'genres' ? <GenreList /> : null}
-          {view.name === 'radio' ? <RadioView /> : null}
-          {view.name === 'album' ? <AlbumDetail id={view.id} /> : null}
-          {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
-          {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}
-          {view.name === 'genre' ? <GenreDetail name={view.id} /> : null}
-          {view.name === 'section' ? <SectionPage id={view.id} /> : null}
-
-          {view.name === 'ab-home' ? <AudiobookHome /> : null}
-          {view.name === 'abs-books' ? <BooksView /> : null}
-          {view.name === 'abs-authors' ? <AuthorsView /> : null}
-          {view.name === 'abs-collections' ? <CollectionsView /> : null}
-          {view.name === 'abs-book' ? <BookDetail id={view.id} /> : null}
-          {view.name === 'abs-author' ? <AuthorDetail id={view.id} /> : null}
-          {view.name === 'abs-collection' ? <CollectionDetail id={view.id} /> : null}
-          {view.name === 'abs-series' ? <SeriesDetail id={view.id} /> : null}
-
-          {view.name === 'pod-home' ? <PodcastHome /> : null}
-          {view.name === 'podcasts' ? <PodcastsView /> : null}
-          {view.name === 'pod-episodes' ? <EpisodesView /> : null}
-          {view.name === 'pod-add' ? <PodcastAdd /> : null}
-          {view.name === 'podcast' ? <PodcastDetail id={view.id} /> : null}
+          <ViewBoundary resetKey={'id' in view ? `${view.name}:${view.id}` : view.name}>
+            {view.name === 'start' ? <StartHub /> : null}
+            {view.name === 'account' ? <AccountView /> : null}
+            {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}
+            {view.name === 'albums' ? <AlbumGrid /> : null}
+            {view.name === 'artists' ? <ArtistList /> : null}
+            {view.name === 'playlists' ? <PlaylistList /> : null}
+            {view.name === 'starred' ? <StarredView /> : null}
+            {view.name === 'genres' ? <GenreList /> : null}
+            {view.name === 'radio' ? <RadioView /> : null}
+            {view.name === 'album' ? <AlbumDetail id={view.id} /> : null}
+            {view.name === 'artist' ? <ArtistDetail id={view.id} /> : null}
+            {view.name === 'playlist' ? <PlaylistDetail id={view.id} /> : null}
+            {view.name === 'genre' ? <GenreDetail name={view.id} /> : null}
+            {view.name === 'section' ? <SectionPage id={view.id} /> : null}
+  
+            {view.name === 'ab-home' ? <AudiobookHome /> : null}
+            {view.name === 'abs-books' ? <BooksView /> : null}
+            {view.name === 'abs-authors' ? <AuthorsView /> : null}
+            {view.name === 'abs-collections' ? <CollectionsView /> : null}
+            {view.name === 'abs-book' ? <BookDetail id={view.id} /> : null}
+            {view.name === 'abs-author' ? <AuthorDetail id={view.id} /> : null}
+            {view.name === 'abs-collection' ? <CollectionDetail id={view.id} /> : null}
+            {view.name === 'abs-series' ? <SeriesDetail id={view.id} /> : null}
+  
+            {view.name === 'pod-home' ? <PodcastHome /> : null}
+            {view.name === 'podcasts' ? <PodcastsView /> : null}
+            {view.name === 'pod-episodes' ? <EpisodesView /> : null}
+            {view.name === 'pod-add' ? <PodcastAdd /> : null}
+            {view.name === 'podcast' ? <PodcastDetail id={view.id} /> : null}
+          </ViewBoundary>
         </div>
       </main>
 

@@ -5410,3 +5410,30 @@ html.standalone {
     backdrop-filter: none;
   }
 }
+
+/* A view that threw: the rail stays usable, the message names the cause. */
+.crash-view {
+  max-width: 34rem;
+  padding-top: 0.5rem;
+}
+
+.crash-message {
+  margin: 0 0 1.1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.crash-message code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--danger);
+}
+
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
