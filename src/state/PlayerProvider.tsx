@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Song } from '../api/types'
+import { readRadioNow, type RadioNow } from '../lib/radioNow'
 import { useAuth } from './AuthContext'
 import { PlayerContext, type RepeatMode } from './PlayerContext'
 
 const VOLUME_KEY = 'navideck.volume'
 const SESSION_KEY = 'navideck.session'
+
+/** How often a live stream is asked what is on air. */
+const RADIO_POLL_MS = 25_000
+
+/** What the last poll of a station's status page said. */
+type RadioPoll = { url: string; now: RadioNow | null; misses: number }
 
 function createAudio(): HTMLAudioElement {
   const audio = new Audio()
@@ -177,6 +184,44 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [index, queue, repeat, shuffle])
 
   const current = queue[index]
+
+  /*
+   * A live stream says what it plays every few minutes, and only through its own
+   * status page, so the line is polled while it plays. The answer is tagged with
+   * the stream it belongs to: switching stations makes it invisible without an
+   * extra state reset, and pausing keeps the last line instead of blanking it.
+   */
+  const [radioPoll, setRadioPoll] = useState<RadioPoll | null>(null)
+  const radioStream = current?.radio?.url
+  const radioStation = current?.radio ? current.title : undefined
+  const radioNow = radioPoll && radioPoll.url === radioStream ? radioPoll.now : null
+
+  useEffect(() => {
+    if (!radioStream || !playing) return
+    let cancelled = false
+    const controller = new AbortController()
+
+    const poll = async () => {
+      const now = await readRadioNow(radioStream, radioStation, controller.signal)
+      if (cancelled) return
+      setRadioPoll((prev) => {
+        if (now) return { url: radioStream, now, misses: 0 }
+        // One missed poll is a hiccup; two in a row mean the line is gone.
+        if (prev && prev.url === radioStream && prev.misses < 1) {
+          return { ...prev, misses: prev.misses + 1 }
+        }
+        return { url: radioStream, now: null, misses: 1 }
+      })
+    }
+
+    void poll()
+    const timer = window.setInterval(() => void poll(), RADIO_POLL_MS)
+    return () => {
+      cancelled = true
+      controller.abort()
+      window.clearInterval(timer)
+    }
+  }, [radioStream, radioStation, playing])
 
   /*
    * Starts whatever is already loaded in `element`; used by all three paths
@@ -632,11 +677,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const song = current
     if (!song || !('mediaSession' in navigator)) return
     const session = navigator.mediaSession
+    /*
+     * For a live stream the app's own title is the station, but a lock screen is
+     * more useful with the track that is on air right now; the station moves into
+     * the album line so it is not lost.
+     */
+    const now = song.radio ? radioNow : null
     try {
       session.metadata = new MediaMetadata({
-        title: song.title,
-        artist: song.artist ?? '',
-        album: song.album ?? '',
+        title: now?.title ?? song.title,
+        artist: now?.artist ?? song.artist ?? '',
+        album: now ? song.title : song.album ?? '',
         artwork: song.radio?.logo
           ? [{ src: song.radio.logo, sizes: '512x512' }]
           : song.coverArt && client
@@ -671,7 +722,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         /* unsupported on this platform */
       }
     }
-  }, [current, client, next, prev, seek])
+  }, [current, client, next, prev, radioNow, seek])
 
   // Keeps the lock screen / control centre in sync, and lets the service worker
   // know not to reload the app in the middle of a track.
@@ -700,6 +751,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       index,
       current,
       playing,
+      radioNow,
       shuffle,
       repeat,
       volume,
@@ -732,6 +784,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       index,
       current,
       playing,
+      radioNow,
       shuffle,
       repeat,
       volume,

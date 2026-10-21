@@ -1,4 +1,5 @@
 import { formatTime } from '../lib/format'
+import { radioNowLine } from '../lib/radioNow'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { LiveBadge } from './LiveBadge'
@@ -18,6 +19,7 @@ export function PlayerBar() {
   const {
     current,
     playing,
+    radioNow,
     togglePlay,
     next,
     prev,
@@ -35,6 +37,8 @@ export function PlayerBar() {
 
   const progress = duration ? (currentTime / duration) * 100 : 0
   const live = Boolean(current?.radio)
+  /* A live stream replaces "Internetradio" with what is on air, once it says. */
+  const subtitle = radioNowLine(radioNow) ?? current?.artist ?? 'Titel wählen'
 
   return (
     <footer className="player-bar">
@@ -48,7 +52,7 @@ export function PlayerBar() {
           <CoverArt coverArt={current?.coverArt} src={current?.radio?.logo} alt="" size={120} className="player-cover" />
           <span className="track-meta">
             <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
-            <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
+            <span className="track-sub">{subtitle}</span>
           </span>
         </button>
         <button
@@ -86,7 +90,7 @@ export function PlayerBar() {
         <CoverArt coverArt={current?.coverArt} src={current?.radio?.logo} alt="" size={160} className="player-cover" />
         <span className="track-meta">
           <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
-          <span className="track-sub">{current?.artist ?? 'Titel wählen'}</span>
+          <span className="track-sub">{subtitle}</span>
         </span>
       </button>
       <div className="player-controls">

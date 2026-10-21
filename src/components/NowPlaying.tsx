@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTime } from '../lib/format'
+import { radioNowLine } from '../lib/radioNow'
 import { centerInScroller } from '../lib/scroll'
 import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
@@ -28,6 +29,7 @@ export function NowPlaying() {
   const {
     current,
     playing,
+    radioNow,
     togglePlay,
     next,
     prev,
@@ -98,6 +100,8 @@ export function NowPlaying() {
   if (!expanded || !current) return null
 
   const live = Boolean(current.radio)
+  /* A live stream names the track it is playing; that beats "Internetradio". */
+  const nowLine = radioNowLine(radioNow)
   /* Whether a request is still out is just "the lyrics are not this track's yet". */
   const lyricsBusy = showLyrics && lyrics?.id !== current.id
   const lyricsText = lyrics?.id === current.id ? lyrics.text : ''
@@ -195,7 +199,7 @@ export function NowPlaying() {
               {current.artist}
             </button>
           ) : (
-            <span className="np-artist">{current.artist}</span>
+            <span className="np-artist">{nowLine ?? current.artist}</span>
           )}
           {current.albumId ? (
             <button type="button" className="link-btn" onClick={() => open({ name: 'album', id: current.albumId! })}>

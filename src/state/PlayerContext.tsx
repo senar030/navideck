@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Song } from '../api/types'
+import type { RadioNow } from '../lib/radioNow'
 
 export type RepeatMode = 'off' | 'all' | 'one'
 
@@ -8,6 +9,11 @@ type PlayerContextValue = {
   index: number
   current: Song | undefined
   playing: boolean
+  /**
+   * The track a radio stream reports as on air. Only ever set for a live
+   * stream, and only while it is playing: it is polled, not stored.
+   */
+  radioNow: RadioNow | null
   shuffle: boolean
   repeat: RepeatMode
   volume: number
