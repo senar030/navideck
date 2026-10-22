@@ -9,11 +9,16 @@ import { IconPause, IconPlay } from './Icons'
  * audio element on start, so this is only the button: it starts the sound again
  * and the position comes from the player. With no queue there is nothing to
  * continue, and the whole panel stays away.
+ *
+ * `only` narrows it to one kind of content: the audiobook and podcast homes
+ * show their own half of the queue, not a song that happens to be playing.
  */
-export function ResumePlaying() {
+export function ResumePlaying({ only }: { only?: 'book' | 'episode' } = {}) {
   const { queue, index, current, playing, currentTime, duration, togglePlay } = usePlayer()
 
   if (!queue.length || !current) return null
+  if (only === 'book' && !(current.abs && !current.abs.episodeId)) return null
+  if (only === 'episode' && !current.abs?.episodeId) return null
 
   const label = playing ? 'Pause' : 'Weiterhören'
 

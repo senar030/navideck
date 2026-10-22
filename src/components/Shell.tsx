@@ -47,7 +47,7 @@ import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
   const { view, parent, go } = useNav()
-  const { abs } = useAccount()
+  const { abs, music } = useAccount()
   const [scrolled, setScrolled] = useState(false)
   const space = spaceOf(view)
 
@@ -134,6 +134,9 @@ export function Shell() {
         {navSpace === 'start' ? (
           <>
             <NavBtn active={view.name === 'start'} onClick={() => go({ name: 'start' })} icon={<IconHome />} label="Start" />
+            {music ? (
+              <NavBtn active={false} onClick={() => go({ name: 'home' })} icon={<IconAlbums />} label="Musik" />
+            ) : null}
             {showBooks ? (
               <NavBtn active={false} onClick={() => go({ name: 'ab-home' })} icon={<IconBook />} label="Hörbücher" />
             ) : null}

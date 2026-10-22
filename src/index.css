@@ -4448,6 +4448,11 @@ html[data-ui='deck'] .pw-row input {
   gap: 1.6rem;
 }
 
+/* The view's own gap already separates it from the first shelf. */
+.abs-view > .resume {
+  margin-bottom: 0;
+}
+
 .abs-shelf {
   display: flex;
   flex-direction: column;

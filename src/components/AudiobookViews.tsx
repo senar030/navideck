@@ -17,6 +17,7 @@ import {
   SortChips,
 } from './AbsParts'
 import { LayoutToggle } from './LayoutToggle'
+import { ResumePlaying } from './ResumePlaying'
 
 const BOOK_SORTS: { id: BookSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -69,6 +70,8 @@ export function AudiobookHome() {
           <p className="muted">{sub}</p>
         </div>
       </header>
+
+      <ResumePlaying only="book" />
 
       {books.error ? <p className="error">{books.error}</p> : null}
       {books.loading && !books.data ? <p className="muted">Wird geladen …</p> : null}

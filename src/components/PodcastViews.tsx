@@ -28,6 +28,7 @@ import {
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { ResumePlaying } from './ResumePlaying'
 
 const PODCAST_SORTS: { id: PodcastSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -76,6 +77,8 @@ export function PodcastHome() {
           <p className="muted">{sub}</p>
         </div>
       </header>
+
+      <ResumePlaying only="episode" />
 
       {latestFeed.error ? <p className="error">{latestFeed.error}</p> : null}
       {latestFeed.loading && !latestFeed.data ? <p className="muted">Wird geladen …</p> : null}
