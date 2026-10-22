@@ -254,7 +254,11 @@ export function RadioView() {
                     >
                       <IconExternal size={18} />
                     </a>
-                  ) : null}
+                  ) : (
+                    /* Holds the column, so the play button stays where it is on
+                       rows whose station has no website. */
+                    <span className="radio-action radio-action-empty" aria-hidden />
+                  )}
                   {canFollow ? (
                     confirmId === station.id ? (
                       <button
@@ -318,9 +322,8 @@ export function RadioView() {
               actions={
                 canFollow ? (
                   followedUrls.has(hit.url) ? (
-                    <span className="radio-followed" data-tip="Schon gefolgt">
+                    <span className="icon-btn radio-followed" aria-label="Schon gefolgt" data-tip="Schon gefolgt">
                       <IconCheck size={18} />
-                      <span>Gefolgt</span>
                     </span>
                   ) : (
                     <button

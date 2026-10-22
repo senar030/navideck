@@ -2336,16 +2336,18 @@ html[data-theme='light'] .hero-banner {
   flex-shrink: 0;
 }
 
+/*
+ * A station without a website gets an empty slot instead of a shorter row: the
+ * play button must not wander into the gap the missing link would leave.
+ */
+.radio-action-empty {
+  width: var(--tap);
+  height: var(--tap);
+}
+
+/* Already followed: the same slot as the follow button, so the play stays put. */
 .radio-followed {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex-shrink: 0;
-  padding: 0 0.55rem;
-  min-height: 2.1rem;
   color: var(--accent);
-  font-size: var(--fs-xs);
-  font-weight: 600;
 }
 
 .radio-confirm {
@@ -4083,6 +4085,15 @@ html[data-ui='deck'] .pw-row input {
     min-width: 0;
     overflow: hidden;
     padding-left: 0.2rem;
+  }
+
+  /*
+   * With artwork there is no number to reserve room for: the first column is
+   * the cover itself. The fixed 1.85rem column was narrower than the 2.85rem
+   * cover, which then hung over the title.
+   */
+  .track-row.has-cover .track-main {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .track-num {

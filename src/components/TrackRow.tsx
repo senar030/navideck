@@ -46,7 +46,7 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
   }
 
   return (
-    <div className={`track-row ${active ? 'is-active' : ''}`}>
+    <div className={`track-row ${showCover ? 'has-cover' : ''} ${active ? 'is-active' : ''}`}>
       <button type="button" className="track-main" onClick={() => playTracks(tracks, index)}>
         {showCover ? (
           <CoverArt coverArt={song.coverArt} alt="" size={80} className="track-cover" />
