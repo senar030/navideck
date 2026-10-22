@@ -57,21 +57,13 @@ export function AudiobookHome() {
 
   if (!abs?.books) return <MissingAbs noun="Hörbuch" />
 
-  const library = abs.books.name
-  const sub = items.length
-    ? `${items.length} Bücher${library && library !== 'Hörbücher' ? ` · ${library}` : ''}`
-    : library
-
   return (
     <div className="view abs-view">
-      <header className="view-head">
-        <div>
-          <h2>Hörbücher</h2>
-          <p className="muted">{sub}</p>
-        </div>
-      </header>
+      <ResumePlaying />
 
-      <ResumePlaying only="book" />
+      <header className="view-head">
+        <h2>Hörbücher</h2>
+      </header>
 
       {books.error ? <p className="error">{books.error}</p> : null}
       {books.loading && !books.data ? <p className="muted">Wird geladen …</p> : null}

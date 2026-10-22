@@ -4448,8 +4448,9 @@ html[data-ui='deck'] .pw-row input {
   gap: 1.6rem;
 }
 
-/* The view's own gap already separates it from the first shelf. */
-.abs-view > .resume {
+/* The view's own gap already separates it from what follows. */
+.abs-view > .resume,
+.start-view > .resume {
   margin-bottom: 0;
 }
 

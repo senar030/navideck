@@ -44,6 +44,8 @@ export function HomeDashboard() {
 
   return (
     <div className="view dashboard">
+      <ResumePlaying />
+
       <header className="view-head">
         <h2>Start</h2>
         <button type="button" className={`chip ${edit ? 'is-on' : ''}`} onClick={() => setEdit((e) => !e)}>
@@ -64,7 +66,6 @@ export function HomeDashboard() {
           ))}
         </div>
       ) : null}
-      <ResumePlaying />
       {sections.map((id, index) => {
         const def = sectionById(id)
         if (!def) return null

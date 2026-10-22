@@ -47,15 +47,10 @@ export function PodcastHome() {
   const { abs } = useAccount()
   const { go } = useNav()
   const { playEpisode } = useAbsPlayer()
-  const shows = usePodcastItems()
   const latestFeed = useRecentEpisodes(32)
   const continuingFeed = useProgressEpisodes()
 
   const refs = useMemo(() => latestFeed.data ?? [], [latestFeed.data])
-  const showCount = useMemo(
-    () => (shows.data?.length ? shows.data.length : new Set(refs.map((ref) => ref.item.id)).size),
-    [shows.data, refs],
-  )
 
   /* The server already sends them newest first; the shelf still sorts, so a
      mixed list from a proxy or a cache cannot look out of order. */
@@ -64,21 +59,13 @@ export function PodcastHome() {
 
   if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
 
-  const library = abs.podcasts.name
-  const sub = refs.length
-    ? `${showCount} Podcasts${library && library !== 'Podcasts' ? ` · ${library}` : ''}`
-    : library
-
   return (
     <div className="view abs-view">
-      <header className="view-head">
-        <div>
-          <h2>Podcasts</h2>
-          <p className="muted">{sub}</p>
-        </div>
-      </header>
+      <ResumePlaying />
 
-      <ResumePlaying only="episode" />
+      <header className="view-head">
+        <h2>Podcasts</h2>
+      </header>
 
       {latestFeed.error ? <p className="error">{latestFeed.error}</p> : null}
       {latestFeed.loading && !latestFeed.data ? <p className="muted">Wird geladen …</p> : null}

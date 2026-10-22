@@ -96,6 +96,8 @@ export function StartHub() {
 
   return (
     <div className="view start-view">
+      <ResumePlaying />
+
       <header className="start-head">
         <p className="eyebrow">Start</p>
         <h2>
@@ -108,8 +110,6 @@ export function StartHub() {
             : 'Alles, was auf deinen Servern liegt, an einem Ort.'}
         </p>
       </header>
-
-      <ResumePlaying />
 
       {continuing.length ? (
         <Shelf title="Weiterhören">
