@@ -212,11 +212,11 @@ export function MissingAbs({ noun }: { noun: 'Hörbuch' | 'Podcast' }) {
         text={
           abs
             ? `Der Server hat keine Bibliothek mit ${noun === 'Hörbuch' ? 'Hörbüchern' : 'Podcasts'}.`
-            : 'Verbinde unter „Konto & Server“ einen Audiobookshelf-Server.'
+            : 'Verbinde in den Einstellungen unter „Server & Konto“ einen Audiobookshelf-Server.'
         }
         action={
-          <button type="button" className="primary-btn" onClick={() => go({ name: 'account' })}>
-            Konto &amp; Server
+          <button type="button" className="primary-btn" onClick={() => go({ name: 'settings' })}>
+            Einstellungen öffnen
           </button>
         }
       />

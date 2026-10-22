@@ -5,7 +5,6 @@ type HistState = { stack: View[] }
 
 const ROOTS = new Set([
   'start',
-  'account',
   'home',
   'albums',
   'artists',
@@ -23,6 +22,12 @@ const ROOTS = new Set([
   'pod-episodes',
   'pod-add',
 ])
+
+/**
+ * Views that can be opened by hash without an id. Settings is deliberately not
+ * a root: it is pushed on top of wherever you were, so "Zurück" leads back.
+ */
+const PAGES = new Set([...ROOTS, 'settings'])
 
 /** Views whose address carries a single id segment. */
 const DETAILS = new Set([
@@ -61,7 +66,9 @@ function parseHash(): View {
   if (DETAILS.has(name) && id) {
     return { name, id } as View
   }
-  if (name && ROOTS.has(name)) return { name } as View
+  /* Old links and bookmarks: "Konto & Server" lives inside the settings now. */
+  if (name === 'account') return { name: 'settings' }
+  if (name && PAGES.has(name)) return { name } as View
   return HOME
 }
 
@@ -109,8 +116,14 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ view, go, back, canBack: stack.length > 1 }),
-    [view, go, back, stack.length],
+    () => ({
+      view,
+      parent: stack[stack.length - 2] ?? null,
+      go,
+      back,
+      canBack: stack.length > 1,
+    }),
+    [view, go, back, stack],
   )
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>

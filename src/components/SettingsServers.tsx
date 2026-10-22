@@ -9,11 +9,11 @@ function stateLabel(state: SourceHealth | undefined): string {
 }
 
 /*
- * "Konto" is what the app has instead of a sign-up: a name of your choosing and
- * the servers it may talk to. Everything stays on this device — the media and
- * the listening progress already live on the servers.
+ * The server side of the settings: a name of your choosing and the servers it
+ * may talk to. Everything stays on this device — the media and the listening
+ * progress already live on the servers.
  */
-export function AccountView() {
+export function SettingsServers() {
   const { profile, setProfile, sources, health, removeSource, checkSource } = useAccount()
   const [name, setName] = useState(profile)
   const [saved, setSaved] = useState(false)
@@ -31,16 +31,10 @@ export function AccountView() {
   }
 
   return (
-    <div className="view account-view">
-      <header className="view-head">
-        <div>
-          <h2>Konto &amp; Server</h2>
-          <p className="muted">Profil und die Server, die Navideck lesen darf.</p>
-        </div>
-      </header>
-
-      <section className="account-section">
-        <h3>Profil</h3>
+    <>
+      <div className="settings-group">
+        <h4>Profil</h4>
+        <p className="settings-hint">Der Name, mit dem dich Navideck begrüßt. Er bleibt auf diesem Gerät.</p>
         <form className="account-profile" onSubmit={saveProfile}>
           <span className="account-icon" aria-hidden>
             <IconUser />
@@ -58,11 +52,11 @@ export function AccountView() {
             </span>
           ) : null}
         </form>
-      </section>
+      </div>
 
-      <section className="account-section">
-        <div className="account-section-head">
-          <h3>Server</h3>
+      <div className="settings-group">
+        <div className="settings-group-head">
+          <h4>Server</h4>
           <span className="muted">{sources.length ? `${sources.length} verbunden` : 'Noch keiner'}</span>
         </div>
 
@@ -115,13 +109,16 @@ export function AccountView() {
             onClose={() => setAdding(null)}
           />
         ) : null}
-      </section>
+      </div>
 
-      <p className="account-note muted">
-        Profil und Zugangsdaten bleiben auf diesem Gerät. Von Audiobookshelf wird nur das Token
-        gespeichert, das der Server ausstellt – nie dein Passwort.
-      </p>
-    </div>
+      <div className="settings-group">
+        <h4>Zugangsdaten</h4>
+        <p className="settings-hint">
+          Profil und Zugangsdaten bleiben auf diesem Gerät. Von Audiobookshelf wird nur das Token
+          gespeichert, das der Server ausstellt – nie dein Passwort.
+        </p>
+      </div>
+    </>
   )
 }
 
@@ -277,7 +274,7 @@ function SourceForm({
       </label>
 
       {existing ? (
-        <p className="muted">
+        <p className="settings-hint">
           Ersetzt „{existing.name}“. Die Verbindung wird vor dem Speichern geprüft.
         </p>
       ) : null}

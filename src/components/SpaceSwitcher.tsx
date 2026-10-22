@@ -8,7 +8,6 @@ import {
   IconCheck,
   IconHome,
   IconPodcast,
-  IconUser,
 } from './Icons'
 
 type Entry = { id: Space; label: string; hint: string; icon: ReactNode; view: View }
@@ -38,13 +37,14 @@ function positionFor(button: HTMLElement): { top: number; left: number } {
  * a frosted panel cannot hold a fixed element of its own.
  */
 export function SpaceSwitcher() {
-  const { view, go } = useNav()
+  const { view, parent, go } = useNav()
   const { music, abs } = useAccount()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
-  const space = spaceOf(view)
+  /* Settings is drawn on top of an area; the switcher should still name it. */
+  const space = spaceOf(view.name === 'settings' && parent ? parent : view)
 
   /* A known empty library hides its area; an unknown one still offers it. */
   const showBooks = Boolean(abs && (abs.books || !abs.libraries.length))
@@ -128,7 +128,6 @@ export function SpaceSwitcher() {
           },
         ]
       : []),
-    { id: 'account', label: 'Konto & Server', hint: 'Server, Profil, Geräte', icon: <IconUser />, view: { name: 'account' } },
   ]
 
   const current = entries.find((entry) => entry.id === space) ?? entries[0]

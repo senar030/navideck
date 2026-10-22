@@ -18,12 +18,11 @@ import { SearchResults } from './SearchResults'
 import { SpaceSwitcher } from './SpaceSwitcher'
 
 type Props = {
-  onOpenSettings: () => void
   scrolled?: boolean
 }
 
-export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
-  const { view, back, canBack } = useNav()
+export function AppChrome({ scrolled = false }: Props) {
+  const { view, go, back, canBack } = useNav()
   const { client } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { uiMode, toggleUiMode } = usePrefs()
@@ -138,7 +137,7 @@ export function AppChrome({ onOpenSettings, scrolled = false }: Props) {
                   role="menuitem"
                   onClick={() => {
                     setMoreOpen(false)
-                    onOpenSettings()
+                    go({ name: 'settings' })
                   }}
                 >
                   <IconSettings />

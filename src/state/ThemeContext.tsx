@@ -18,6 +18,7 @@ export type PaletteId = (typeof PALETTES)[number]['id']
 export type ThemeContextValue = {
   theme: Theme
   palette: PaletteId
+  setTheme: (theme: Theme) => void
   toggleTheme: () => void
   setPalette: (id: PaletteId) => void
 }

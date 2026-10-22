@@ -53,13 +53,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
   }, [])
 
+  const pickTheme = useCallback((next: Theme) => {
+    setTheme(next)
+  }, [])
+
   const setPalette = useCallback((id: PaletteId) => {
     setPaletteState(id)
   }, [])
 
   const value = useMemo(
-    () => ({ theme, palette, toggleTheme, setPalette }),
-    [theme, palette, toggleTheme, setPalette],
+    () => ({ theme, palette, setTheme: pickTheme, toggleTheme, setPalette }),
+    [theme, palette, pickTheme, toggleTheme, setPalette],
   )
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

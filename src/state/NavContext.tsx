@@ -6,9 +6,10 @@ import { createContext, useContext } from 'react'
  * stack does not have to carry a server reference around.
  */
 export type View =
-  /* The account's own start page, and "Konto & Server". */
+  /* The account's own start page. */
   | { name: 'start' }
-  | { name: 'account' }
+  /* Everything about the app itself: looks, servers, version. */
+  | { name: 'settings' }
   /* Music, from Navidrome. */
   | { name: 'home' }
   | { name: 'albums' }
@@ -41,7 +42,7 @@ export type View =
   | { name: 'podcast'; id: string }
 
 /** The four big areas the space switcher offers. */
-export type Space = 'start' | 'music' | 'audiobooks' | 'podcasts' | 'account'
+export type Space = 'start' | 'music' | 'audiobooks' | 'podcasts'
 
 const AUDIOBOOK_VIEWS = new Set([
   'ab-home',
@@ -57,8 +58,7 @@ const AUDIOBOOK_VIEWS = new Set([
 const PODCAST_VIEWS = new Set(['pod-home', 'podcasts', 'pod-episodes', 'pod-add', 'podcast'])
 
 export function spaceOf(view: View): Space {
-  if (view.name === 'start') return 'start'
-  if (view.name === 'account') return 'account'
+  if (view.name === 'start' || view.name === 'settings') return 'start'
   if (AUDIOBOOK_VIEWS.has(view.name)) return 'audiobooks'
   if (PODCAST_VIEWS.has(view.name)) return 'podcasts'
   return 'music'
@@ -66,6 +66,8 @@ export function spaceOf(view: View): Space {
 
 export type NavContextValue = {
   view: View
+  /** The page underneath, when one was pushed on top of it. */
+  parent: View | null
   go: (view: View) => void
   back: () => void
   canBack: boolean

@@ -30,7 +30,6 @@ import {
   IconPodcast,
   IconRadio,
   IconStar,
-  IconUser,
 } from './Icons'
 import { NowPlaying } from './NowPlaying'
 import { PlayerBar } from './PlayerBar'
@@ -40,19 +39,24 @@ import { SectionPage } from './SectionPage'
 import { PlaylistDetail, PlaylistList } from './PlaylistViews'
 import { QueuePanel } from './QueuePanel'
 import { RadioView } from './RadioView'
-import { AccountView } from './AccountView'
-import { SettingsSheet } from './SettingsSheet'
+import { SettingsView } from './SettingsView'
 import { StarredView } from './StarredView'
 import { StartHub } from './StartHub'
 import { SpaceSwitcher } from './SpaceSwitcher'
 import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
-  const { view, go } = useNav()
+  const { view, parent, go } = useNav()
   const { abs } = useAccount()
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const space = spaceOf(view)
+
+  /*
+   * Settings is a page of its own, but the navigation belongs to the area you
+   * came from: switching the rail to the start area while a detail page is
+   * still underneath would look like a jump.
+   */
+  const navSpace = view.name === 'settings' && parent ? spaceOf(parent) : space
 
   useEffect(() => {
     if (view.name === 'search') go({ name: 'home' })
@@ -92,7 +96,7 @@ export function Shell() {
           <SpaceSwitcher />
         </div>
 
-        {space === 'music' ? (
+        {navSpace === 'music' ? (
           <>
             <NavBtn active={view.name === 'home'} onClick={() => go({ name: 'home' })} icon={<IconHome />} label="Start" />
             <NavBtn active={view.name === 'albums'} onClick={() => go({ name: 'albums' })} icon={<IconAlbums />} label="Alben" />
@@ -104,7 +108,7 @@ export function Shell() {
           </>
         ) : null}
 
-        {space === 'audiobooks' ? (
+        {navSpace === 'audiobooks' ? (
           <>
             <NavBtn active={view.name === 'ab-home'} onClick={() => go({ name: 'ab-home' })} icon={<IconHome />} label="Start" />
             <NavBtn active={view.name === 'abs-books' || view.name === 'abs-book'} onClick={() => go({ name: 'abs-books' })} icon={<IconBook />} label="Bücher" />
@@ -118,7 +122,7 @@ export function Shell() {
           </>
         ) : null}
 
-        {space === 'podcasts' ? (
+        {navSpace === 'podcasts' ? (
           <>
             <NavBtn active={view.name === 'pod-home'} onClick={() => go({ name: 'pod-home' })} icon={<IconHome />} label="Start" />
             <NavBtn active={view.name === 'podcasts' || view.name === 'podcast'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Podcasts" />
@@ -127,7 +131,7 @@ export function Shell() {
           </>
         ) : null}
 
-        {space === 'start' || space === 'account' ? (
+        {navSpace === 'start' ? (
           <>
             <NavBtn active={view.name === 'start'} onClick={() => go({ name: 'start' })} icon={<IconHome />} label="Start" />
             {showBooks ? (
@@ -136,7 +140,6 @@ export function Shell() {
             {showPodcasts ? (
               <NavBtn active={false} onClick={() => go({ name: 'pod-home' })} icon={<IconPodcast />} label="Podcasts" />
             ) : null}
-            <NavBtn active={view.name === 'account'} onClick={() => go({ name: 'account' })} icon={<IconUser />} label="Konto" />
           </>
         ) : null}
 
@@ -144,7 +147,7 @@ export function Shell() {
       </nav>
 
       <main className="main">
-        <AppChrome onOpenSettings={() => setSettingsOpen(true)} scrolled={scrolled} />
+        <AppChrome scrolled={scrolled} />
         <div
           className="main-body"
           onScroll={(e) => {
@@ -157,7 +160,7 @@ export function Shell() {
         >
           <ViewBoundary resetKey={'id' in view ? `${view.name}:${view.id}` : view.name}>
             {view.name === 'start' ? <StartHub /> : null}
-            {view.name === 'account' ? <AccountView /> : null}
+            {view.name === 'settings' ? <SettingsView /> : null}
             {view.name === 'home' || view.name === 'search' ? <HomeDashboard /> : null}
             {view.name === 'albums' ? <AlbumGrid /> : null}
             {view.name === 'artists' ? <ArtistList /> : null}
@@ -192,7 +195,6 @@ export function Shell() {
       <PlayerBar />
       <QueuePanel />
       <NowPlaying />
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

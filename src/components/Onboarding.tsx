@@ -7,7 +7,7 @@ type Kind = 'navidrome' | 'audiobookshelf'
 /*
  * The first run. A server is the only thing Navideck cannot do without, so this
  * asks for exactly one and gets out of the way; the second one is added later
- * from "Konto & Server", where both are visible side by side.
+ * from the settings, where both are visible side by side.
  */
 export function Onboarding() {
   const { addSource } = useAccount()
@@ -42,7 +42,7 @@ export function Onboarding() {
         <h1>Willkommen bei Navideck</h1>
         <p className="login-lead">
           Musik, Hörbücher und Podcasts an einem Ort. Verbinde zuerst einen Server – weitere
-          kommen jederzeit unter „Konto &amp; Server“ dazu.
+          kommen jederzeit in den Einstellungen unter „Server &amp; Konto“ dazu.
         </p>
       </header>
 
