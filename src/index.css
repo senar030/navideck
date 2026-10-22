@@ -348,8 +348,7 @@ input {
   color: inherit;
 }
 
-input,
-.settings-url {
+input {
   user-select: text;
 }
 
