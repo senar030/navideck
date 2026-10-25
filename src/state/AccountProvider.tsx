@@ -313,7 +313,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const podcastOptions = useMemo<PodcastOption[]>(() => {
     const options: PodcastOption[] = []
     if (abs?.podcasts && absSource) {
-      options.push({ id: absSource.id, name: abs.podcasts.name, kind: 'audiobookshelf' })
+      options.push({ id: absSource.id, name: absSource.name, kind: 'audiobookshelf' })
     }
     for (const source of account.sources) {
       if (source.kind === 'subsonic') {
