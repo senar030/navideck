@@ -94,8 +94,19 @@ export function SettingsView() {
               aria-current={entry.id === active ? 'page' : undefined}
               onClick={(event) => {
                 setActive(entry.id)
-                /* On a phone the row scrolls; keep the choice in sight. */
-                event.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest' })
+                /*
+                 * On a phone the row scrolls; keep the choice in sight. Move the
+                 * row itself: scrollIntoView also scrolls every ancestor, and
+                 * the main scroller would shift the whole page sideways.
+                 */
+                const row = event.currentTarget.parentElement
+                if (!row) return
+                const box = row.getBoundingClientRect()
+                const tab = event.currentTarget.getBoundingClientRect()
+                row.scrollTo({
+                  left: row.scrollLeft + tab.left - box.left - (box.width - tab.width) / 2,
+                  behavior: 'smooth',
+                })
               }}
             >
               <span className="settings-tab-icon" aria-hidden>
