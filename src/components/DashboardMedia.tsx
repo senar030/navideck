@@ -50,7 +50,9 @@ function ContinueBooksSection(props: SectionProps) {
 
   return (
     <DashBlock label="Weiterhören" {...props}>
-      {cards.length ? (
+      {books.error ? (
+        <p className="error">{books.error}</p>
+      ) : cards.length ? (
         <TileRow>{cards}</TileRow>
       ) : (
         <Empty>{books.loading ? 'Wird geladen…' : 'Hier ist noch nichts angefangen.'}</Empty>
@@ -80,7 +82,9 @@ function ContinuePodcastsSection(props: SectionProps) {
 
   return (
     <DashBlock label="Weiterhören" {...props}>
-      {cards.length ? (
+      {episodes.error ? (
+        <p className="error">{episodes.error}</p>
+      ) : cards.length ? (
         <TileRow>{cards}</TileRow>
       ) : (
         <Empty>{episodes.loading ? 'Wird geladen…' : 'Hier ist noch nichts angefangen.'}</Empty>
@@ -145,7 +149,9 @@ function ContinueAllSection(props: SectionProps) {
 
   return (
     <DashBlock label="Weiterhören" {...props}>
-      {cards.length ? (
+      {books.error || episodes.error ? (
+        <p className="error">{books.error || episodes.error}</p>
+      ) : cards.length ? (
         <TileRow>{cards}</TileRow>
       ) : (
         <Empty>{loading ? 'Wird geladen…' : 'Hier ist noch nichts angefangen.'}</Empty>
@@ -166,7 +172,9 @@ function RandomBooksSection(props: SectionProps) {
       {...props}
       action={<ReshuffleButton loading={books.loading} onClick={() => setSeed((n) => n + 1)} />}
     >
-      {items.length ? (
+      {books.error ? (
+        <p className="error">{books.error}</p>
+      ) : items.length ? (
         <TileRow>
           {items.map((item) => (
             <BookCard
@@ -195,7 +203,9 @@ function RandomAuthorsSection(props: SectionProps) {
       {...props}
       action={<ReshuffleButton loading={authors.loading} onClick={() => setSeed((n) => n + 1)} />}
     >
-      {items.length ? (
+      {authors.error ? (
+        <p className="error">{authors.error}</p>
+      ) : items.length ? (
         <TileRow>
           {items.map((author) => (
             <AuthorCard
@@ -218,7 +228,9 @@ function CollectionsSection(props: SectionProps) {
 
   return (
     <DashBlock label="Sammlungen" {...props}>
-      {collections.data?.length ? (
+      {collections.error ? (
+        <p className="error">{collections.error}</p>
+      ) : collections.data?.length ? (
         <TileRow>
           {collections.data.map((collection) => (
             <CollectionCard
@@ -243,7 +255,9 @@ function LatestEpisodesSection(props: SectionProps) {
 
   return (
     <DashBlock label="Neueste Episoden" {...props}>
-      {refs.length ? (
+      {latest.error ? (
+        <p className="error">{latest.error}</p>
+      ) : refs.length ? (
         <TileRow>
           {refs.map((ref) => (
             <EpisodeCard
@@ -268,7 +282,9 @@ function PodcastShowsSection(props: SectionProps) {
 
   return (
     <DashBlock label="Podcasts" {...props}>
-      {shows.data?.length ? (
+      {shows.error ? (
+        <p className="error">{shows.error}</p>
+      ) : shows.data?.length ? (
         <TileRow>
           {shows.data.map((item) => (
             <PodcastCard
