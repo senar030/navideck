@@ -14,7 +14,7 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
-import { IconArrowRight, IconPlay, IconRefresh } from './Icons'
+import { IconArrowDown, IconArrowRight, IconArrowUp, IconPlay, IconRefresh, IconTrash } from './Icons'
 
 /*
  * The pieces every start-page category is built from: the block chrome, the row
@@ -36,6 +36,14 @@ export type SectionId =
   | 'starredArtists'
   | 'starredAlbums'
   | 'starredSongs'
+  | 'continueAll'
+  | 'continueBooks'
+  | 'continuePodcasts'
+  | 'randomBooks'
+  | 'randomAuthors'
+  | 'collections'
+  | 'latestEpisodes'
+  | 'podcastShows'
 
 export type SectionProps = {
   editing: boolean
@@ -60,21 +68,41 @@ export function DashBlock({
   onRemove,
 }: SectionProps & { label: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="dash-block">
+    <section className={`dash-block ${editing ? 'is-editing' : ''}`}>
       <header className="dash-head">
         <h3>{label}</h3>
         <div className="dash-head-tools">
-          {action}
+          {action && !editing ? action : null}
           {editing ? (
-            <div className="dash-edit">
-              <button type="button" className="text-btn" disabled={!canUp} onClick={() => onMove(-1)}>
-                Hoch
+            <div className="dash-edit" role="group" aria-label="Widget anordnen">
+              <button
+                type="button"
+                className="icon-btn dash-tool"
+                aria-label="Nach oben"
+                data-tip="Nach oben"
+                disabled={!canUp}
+                onClick={() => onMove(-1)}
+              >
+                <IconArrowUp size={18} />
               </button>
-              <button type="button" className="text-btn" disabled={!canDown} onClick={() => onMove(1)}>
-                Runter
+              <button
+                type="button"
+                className="icon-btn dash-tool"
+                aria-label="Nach unten"
+                data-tip="Nach unten"
+                disabled={!canDown}
+                onClick={() => onMove(1)}
+              >
+                <IconArrowDown size={18} />
               </button>
-              <button type="button" className="text-btn" onClick={onRemove}>
-                Entfernen
+              <button
+                type="button"
+                className="icon-btn dash-tool is-danger"
+                aria-label="Widget entfernen"
+                data-tip="Entfernen"
+                onClick={onRemove}
+              >
+                <IconTrash size={18} />
               </button>
             </div>
           ) : null}

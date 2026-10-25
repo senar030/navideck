@@ -100,7 +100,7 @@ export function Shell() {
 
         {navSpace === 'music' ? (
           <>
-            <NavBtn active={view.name === 'home'} onClick={() => go({ name: 'home' })} icon={<IconHome />} label="Start" />
+            <NavBtn active={view.name === 'home'} onClick={() => go({ name: 'home' })} icon={<IconHome />} label="Musik" />
             <NavBtn active={view.name === 'albums'} onClick={() => go({ name: 'albums' })} icon={<IconAlbums />} label="Alben" />
             <NavBtn active={view.name === 'artists'} onClick={() => go({ name: 'artists' })} icon={<IconArtists />} label="Künstler" />
             <NavBtn active={view.name === 'genres' || view.name === 'genre'} onClick={() => go({ name: 'genres' })} icon={<IconGenres />} label="Genres" />
@@ -112,7 +112,7 @@ export function Shell() {
 
         {navSpace === 'audiobooks' ? (
           <>
-            <NavBtn active={view.name === 'ab-home'} onClick={() => go({ name: 'ab-home' })} icon={<IconHome />} label="Start" />
+            <NavBtn active={view.name === 'ab-home'} onClick={() => go({ name: 'ab-home' })} icon={<IconHome />} label="Hörbücher" />
             <NavBtn active={view.name === 'abs-books' || view.name === 'abs-book'} onClick={() => go({ name: 'abs-books' })} icon={<IconBook />} label="Bücher" />
             <NavBtn active={view.name === 'abs-authors' || view.name === 'abs-author'} onClick={() => go({ name: 'abs-authors' })} icon={<IconArtists />} label="Autoren" />
             <NavBtn
@@ -126,8 +126,8 @@ export function Shell() {
 
         {navSpace === 'podcasts' ? (
           <>
-            <NavBtn active={view.name === 'pod-home'} onClick={() => go({ name: 'pod-home' })} icon={<IconHome />} label="Start" />
-            <NavBtn active={view.name === 'podcasts' || view.name === 'podcast'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Podcasts" />
+            <NavBtn active={view.name === 'pod-home'} onClick={() => go({ name: 'pod-home' })} icon={<IconHome />} label="Podcasts" />
+            <NavBtn active={view.name === 'podcasts' || view.name === 'podcast'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Sendungen" />
             <NavBtn active={view.name === 'pod-episodes'} onClick={() => go({ name: 'pod-episodes' })} icon={<IconLists />} label="Episoden" />
             {podcasts?.kind === 'audiobookshelf' ? (
               <NavBtn active={view.name === 'pod-add'} onClick={() => go({ name: 'pod-add' })} icon={<IconPlus />} label="Hinzufügen" />

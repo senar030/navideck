@@ -8,27 +8,16 @@ import {
   type PodcastSort,
 } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
-import {
-  useAllEpisodes,
-  usePodcastItems,
-  useProgressEpisodes,
-  useRecentEpisodes,
-} from '../lib/useAbsLibrary'
+import { useAllEpisodes, usePodcastItems } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
-import {
-  EpisodeCard,
-  EpisodeRow,
-  MissingAbs,
-  PodcastCard,
-  Shelf,
-  SortChips,
-} from './AbsParts'
+import { EpisodeCard, EpisodeRow, MissingAbs, PodcastCard, SortChips } from './AbsParts'
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
 import { ResumePlaying } from './ResumePlaying'
+import { DashboardBoard } from './DashboardBoard'
 
 const PODCAST_SORTS: { id: PodcastSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -45,17 +34,6 @@ const EPISODE_SORTS: { id: EpisodeSort; label: string }[] = [
 
 export function PodcastHome() {
   const { podcasts } = useAccount()
-  const { go } = useNav()
-  const { playEpisode } = useAbsPlayer()
-  const latestFeed = useRecentEpisodes(32)
-  const continuingFeed = useProgressEpisodes()
-
-  const refs = useMemo(() => latestFeed.data ?? [], [latestFeed.data])
-
-  /* The server already sends them newest first; the shelf still sorts, so a
-     mixed list from a proxy or a cache cannot look out of order. */
-  const latest = useMemo(() => sortEpisodeRefs(refs, 'newest', false).slice(0, 12), [refs])
-  const continuing = useMemo(() => continuingFeed.data ?? [], [continuingFeed.data])
 
   if (!podcasts) return <MissingAbs noun="Podcast" />
 
@@ -63,44 +41,18 @@ export function PodcastHome() {
     <div className="view abs-view">
       <ResumePlaying />
 
-      <header className="view-head">
-        <h2>Podcasts</h2>
-      </header>
-
-      {latestFeed.error ? <p className="error">{latestFeed.error}</p> : null}
-      {latestFeed.loading && !latestFeed.data ? <p className="muted">Wird geladen …</p> : null}
-
-      {continuing.length ? (
-        <Shelf title="Weiterhören" hint="Angefangene Folgen">
-          {continuing.map((ref) => (
-            <EpisodeCard
-              key={`${ref.item.id}:${ref.episode.id}`}
-              item={ref.item}
-              episode={ref.episode}
-              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
-              onPlay={() => void playEpisode(ref.item, ref.episode)}
-            />
-          ))}
-        </Shelf>
-      ) : null}
-
-      {latest.length ? (
-        <Shelf title="Neueste Episoden">
-          {latest.map((ref) => (
-            <EpisodeCard
-              key={`${ref.item.id}:${ref.episode.id}`}
-              item={ref.item}
-              episode={ref.episode}
-              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
-              onPlay={() => void playEpisode(ref.item, ref.episode)}
-            />
-          ))}
-        </Shelf>
-      ) : null}
-
-      {!latestFeed.loading && !latestFeed.error && !refs.length && !continuing.length ? (
-        <p className="muted">Noch keine Episoden auf dem Server.</p>
-      ) : null}
+      <DashboardBoard
+        storageKey="navideck.dashboard.podcasts.v1"
+        scope="podcasts"
+        renderHead={({ edit, toggle }) => (
+          <header className="view-head">
+            <h2>Podcasts</h2>
+            <button type="button" className={`chip ${edit ? 'is-on' : ''}`} onClick={toggle}>
+              {edit ? 'Fertig' : 'Anpassen'}
+            </button>
+          </header>
+        )}
+      />
     </div>
   )
 }
@@ -121,7 +73,7 @@ export function PodcastsView() {
     <div className="view abs-view">
       <header className="view-head">
         <div>
-          <h2>Podcasts</h2>
+          <h2>Sendungen</h2>
           <p className="muted">{list.length ? `${list.length} Podcasts` : podcastSource.name}</p>
         </div>
         <SortChips

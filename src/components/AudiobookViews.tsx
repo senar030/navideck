@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { AbsLibraryItem } from '../api/abs'
-import { pickRandom, sortBooks, type BookSort } from '../lib/absHelpers'
+import { sortBooks, type BookSort } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAuthorList, useBookItems, useCollectionList, useSeriesList } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
@@ -12,11 +11,10 @@ import {
   CollectionCard,
   MissingAbs,
   SeriesCard,
-  Shelf,
-  ShuffleButton,
   SortChips,
 } from './AbsParts'
 import { LayoutToggle } from './LayoutToggle'
+import { DashboardBoard } from './DashboardBoard'
 import { ResumePlaying } from './ResumePlaying'
 
 const BOOK_SORTS: { id: BookSort; label: string }[] = [
@@ -28,32 +26,7 @@ const BOOK_SORTS: { id: BookSort; label: string }[] = [
 ]
 
 export function AudiobookHome() {
-  const { abs, progress } = useAccount()
-  const { go } = useNav()
-  const books = useBookItems()
-  const authors = useAuthorList()
-  const collections = useCollectionList()
-  const { playBook } = useAbsPlayer()
-  const [seed, setSeed] = useState(0)
-
-  const items = useMemo(() => books.data ?? [], [books.data])
-  const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
-
-  /* Everything started but not finished, most recent first. */
-  const continuing = useMemo(
-    () =>
-      Object.values(progress)
-        .filter((entry) => !entry.episodeId && !entry.isFinished && (entry.currentTime ?? 0) > 5)
-        .sort((a, b) => (b.lastUpdate ?? 0) - (a.lastUpdate ?? 0))
-        .map((entry) => byId.get(entry.libraryItemId))
-        .filter((item): item is AbsLibraryItem => Boolean(item))
-        .slice(0, 10),
-    [byId, progress],
-  )
-
-  const randomBooks = useMemo(() => pickRandom(items, 14, seed), [items, seed])
-  const randomAuthors = useMemo(() => pickRandom(authors.data ?? [], 12, seed), [authors.data, seed])
-  const shelves = collections.data ?? []
+  const { abs } = useAccount()
 
   if (!abs?.books) return <MissingAbs noun="Hörbuch" />
 
@@ -61,61 +34,18 @@ export function AudiobookHome() {
     <div className="view abs-view">
       <ResumePlaying />
 
-      <header className="view-head">
-        <h2>Hörbücher</h2>
-      </header>
-
-      {books.error ? <p className="error">{books.error}</p> : null}
-      {books.loading && !books.data ? <p className="muted">Wird geladen …</p> : null}
-
-      {continuing.length ? (
-        <Shelf title="Weiterhören" hint="Zuletzt gehört">
-          {continuing.map((item) => (
-            <BookCard
-              key={item.id}
-              item={item}
-              onOpen={() => go({ name: 'abs-book', id: item.id })}
-              onPlay={() => void playBook(item)}
-            />
-          ))}
-        </Shelf>
-      ) : null}
-
-      {randomBooks.length ? (
-        <Shelf title="Zufällige Bücher" action={<ShuffleButton onClick={() => setSeed((n) => n + 1)} />}>
-          {randomBooks.map((item) => (
-            <BookCard
-              key={item.id}
-              item={item}
-              onOpen={() => go({ name: 'abs-book', id: item.id })}
-            />
-          ))}
-        </Shelf>
-      ) : null}
-
-      {randomAuthors.length ? (
-        <Shelf title="Zufällige Autoren" action={<ShuffleButton onClick={() => setSeed((n) => n + 1)} />}>
-          {randomAuthors.map((author) => (
-            <AuthorCard
-              key={author.id}
-              author={author}
-              onOpen={() => go({ name: 'abs-author', id: author.id })}
-            />
-          ))}
-        </Shelf>
-      ) : null}
-
-      {shelves.length ? (
-        <Shelf title="Sammlungen">
-          {shelves.map((collection) => (
-            <CollectionCard
-              key={collection.id}
-              collection={collection}
-              onOpen={() => go({ name: 'abs-collection', id: collection.id })}
-            />
-          ))}
-        </Shelf>
-      ) : null}
+      <DashboardBoard
+        storageKey="navideck.dashboard.books.v1"
+        scope="books"
+        renderHead={({ edit, toggle }) => (
+          <header className="view-head">
+            <h2>Hörbücher</h2>
+            <button type="button" className={`chip ${edit ? 'is-on' : ''}`} onClick={toggle}>
+              {edit ? 'Fertig' : 'Anpassen'}
+            </button>
+          </header>
+        )}
+      />
     </div>
   )
 }
