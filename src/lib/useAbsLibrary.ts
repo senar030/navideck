@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import type {
   AbsAuthor,
-  AbsClient,
   AbsCollection,
   AbsEpisode,
   AbsLibraryItem,
@@ -10,11 +9,13 @@ import type {
 import { cached } from './absCache'
 import { podcastOf } from './absHelpers'
 import { useAsync, type AsyncState } from './useAsync'
-import { useAccount } from '../state/AccountContext'
+import { useAccount, type PodcastClient } from '../state/AccountContext'
 
 /*
  * The reads every Audiobookshelf view shares. They all answer the same way:
  * nothing (no server, no library), something cached, or an error worth showing.
+ * The podcast reads go through the account's chosen podcast source, which may
+ * be Audiobookshelf or a Subsonic server.
  */
 
 const MINUTE = 60_000
@@ -87,17 +88,18 @@ export function useSeriesList(): AsyncState<AbsSeries[]> {
 
 /** Podcast shows without their episodes — enough for a list of cards. */
 export function usePodcastItems(): AsyncState<AbsLibraryItem[]> {
-  const { abs } = useAccount()
-  const library = abs?.podcasts ?? null
-  const client = abs?.client ?? null
+  const { podcasts } = useAccount()
+  const client = podcasts?.client ?? null
+  const libraryId = podcasts?.libraryId ?? null
+  const sourceId = podcasts?.sourceId ?? null
   return useAsync(
-    library && client
+    client && libraryId
       ? () =>
-          cached(cacheKey(client.baseUrl, 'podcasts', library.id), MINUTE, () =>
-            client.getItems(library.id, { minified: true }),
+          cached(cacheKey(client.baseUrl, `podcasts:${sourceId}`, libraryId), MINUTE, () =>
+            client.getItems(libraryId, { minified: true }),
           )
       : null,
-    [client, library?.id],
+    [client, libraryId, sourceId],
   )
 }
 
@@ -122,20 +124,21 @@ function showOf(episode: AbsEpisode): AbsLibraryItem | null {
  * episodes themselves.
  */
 export function useRecentEpisodes(limit = 24): AsyncState<EpisodeRef[]> {
-  const { abs } = useAccount()
-  const library = abs?.podcasts ?? null
-  const client = abs?.client ?? null
+  const { podcasts } = useAccount()
+  const client = podcasts?.client ?? null
+  const libraryId = podcasts?.libraryId ?? null
+  const sourceId = podcasts?.sourceId ?? null
   const shows = usePodcastItems()
   const recent = useAsync(
-    library && client
+    client && libraryId
       ? () =>
           cached(
-            `${cacheKey(client.baseUrl, 'recent-episodes', library.id)}|${limit}`,
+            `${cacheKey(client.baseUrl, `recent:${sourceId}`, libraryId)}|${limit}`,
             MINUTE,
-            () => client.getRecentEpisodes(library.id, { limit }),
+            () => client.getRecentEpisodes(libraryId, { limit }),
           )
       : null,
-    [client, library?.id, limit],
+    [client, libraryId, sourceId, limit],
   )
 
   const data = useMemo<EpisodeRef[] | null>(() => {
@@ -158,8 +161,8 @@ export function useRecentEpisodes(limit = 24): AsyncState<EpisodeRef[]> {
  * its episodes. Answers are cached, so opening a show afterwards costs nothing.
  */
 export function useAllEpisodes(): AsyncState<EpisodeRef[]> {
-  const { abs } = useAccount()
-  const client = abs?.client ?? null
+  const { podcasts } = useAccount()
+  const client = podcasts?.client ?? null
   const shows = usePodcastItems()
 
   const ids = useMemo(() => (shows.data ?? []).map((item) => item.id), [shows.data])
@@ -184,9 +187,8 @@ export function useAllEpisodes(): AsyncState<EpisodeRef[]> {
 
 /** The shows the user is in the middle of an episode of, with that episode. */
 export function useProgressEpisodes(): AsyncState<EpisodeRef[]> {
-  const { abs, progress } = useAccount()
-  const library = abs?.podcasts ?? null
-  const client = abs?.client ?? null
+  const { podcasts, progress } = useAccount()
+  const client = podcasts?.client ?? null
 
   const entries = useMemo(
     () =>
@@ -201,8 +203,8 @@ export function useProgressEpisodes(): AsyncState<EpisodeRef[]> {
     [entries],
   )
   const shows = useAsync(
-    client && library && ids.length ? () => loadShows(client, ids) : null,
-    [client, library?.id, ids.join('|')],
+    client && ids.length ? () => loadShows(client, ids) : null,
+    [client, ids.join('|')],
   )
 
   const data = useMemo<EpisodeRef[] | null>(() => {
@@ -221,7 +223,7 @@ export function useProgressEpisodes(): AsyncState<EpisodeRef[]> {
   return { ...shows, data }
 }
 
-async function loadShows(client: AbsClient, ids: string[]): Promise<AbsLibraryItem[]> {
+async function loadShows(client: PodcastClient, ids: string[]): Promise<AbsLibraryItem[]> {
   const queue = [...ids]
   const items: AbsLibraryItem[] = []
   const worker = async () => {

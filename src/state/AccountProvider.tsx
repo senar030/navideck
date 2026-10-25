@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AbsClient, absLogin, type AbsLibrary, type AbsProgress, type AbsUser } from '../api/abs'
 import { SubsonicClient } from '../api/client'
+import { SubsonicPodcastClient } from '../api/subsonicPodcasts'
 import { normalizeServerUrl, normalizeSubsonicUrl } from '../lib/format'
 import {
   AccountContext,
@@ -10,15 +11,25 @@ import {
   type AbsSource,
   type MusicSource,
   type NewSource,
+  type PodcastOption,
+  type PodcastSession,
   type ProgressInput,
   type Source,
   type SourceHealth,
+  type SubsonicSource,
 } from './AccountContext'
 
 const ACCOUNT_KEY = 'navideck.account.v1'
 const LEGACY_KEY = 'navideck.auth'
 
-type Account = { profile: string; sources: Source[] }
+type Account = {
+  profile: string
+  sources: Source[]
+  /** Which music server the music area uses; falls back to the first one. */
+  activeMusic?: string
+  /** Which source the podcast area uses; falls back to the first one. */
+  activePodcast?: string
+}
 
 /** Nextcloud Music refuses Subsonic token auth and takes the password instead. */
 function authFor(source: MusicSource) {
@@ -58,15 +69,21 @@ function save(account: Account) {
 function load(): Account {
   const stored = readJson<Account>(ACCOUNT_KEY)
   if (stored && Array.isArray(stored.sources)) {
-    return { profile: stored.profile ?? '', sources: stored.sources.filter(Boolean) }
+    return {
+      profile: stored.profile ?? '',
+      sources: stored.sources.filter(Boolean),
+      activeMusic: typeof stored.activeMusic === 'string' ? stored.activeMusic : undefined,
+      activePodcast: typeof stored.activePodcast === 'string' ? stored.activePodcast : undefined,
+    }
   }
   const legacy = readJson<{ baseUrl: string; username: string; password: string }>(LEGACY_KEY)
   if (legacy?.baseUrl) {
+    const id = newId()
     const migrated: Account = {
       profile: legacy.username,
       sources: [
         {
-          id: newId(),
+          id,
           kind: 'navidrome',
           name: 'Navidrome',
           baseUrl: legacy.baseUrl,
@@ -74,6 +91,7 @@ function load(): Account {
           password: legacy.password,
         },
       ],
+      activeMusic: id,
     }
     save(migrated)
     return migrated
@@ -145,14 +163,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           input.kind === 'subsonic' ? 'password' : 'token',
         ).ping()
         const base = {
-          /*
-           * One music server at a time. When the other kind was connected, its
-           * id is reused so the health state and the settings card stay put.
-           */
-          id:
-            account.sources.find((s) => s.kind === input.kind)?.id ??
-            account.sources.find(isMusicSource)?.id ??
-            newId(),
+          /* Replacing the same kind keeps its id; the other kind keeps its own. */
+          id: account.sources.find((s) => s.kind === input.kind)?.id ?? newId(),
           name: input.name?.trim() || (input.kind === 'subsonic' ? 'Subsonic' : 'Navidrome'),
           baseUrl: server,
           username,
@@ -187,11 +199,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         ...account,
         profile: account.profile || input.username.trim(),
         sources: [
-          ...account.sources.filter((s) =>
-            isMusicSource(source) ? !isMusicSource(s) : s.kind !== source.kind,
-          ),
+          ...account.sources.filter((s) => s.id !== source.id && s.kind !== source.kind),
           source,
         ],
+        activeMusic: isMusicSource(source) ? source.id : account.activeMusic,
       })
     },
     [account, commit],
@@ -210,7 +221,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         delete next[id]
         return next
       })
-      commit({ ...account, sources: account.sources.filter((s) => s.id !== id) })
+      commit({
+        ...account,
+        sources: account.sources.filter((s) => s.id !== id),
+        activeMusic: account.activeMusic === id ? undefined : account.activeMusic,
+        activePodcast: account.activePodcast === id ? undefined : account.activePodcast,
+      })
     },
     [account, commit],
   )
@@ -258,9 +274,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const music = useMemo(
-    () => (account.sources.find(isMusicSource) ?? null),
+  const musicSources = useMemo(
+    () => account.sources.filter(isMusicSource),
     [account.sources],
+  )
+
+  const music = useMemo(
+    () =>
+      musicSources.find((source) => source.id === account.activeMusic) ??
+      musicSources[0] ??
+      null,
+    [musicSources, account.activeMusic],
   )
 
   const absSource = useMemo(
@@ -281,6 +305,104 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   }, [absSource, libraries, users])
 
+  /*
+   * Podcast sources are Audiobookshelf (when its server has a podcast library)
+   * and every Subsonic server; Navidrome has no podcasts. The chosen one is
+   * remembered, and the first option is the fallback when it disappears.
+   */
+  const podcastOptions = useMemo<PodcastOption[]>(() => {
+    const options: PodcastOption[] = []
+    if (abs?.podcasts && absSource) {
+      options.push({ id: absSource.id, name: abs.podcasts.name, kind: 'audiobookshelf' })
+    }
+    for (const source of account.sources) {
+      if (source.kind === 'subsonic') {
+        options.push({ id: source.id, name: source.name, kind: 'subsonic' })
+      }
+    }
+    return options
+  }, [abs, absSource, account.sources])
+
+  const activePodcastId = useMemo(() => {
+    if (account.activePodcast && podcastOptions.some((option) => option.id === account.activePodcast)) {
+      return account.activePodcast
+    }
+    return podcastOptions[0]?.id ?? null
+  }, [account.activePodcast, podcastOptions])
+
+  const podcastSource = useMemo(
+    () =>
+      account.sources.find(
+        (source): source is SubsonicSource =>
+          source.kind === 'subsonic' && source.id === activePodcastId,
+      ) ?? null,
+    [account.sources, activePodcastId],
+  )
+
+  const subsonicPodcasts = useMemo(
+    () => (podcastSource ? new SubsonicPodcastClient(podcastSource) : null),
+    [podcastSource],
+  )
+
+  const podcasts = useMemo<PodcastSession | null>(() => {
+    if (abs?.podcasts && absSource && activePodcastId === absSource.id) {
+      return {
+        kind: 'audiobookshelf',
+        sourceId: absSource.id,
+        name: abs.podcasts.name,
+        libraryId: abs.podcasts.id,
+        client: abs.client,
+      }
+    }
+    if (subsonicPodcasts) {
+      return {
+        kind: 'subsonic',
+        sourceId: subsonicPodcasts.sourceId,
+        name: subsonicPodcasts.name,
+        libraryId: 'subsonic-podcasts',
+        client: subsonicPodcasts,
+      }
+    }
+    return null
+  }, [abs, absSource, activePodcastId, subsonicPodcasts])
+
+  /*
+   * Subsonic has no per-episode progress endpoint, so the podcast client keeps
+   * it on this device. It is read during render and merged under the live map;
+   * the live entry wins when both know about an episode.
+   */
+  const storedPodcastProgress = useMemo(
+    () =>
+      podcasts?.kind === 'subsonic'
+        ? (podcasts.client as SubsonicPodcastClient).getStoredProgress()
+        : {},
+    [podcasts],
+  )
+
+  const visibleProgress = useMemo(
+    () =>
+      Object.keys(storedPodcastProgress).length
+        ? { ...storedPodcastProgress, ...progress }
+        : progress,
+    [progress, storedPodcastProgress],
+  )
+
+  const setActiveMusic = useCallback(
+    (id: string) => {
+      if (!account.sources.some((source) => source.id === id && isMusicSource(source))) return
+      commit({ ...account, activeMusic: id })
+    },
+    [account, commit],
+  )
+
+  const setActivePodcast = useCallback(
+    (id: string) => {
+      if (!podcastOptions.some((option) => option.id === id)) return
+      commit({ ...account, activePodcast: id })
+    },
+    [account, commit, podcastOptions],
+  )
+
   const ready =
     account.sources.length === 0 ||
     account.sources.every((source) => {
@@ -294,9 +416,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setProfile,
       sources: account.sources,
       health,
+      musicSources,
       music,
+      activeMusicId: music?.id ?? null,
+      setActiveMusic,
       abs,
-      progress,
+      podcasts,
+      podcastOptions,
+      activePodcastId,
+      setActivePodcast,
+      progress: visibleProgress,
       noteProgress,
       ready,
       addSource,
@@ -309,9 +438,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       account.sources,
       setProfile,
       health,
+      musicSources,
       music,
+      setActiveMusic,
       abs,
-      progress,
+      podcasts,
+      podcastOptions,
+      activePodcastId,
+      setActivePodcast,
+      visibleProgress,
       noteProgress,
       ready,
       addSource,

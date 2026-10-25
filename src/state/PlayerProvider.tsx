@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { AbsClient } from '../api/abs'
 import type { Song } from '../api/types'
 import { readRadioNow, type RadioNow } from '../lib/radioNow'
-import { useAccount } from './AccountContext'
+import { useAccount, type PodcastClient } from './AccountContext'
 import { useAuth } from './AuthContext'
 import { PlayerContext, type RepeatMode } from './PlayerContext'
 
@@ -142,7 +142,7 @@ function writeSession(session: Session) {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { client } = useAuth()
-  const { abs, noteProgress } = useAccount()
+  const { abs, podcasts, noteProgress } = useAccount()
   /** The account a saved session belongs to; music and books share one queue. */
   const sessionUser = client?.username ?? (abs ? 'konto' : null)
   /*
@@ -172,6 +172,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const lastTick = useRef(0)
   const lastAbs = useRef(0)
   const absRef = useRef<{ client: AbsClient; note: typeof noteProgress } | null>(null)
+  const podcastRef = useRef<{ client: PodcastClient; note: typeof noteProgress } | null>(null)
   const queueRef = useRef(queue)
   const indexRef = useRef(index)
   const repeatRef = useRef(repeat)
@@ -199,11 +200,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     absRef.current = abs ? { client: abs.client, note: noteProgress } : null
-  }, [abs, noteProgress])
+    podcastRef.current = podcasts ? { client: podcasts.client, note: noteProgress } : null
+  }, [abs, podcasts, noteProgress])
 
   const reportAbs = useCallback((song: Song, seconds: number, finished = false) => {
     const entry = song.abs
-    const live = absRef.current
+    const live = entry?.subsonic ? podcastRef.current : absRef.current
     if (!entry || !live) return
     const total = entry.total > 0 ? entry.total : seconds
     const at = Math.max(0, Math.min(total, seconds))

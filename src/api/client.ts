@@ -34,8 +34,37 @@ type SubsonicResponse = {
   similarSongs2?: { song?: Song[] }
   lyrics?: { artist?: string; title?: string; value?: string }
   lyricsList?: { structuredLyrics?: StructuredLyrics | StructuredLyrics[] }
+  podcasts?: { channel?: SubsonicPodcastChannel | SubsonicPodcastChannel[] }
+  newestPodcasts?: { episode?: SubsonicPodcastEpisode | SubsonicPodcastEpisode[] }
   internetRadioStations?: { internetRadioStation?: RadioStation | RadioStation[] }
   users?: { user?: SubsonicUser | SubsonicUser[] }
+}
+
+/** A podcast feed a Subsonic server keeps, with its episodes. */
+export type SubsonicPodcastChannel = {
+  id: string
+  url?: string
+  title: string
+  description?: string
+  coverArt?: string
+  originalImageUrl?: string
+  episode?: SubsonicPodcastEpisode[]
+}
+
+/** One episode of a Subsonic podcast. `streamId` is what `stream` plays. */
+export type SubsonicPodcastEpisode = {
+  id: string
+  streamId?: string
+  channelId?: string
+  title: string
+  artist?: string
+  description?: string
+  /** Zulu date, e.g. 2025-09-13T10:00:00Z. */
+  publishDate?: string
+  duration?: number
+  coverArt?: string
+  status?: string
+  type?: string
 }
 
 /**
@@ -261,6 +290,18 @@ export class SubsonicClient {
       pages.flatMap((data) => data.songsByGenre?.song ?? []),
       (s) => s.id,
     )
+  }
+
+  /** The podcasts a server keeps, with their episodes. */
+  async getPodcasts(): Promise<SubsonicPodcastChannel[]> {
+    const data = await this.request('getPodcasts', { includeEpisodes: 'true' })
+    return asList(data.podcasts?.channel)
+  }
+
+  /** The newest episodes across all shows, newest first. */
+  async getNewestPodcasts(count = 24): Promise<SubsonicPodcastEpisode[]> {
+    const data = await this.request('getNewestPodcasts', { count: String(count) })
+    return asList(data.newestPodcasts?.episode)
   }
 
   // Navidrome has no "artists by genre" endpoint, so a genre's artists are

@@ -320,6 +320,7 @@ export async function absLogin(
 }
 
 export class AbsClient {
+  readonly kind = 'audiobookshelf' as const
   readonly baseUrl: string
   readonly token: string
 

@@ -31,11 +31,15 @@ On the login screen enter:
 Credentials stay in this browser’s local storage until you disconnect.
 
 Navideck also speaks the Subsonic API, so a Nextcloud Music server (or Airsonic,
-Gonic, Supysonic, …) can be connected as the music source. In Nextcloud Music,
+Gonic, Supysonic, …) can be connected as a music source. In Nextcloud Music,
 create an API password under *Settings → Ampache & Subsonic* and enter it together
-with your Nextcloud username; the server URL ends in `/apps/music/subsonic`. Only
-one music server is active at a time — connecting Subsonic replaces a Navidrome
-source, and the other way round.
+with your Nextcloud username; the server URL ends in `/apps/music/subsonic`.
+
+Several music servers can stay connected at once. Under *Settings → Server &
+Konto → Quellen* you choose which one the music area reads from. The podcast area
+can also switch sources there: Audiobookshelf or a Subsonic server (Navidrome has
+no podcasts). Subsonic podcast progress is kept on the device, because the
+Subsonic API has no endpoint for it.
 
 ## Windows app
 
@@ -47,7 +51,7 @@ network (Tailscale works the same way).
 npm run build                 # the web build is the source of truth
 cd desktop
 npm install
-npm run dist                  # -> desktop/release/Navideck-Setup-1.0.0.exe
+npm run dist                  # -> desktop/release/Navideck-Setup-<version>.exe
 ```
 
 The installer is per-user, needs no admin rights and creates a desktop shortcut.

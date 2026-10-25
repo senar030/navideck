@@ -36,13 +36,25 @@ function stateLabel(state: SourceHealth | undefined): string {
  * progress already live on the servers.
  */
 export function SettingsServers() {
-  const { profile, setProfile, sources, health, removeSource, checkSource } = useAccount()
+  const {
+    profile,
+    setProfile,
+    sources,
+    health,
+    removeSource,
+    checkSource,
+    musicSources,
+    activeMusicId,
+    setActiveMusic,
+    podcastOptions,
+    activePodcastId,
+    setActivePodcast,
+  } = useAccount()
   const [name, setName] = useState(profile)
   const [saved, setSaved] = useState(false)
   const [adding, setAdding] = useState<AddKind | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
 
-  const music = sources.find(isMusicSource)
   const hasNavidrome = sources.some((source) => source.kind === 'navidrome')
   const hasSubsonic = sources.some((source) => source.kind === 'subsonic')
   const hasAbs = sources.some((source) => source.kind === 'audiobookshelf')
@@ -78,6 +90,54 @@ export function SettingsServers() {
         </form>
       </div>
 
+      {musicSources.length || podcastOptions.length ? (
+        <div className="settings-group">
+          <h4>Quellen</h4>
+          <p className="settings-hint">
+            Mehrere Musik-Server bleiben verbunden; hier wählst du, welcher die Musik liefert und
+            woher die Podcasts kommen. Navidrome kennt keine Podcasts.
+          </p>
+          {musicSources.length ? (
+            <div className="settings-choice">
+              <span className="settings-choice-label">Musik</span>
+              <div className="chip-row wrap">
+                {musicSources.map((source) => (
+                  <button
+                    key={source.id}
+                    type="button"
+                    className={`chip ${source.id === activeMusicId ? 'is-on' : ''}`}
+                    aria-pressed={source.id === activeMusicId}
+                    onClick={() => setActiveMusic(source.id)}
+                  >
+                    {source.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {podcastOptions.length ? (
+            <div className="settings-choice">
+              <span className="settings-choice-label">Podcasts</span>
+              <div className="chip-row wrap">
+                {podcastOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={`chip ${option.id === activePodcastId ? 'is-on' : ''}`}
+                    aria-pressed={option.id === activePodcastId}
+                    onClick={() => setActivePodcast(option.id)}
+                  >
+                    {option.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="settings-hint">Podcasts brauchen einen Audiobookshelf- oder Subsonic-Server.</p>
+          )}
+        </div>
+      ) : null}
+
       <div className="settings-group">
         <div className="settings-group-head">
           <h4>Server</h4>
@@ -92,6 +152,13 @@ export function SettingsServers() {
               key={source.id}
               source={source}
               state={health[source.id]}
+              activeLabels={[
+                ...(isMusicSource(source) && source.id === activeMusicId ? ['Musik aktiv'] : []),
+                ...(podcastOptions.some((option) => option.id === source.id) &&
+                source.id === activePodcastId
+                  ? ['Podcasts aktiv']
+                  : []),
+              ]}
               confirming={confirming === source.id}
               onCheck={() => checkSource(source.id)}
               onReplace={() => setAdding(source.kind)}
@@ -111,7 +178,9 @@ export function SettingsServers() {
               <IconAlbums />
               <span>
                 <strong>Navidrome</strong>
-                <span className="muted">{music ? 'Ersetzt deinen Musik-Server' : 'Musik'}</span>
+                <span className="muted">
+                  {musicSources.length ? 'Zusätzlicher Musik-Server' : 'Musik'}
+                </span>
               </span>
             </button>
           ) : null}
@@ -121,7 +190,9 @@ export function SettingsServers() {
               <span>
                 <strong>Subsonic</strong>
                 <span className="muted">
-                  {music ? 'Ersetzt deinen Musik-Server' : 'Nextcloud Music, Airsonic, Gonic'}
+                  {musicSources.length
+                    ? 'Zusätzlicher Musik-Server'
+                    : 'Nextcloud Music, Airsonic, Gonic'}
                 </span>
               </span>
             </button>
@@ -141,7 +212,6 @@ export function SettingsServers() {
           <SourceForm
             kind={adding}
             existing={sources.find((source) => source.kind === adding)}
-            replaces={isMusicSourceKind(adding) ? music : undefined}
             onClose={() => setAdding(null)}
           />
         ) : null}
@@ -162,6 +232,7 @@ export function SettingsServers() {
 function ServerCard({
   source,
   state,
+  activeLabels,
   confirming,
   onCheck,
   onReplace,
@@ -171,6 +242,7 @@ function ServerCard({
 }: {
   source: Source
   state: SourceHealth | undefined
+  activeLabels: string[]
   confirming: boolean
   onCheck: () => void
   onReplace: () => void
@@ -190,6 +262,15 @@ function ServerCard({
           {kindLabel(source.kind)} · {source.baseUrl}
         </span>
         <span className="muted">Angemeldet als {source.username}</span>
+        {activeLabels.length ? (
+          <span className="account-tags">
+            {activeLabels.map((label) => (
+              <span key={label} className="account-tag">
+                {label}
+              </span>
+            ))}
+          </span>
+        ) : null}
         <span className={`account-state is-${status}`}>
           <span className="account-dot" aria-hidden />
           {stateLabel(state)}
@@ -225,17 +306,15 @@ function ServerCard({
 function SourceForm({
   kind,
   existing,
-  replaces,
   onClose,
 }: {
   kind: AddKind
   existing?: Source
-  /** The music server this one would push out, when switching kinds. */
-  replaces?: Source
   onClose: () => void
 }) {
-  const { addSource } = useAccount()
+  const { addSource, musicSources } = useAccount()
   const [server, setServer] = useState(existing?.baseUrl ?? '')
+  const [name, setName] = useState(existing?.name ?? '')
   const [username, setUsername] = useState(existing?.username ?? '')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -247,7 +326,7 @@ function SourceForm({
     setError('')
     setBusy(true)
     try {
-      await addSource({ kind, server, username, password })
+      await addSource({ kind, server, username, password, name: name.trim() || undefined })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verbindung fehlgeschlagen')
@@ -256,7 +335,7 @@ function SourceForm({
     }
   }
 
-  const replaced = existing ?? replaces
+  const replaced = existing
 
   return (
     <form className="account-form" onSubmit={(e) => void submit(e)}>
@@ -299,6 +378,18 @@ function SourceForm({
       ) : null}
 
       <label className="account-field">
+        Name (optional)
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={KIND_LABEL[kind]}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+      </label>
+
+      <label className="account-field">
         Benutzername
         <input
           value={username}
@@ -329,9 +420,12 @@ function SourceForm({
 
       {replaced ? (
         <p className="settings-hint">
-          Ersetzt „{replaced.name}“.{' '}
-          {!existing && replaces ? 'Es kann nur ein Musik-Server verbunden sein. ' : ''}
-          Die Verbindung wird vor dem Speichern geprüft.
+          Ersetzt „{replaced.name}“. Die Verbindung wird vor dem Speichern geprüft.
+        </p>
+      ) : isMusicSourceKind(kind) && musicSources.length ? (
+        <p className="settings-hint">
+          Wird zusätzlich verbunden. Unter „Quellen“ wählst du danach, welcher Server die Musik
+          liefert.
         </p>
       ) : null}
 

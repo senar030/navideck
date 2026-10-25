@@ -1,5 +1,6 @@
 import type { AbsBook, AbsClient, AbsEpisode, AbsLibraryItem } from '../api/abs'
 import type { Song } from '../api/types'
+import type { PodcastClient } from '../state/AccountContext'
 import { trackAt } from './absHelpers'
 
 /*
@@ -42,7 +43,7 @@ export function bookQueue(client: AbsClient, item: AbsLibraryItem, resumeAt: num
 }
 
 export function episodeSong(
-  client: AbsClient,
+  client: PodcastClient,
   item: AbsLibraryItem,
   episode: AbsEpisode,
   resumeAt = 0,
@@ -62,6 +63,7 @@ export function episodeSong(
       startOffset: 0,
       total,
       cover: client.coverUrl(item.id),
+      subsonic: client.kind === 'subsonic',
     },
     startAt: Math.max(0, resumeAt),
   }

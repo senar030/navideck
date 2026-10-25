@@ -48,7 +48,7 @@ import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
   const { view, parent, go } = useNav()
-  const { abs, music } = useAccount()
+  const { abs, music, podcasts } = useAccount()
   const { queue } = usePlayer()
   const [scrolled, setScrolled] = useState(false)
   const space = spaceOf(view)
@@ -66,7 +66,7 @@ export function Shell() {
 
   /* A known empty library hides its area; an unknown one still offers it. */
   const showBooks = Boolean(abs && (abs.books || !abs.libraries.length))
-  const showPodcasts = Boolean(abs && (abs.podcasts || !abs.libraries.length))
+  const showPodcasts = Boolean(podcasts)
 
   /*
    * Where the way-in button belongs follows the shape of the navigation, and
@@ -129,7 +129,9 @@ export function Shell() {
             <NavBtn active={view.name === 'pod-home'} onClick={() => go({ name: 'pod-home' })} icon={<IconHome />} label="Start" />
             <NavBtn active={view.name === 'podcasts' || view.name === 'podcast'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Podcasts" />
             <NavBtn active={view.name === 'pod-episodes'} onClick={() => go({ name: 'pod-episodes' })} icon={<IconLists />} label="Episoden" />
-            <NavBtn active={view.name === 'pod-add'} onClick={() => go({ name: 'pod-add' })} icon={<IconPlus />} label="Hinzufügen" />
+            {podcasts?.kind === 'audiobookshelf' ? (
+              <NavBtn active={view.name === 'pod-add'} onClick={() => go({ name: 'pod-add' })} icon={<IconPlus />} label="Hinzufügen" />
+            ) : null}
           </>
         ) : null}
 

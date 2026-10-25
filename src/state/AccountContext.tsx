@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { AbsClient, AbsLibrary, AbsProgress, AbsUser } from '../api/abs'
+import type { AbsClient, AbsEpisode, AbsLibrary, AbsLibraryItem, AbsProgress, AbsUser } from '../api/abs'
 
 /*
  * The account is the list of servers this app talks to. It lives on the device:
@@ -53,6 +53,40 @@ export function isMusicSource(source: Source): source is MusicSource {
   return source.kind === 'navidrome' || source.kind === 'subsonic'
 }
 
+/**
+ * The reads the podcast views need. Audiobookshelf and Subsonic answer with
+ * different shapes, so the Subsonic side maps its channels and episodes onto
+ * the shapes the views already understand.
+ */
+export type PodcastClient = {
+  readonly kind: 'audiobookshelf' | 'subsonic'
+  readonly baseUrl: string
+  getItems(libraryId: string, opts?: { minified?: boolean }): Promise<AbsLibraryItem[]>
+  getRecentEpisodes(libraryId: string, opts?: { limit?: number }): Promise<AbsEpisode[]>
+  getItem(id: string): Promise<AbsLibraryItem>
+  coverUrl(id: string): string
+  streamUrl(contentUrl: string): string
+  updateProgress(input: {
+    itemId: string
+    episodeId?: string
+    currentTime: number
+    duration: number
+    isFinished?: boolean
+  }): Promise<void>
+}
+
+/** The source the podcast area currently reads from. */
+export type PodcastSession = {
+  kind: 'audiobookshelf' | 'subsonic'
+  sourceId: string
+  /** What the settings call it. */
+  name: string
+  libraryId: string
+  client: PodcastClient
+}
+
+export type PodcastOption = { id: string; name: string; kind: 'audiobookshelf' | 'subsonic' }
+
 /** An Audiobookshelf server that has answered, with the libraries it offers. */
 export type AbsSession = {
   source: AbsSource
@@ -77,9 +111,18 @@ export type AccountContextValue = {
   setProfile: (name: string) => void
   sources: Source[]
   health: Record<string, SourceHealth>
-  /** The music server the music side uses, whichever kind it is. */
+  /** Every music server, in the order they were added. */
+  musicSources: MusicSource[]
+  /** The music server the music side uses. */
   music: MusicSource | null
+  activeMusicId: string | null
+  setActiveMusic: (id: string) => void
   abs: AbsSession | null
+  /** Where the podcast area reads from: Audiobookshelf or a Subsonic server. */
+  podcasts: PodcastSession | null
+  podcastOptions: PodcastOption[]
+  activePodcastId: string | null
+  setActivePodcast: (id: string) => void
   /** Listening progress on the Audiobookshelf server, by item and episode. */
   progress: Record<string, AbsProgress>
   /** Remembers progress the player just reported, without waiting for a reload. */

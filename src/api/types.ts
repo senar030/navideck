@@ -32,6 +32,8 @@ export type AbsPlayback = {
   cover?: string
   /** What the player bar should call this: usually the book's title. */
   label?: string
+  /** True when the episode comes from a Subsonic server rather than Audiobookshelf. */
+  subsonic?: boolean
 }
 
 export type Song = {

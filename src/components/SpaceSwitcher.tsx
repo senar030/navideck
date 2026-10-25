@@ -38,7 +38,7 @@ function positionFor(button: HTMLElement): { top: number; left: number } {
  */
 export function SpaceSwitcher() {
   const { view, parent, go } = useNav()
-  const { music, abs } = useAccount()
+  const { music, abs, podcasts } = useAccount()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
@@ -48,7 +48,7 @@ export function SpaceSwitcher() {
 
   /* A known empty library hides its area; an unknown one still offers it. */
   const showBooks = Boolean(abs && (abs.books || !abs.libraries.length))
-  const showPodcasts = Boolean(abs && (abs.podcasts || !abs.libraries.length))
+  const showPodcasts = Boolean(podcasts)
 
   /*
    * Where the menu goes: beside the rail button, below the top-bar button.
@@ -122,7 +122,7 @@ export function SpaceSwitcher() {
           {
             id: 'podcasts' as const,
             label: 'Podcasts',
-            hint: 'Audiobookshelf',
+            hint: podcasts?.kind === 'subsonic' ? podcasts.name : 'Audiobookshelf',
             icon: <IconPodcast />,
             view: { name: 'pod-home' } as View,
           },

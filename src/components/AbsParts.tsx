@@ -170,13 +170,13 @@ export function BookCard({
 }
 
 export function PodcastCard({ item, onOpen }: { item: AbsLibraryItem; onOpen: () => void }) {
-  const { abs } = useAccount()
+  const { podcasts } = useAccount()
   const podcast = podcastOf(item)
   const count = podcast.numEpisodes ?? podcast.episodes?.length ?? 0
   return (
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
-        <AbsCover src={abs?.client.coverUrl(item.id)} alt="" />
+        <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" />
         <span className="album-name">{podcast.metadata.title}</span>
         <span className="album-artist">
           {count ? `${count} ${count === 1 ? 'Folge' : 'Folgen'}` : podcast.metadata.author || 'Podcast'}
@@ -240,7 +240,7 @@ export function EpisodeRow({
   onPlay: () => void
   onOpen: () => void
 }) {
-  const { abs } = useAccount()
+  const { podcasts } = useAccount()
   const title = podcastOf(item).metadata.title
   const entry = progressOf(progress, item.id, episode.id)
   const share = heardShare(entry)
@@ -249,7 +249,7 @@ export function EpisodeRow({
     .join(' · ')
   return (
     <article className="episode-row">
-      <AbsCover src={abs?.client.coverUrl(item.id)} alt="" size={120} className="episode-art" />
+      <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" size={120} className="episode-art" />
       <button type="button" className="episode-text" onClick={onPlay}>
         <strong>{episode.title}</strong>
         <span className="muted">{facts}</span>
@@ -322,13 +322,13 @@ export function EpisodeCard({
   onOpen: () => void
   onPlay: () => void
 }) {
-  const { abs, progress } = useAccount()
+  const { podcasts, progress } = useAccount()
   const show = podcastOf(item).metadata.title
   const share = heardShare(progressOf(progress, item.id, episode.id))
   return (
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
-        <AbsCover src={abs?.client.coverUrl(item.id)} alt="" />
+        <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" />
         <span className="album-name">{episode.title}</span>
         <span className="album-artist">
           {show}

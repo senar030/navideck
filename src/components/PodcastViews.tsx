@@ -44,7 +44,7 @@ const EPISODE_SORTS: { id: EpisodeSort; label: string }[] = [
 ]
 
 export function PodcastHome() {
-  const { abs } = useAccount()
+  const { podcasts } = useAccount()
   const { go } = useNav()
   const { playEpisode } = useAbsPlayer()
   const latestFeed = useRecentEpisodes(32)
@@ -57,7 +57,7 @@ export function PodcastHome() {
   const latest = useMemo(() => sortEpisodeRefs(refs, 'newest', false).slice(0, 12), [refs])
   const continuing = useMemo(() => continuingFeed.data ?? [], [continuingFeed.data])
 
-  if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
+  if (!podcasts) return <MissingAbs noun="Podcast" />
 
   return (
     <div className="view abs-view">
@@ -106,7 +106,7 @@ export function PodcastHome() {
 }
 
 export function PodcastsView() {
-  const { abs } = useAccount()
+  const { podcasts: podcastSource } = useAccount()
   const { go } = useNav()
   const { layout } = usePrefs()
   const podcasts = usePodcastItems()
@@ -115,14 +115,14 @@ export function PodcastsView() {
 
   const list = useMemo(() => sortPodcasts(podcasts.data ?? [], sort, desc), [podcasts.data, sort, desc])
 
-  if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
+  if (!podcastSource) return <MissingAbs noun="Podcast" />
 
   return (
     <div className="view abs-view">
       <header className="view-head">
         <div>
           <h2>Podcasts</h2>
-          <p className="muted">{list.length ? `${list.length} Podcasts` : abs.podcasts.name}</p>
+          <p className="muted">{list.length ? `${list.length} Podcasts` : podcastSource.name}</p>
         </div>
         <SortChips
           options={PODCAST_SORTS}
@@ -155,7 +155,7 @@ export function PodcastsView() {
 const PAGE = 120
 
 export function EpisodesView() {
-  const { abs, progress } = useAccount()
+  const { podcasts: podcastSource, progress } = useAccount()
   const { go } = useNav()
   const { layout } = usePrefs()
   const { playEpisode } = useAbsPlayer()
@@ -171,7 +171,7 @@ export function EpisodesView() {
     return sortEpisodeRefs(episodes.data ?? [], 'newest', false)
   }, [episodes.data, sort])
 
-  if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
+  if (!podcastSource) return <MissingAbs noun="Podcast" />
 
   const shown = list.slice(0, limit)
 
@@ -180,7 +180,7 @@ export function EpisodesView() {
       <header className="view-head">
         <div>
           <h2>Episoden</h2>
-          <p className="muted">{list.length ? `${list.length} Folgen` : abs.podcasts.name}</p>
+          <p className="muted">{list.length ? `${list.length} Folgen` : podcastSource.name}</p>
         </div>
         <SortChips
           options={EPISODE_SORTS}
@@ -239,7 +239,7 @@ export function EpisodesView() {
 }
 
 export function PodcastAdd() {
-  const { abs } = useAccount()
+  const { abs, podcasts } = useAccount()
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<AbsPodcastSearchResult[] | null>(null)
   const [error, setError] = useState('')
@@ -286,6 +286,19 @@ export function PodcastAdd() {
   }
 
   if (!abs?.podcasts) return <MissingAbs noun="Podcast" />
+  if (podcasts?.kind !== 'audiobookshelf') {
+    return (
+      <div className="view abs-view">
+        <header className="view-head">
+          <h2>Podcast hinzufügen</h2>
+        </header>
+        <p className="muted">
+          Abonnierte Podcasts verwaltest du auf dem Subsonic-Server (in Nextcloud Music unter „Podcasts“).
+          Hier lassen sich nur Audiobookshelf-Sendungen suchen.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="view abs-view">

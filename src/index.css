@@ -4351,6 +4351,13 @@ html[data-ui='deck'] .pw-row input {
 
 .onboard-form {
   width: min(27rem, 100%);
+  /*
+   * The onboarding column can be taller than the window. A flex item shrinks by
+   * default, and the card clips what does not fit (`overflow: hidden`), which
+   * cut off the submit button on a phone; it has to keep its content height and
+   * let the column scroll instead.
+   */
+  flex-shrink: 0;
 }
 
 .onboard-back {
@@ -5162,6 +5169,40 @@ html[data-ui='deck'] .pw-row input {
 
 .settings-group .chip-row {
   margin-top: 0.15rem;
+}
+
+/* "Quellen": one labelled chip row per choice. */
+.settings-choice + .settings-choice {
+  margin-top: 0.7rem;
+}
+
+.settings-choice-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.account-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.account-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .settings-group .palette-grid,

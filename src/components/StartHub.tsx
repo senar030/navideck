@@ -26,7 +26,7 @@ function healthLabel(state: SourceHealth | undefined): string {
  * "Start" should become is still open, so this is the honest placeholder.
  */
 export function StartHub() {
-  const { profile, music, abs, sources, health, progress } = useAccount()
+  const { profile, music, abs, podcasts, sources, health, progress } = useAccount()
   const { go } = useNav()
   const { playBook, playEpisode } = useAbsPlayer()
   const books = useBookItems()
@@ -82,13 +82,13 @@ export function StartHub() {
       view: { name: 'ab-home' },
     })
   }
-  if (abs && (abs.podcasts || !abs.libraries.length)) {
+  if (podcasts) {
     spaces.push({
       id: 'podcasts',
       label: 'Podcasts',
       hint: showCount
-        ? sourceLine(abs.source.name, 'Podcasts', `${showCount} Podcasts`)
-        : sourceLine(abs.source.name, 'Podcasts', healthLabel(health[abs.source.id])),
+        ? sourceLine(podcasts.name, 'Podcasts', `${showCount} Podcasts`)
+        : sourceLine(podcasts.name, 'Podcasts', healthLabel(health[podcasts.sourceId])),
       icon: <IconPodcast />,
       view: { name: 'pod-home' },
     })

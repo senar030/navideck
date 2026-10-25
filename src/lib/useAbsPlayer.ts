@@ -11,7 +11,7 @@ import { usePlayer } from '../state/PlayerContext'
  * (the bar, the deck, the media session) is the player the app always had.
  */
 export function useAbsPlayer() {
-  const { abs, progress } = useAccount()
+  const { abs, podcasts, progress } = useAccount()
   const { playTracks } = usePlayer()
 
   const playBookAt = useCallback(
@@ -34,12 +34,14 @@ export function useAbsPlayer() {
 
   const playEpisode = useCallback(
     async (item: AbsLibraryItem, episode: AbsEpisode) => {
-      if (!abs) return
-      const at = progressOf(progress, item.id, episode.id)?.currentTime ?? 0
-      const song = episodeSong(abs.client, item, episode, at)
+      const client = podcasts?.client
+      if (!client) return
+      const saved = progressOf(progress, item.id, episode.id)
+      const at = saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0
+      const song = episodeSong(client, item, episode, at)
       if (song) playTracks([song], 0)
     },
-    [abs, playTracks, progress],
+    [podcasts, playTracks, progress],
   )
 
   return { playBook, playBookAt, playEpisode }

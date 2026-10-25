@@ -10,10 +10,10 @@ import { IconPlay } from './Icons'
 const PAGE = 80
 
 export function PodcastDetail({ id }: { id: string }) {
-  const { abs, progress } = useAccount()
+  const { podcasts, progress } = useAccount()
   const { playEpisode } = useAbsPlayer()
   const [limit, setLimit] = useState(PAGE)
-  const client = abs?.client ?? null
+  const client = podcasts?.client ?? null
   const result = useAsync(client ? () => client.getItem(id) : null, [client, id])
 
   const item = result.data
@@ -23,11 +23,11 @@ export function PodcastDetail({ id }: { id: string }) {
     [podcast],
   )
 
-  if (!abs) return <MissingAbs noun="Podcast" />
+  if (!podcasts || !client) return <MissingAbs noun="Podcast" />
   if (result.error) return <p className="error">{result.error}</p>
   if (!item || !podcast) return <p className="muted">Podcast wird geladen …</p>
 
-  const cover = abs.client.coverUrl(id)
+  const cover = client.coverUrl(id)
   const shown = episodes.slice(0, limit)
   const latest = episodes[0]
 
