@@ -1,0 +1,54 @@
+{
+  "name": "navideck-desktop",
+  "productName": "Navideck",
+  "version": "1.0.0",
+  "description": "Navideck als Windows-App",
+  "author": "senar030",
+  "license": "MIT",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "prepare:dist": "node scripts/prepare.mjs",
+    "start": "electron .",
+    "dist": "node scripts/prepare.mjs && electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "de.navideck.app",
+    "productName": "Navideck",
+    "copyright": "Navideck",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "package.json",
+      "dist/**/*"
+    ],
+    "icon": "build/icon.png",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Navideck-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Navideck",
+      "uninstallDisplayName": "Navideck"
+    }
+  }
+}

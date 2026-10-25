@@ -30,6 +30,31 @@ On the login screen enter:
 
 Credentials stay in this browser’s local storage until you disconnect.
 
+Navideck also speaks the Subsonic API, so a Nextcloud Music server (or Airsonic,
+Gonic, Supysonic, …) can be connected as the music source. In Nextcloud Music,
+create an API password under *Settings → Ampache & Subsonic* and enter it together
+with your Nextcloud username; the server URL ends in `/apps/music/subsonic`. Only
+one music server is active at a time — connecting Subsonic replaces a Navidrome
+source, and the other way round.
+
+## Windows app
+
+`desktop/` packages the same web build as a native Windows application, so the UI
+starts from the PC instead of the NAS. It still reaches the servers over the
+network (Tailscale works the same way).
+
+```bash
+npm run build                 # the web build is the source of truth
+cd desktop
+npm install
+npm run dist                  # -> desktop/release/Navideck-Setup-1.0.0.exe
+```
+
+The installer is per-user, needs no admin rights and creates a desktop shortcut.
+The app keeps servers and the current session in `%APPDATA%\Navideck`; installing a
+newer version replaces the program files and leaves that folder alone. Builds are
+unsigned, so Windows SmartScreen may ask once.
+
 ## Install as an app (PWA)
 
 Navideck ships a web app manifest, maskable icons and a service worker, so it can
