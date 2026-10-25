@@ -550,6 +550,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [loadAndPlay],
   )
 
+  /*
+   * Nothing left to show and nothing left to play: the bar disappears with the
+   * queue. The stored session is dropped here rather than only in the debounced
+   * save below, so a tab closed right after clearing does not bring it back.
+   */
+  const clearQueue = useCallback(() => {
+    release(active)
+    release(idle())
+    scrobbled.current = false
+    setPlaying(false)
+    setQueue([])
+    setIndex(0)
+    setCurrentTime(0)
+    setDuration(0)
+    setQueueOpen(false)
+    setExpanded(false)
+    try {
+      localStorage.removeItem(SESSION_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   useEffect(() => {
     const saved = boot
     const song = saved?.queue[saved.index]
@@ -862,6 +885,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playIndex,
       removeFromQueue,
       reorderQueue,
+      clearQueue,
       setQueueOpen,
       setExpanded,
       toggleStar,
@@ -894,6 +918,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playIndex,
       removeFromQueue,
       reorderQueue,
+      clearQueue,
       toggleStar,
     ],
   )

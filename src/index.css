@@ -453,6 +453,17 @@ h4 {
   overflow: hidden;
 }
 
+/*
+ * No queue, no bar: the row the player would sit in collapses instead of
+ * staying behind as an empty band.
+ */
+@media (min-width: 901px) {
+  .app:not(.has-player),
+  html[data-ui='deck'] .app:not(.has-player) {
+    grid-template-rows: 1fr 0;
+  }
+}
+
 /* Navigation rail */
 
 .nav {
@@ -2772,6 +2783,12 @@ html[data-theme='light'] .hero-banner {
   flex-shrink: 0;
 }
 
+.sheet-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .sheet-head h3 {
   margin: 0;
   font-size: var(--fs-lg);
@@ -3246,14 +3263,34 @@ html[data-theme='light'] .hero-banner {
   min-height: 0;
 }
 
+.np-queue-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
 .np-queue-title {
-  margin: 0 0 0.9rem;
+  margin: 0;
   padding: 0 0.2rem;
   font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.np-queue-clear {
+  border: 0;
+  background: transparent;
+  padding: 0.1rem 0.2rem;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+}
+
+.np-queue-clear:hover {
+  text-decoration: underline;
 }
 
 .np-queue-body {
@@ -3999,6 +4036,11 @@ html[data-ui='deck'] .pw-row input {
   .main-body {
     /* Room for the pill hovering over the last row (see `--pill-h`). */
     padding-bottom: calc(var(--pill-h) + 1.2rem);
+  }
+
+  /* Without a queue there is no pill, so nothing to keep clear. */
+  .app:not(.has-player) .main-body {
+    padding-bottom: calc(1.6rem + env(safe-area-inset-bottom, 0px));
   }
 
   .hero-banner {

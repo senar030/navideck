@@ -15,7 +15,7 @@ const OPTIONS: { id: SongSort; label: string }[] = [
 ]
 
 export function QueuePanel() {
-  const { queue, index, playIndex, removeFromQueue, reorderQueue, queueOpen, setQueueOpen } = usePlayer()
+  const { queue, index, playIndex, removeFromQueue, reorderQueue, clearQueue, queueOpen, setQueueOpen } = usePlayer()
   const [sort, setSort] = useState<SongSort>('original')
   const [desc, setDesc] = useState(false)
   const [snapshot, setSnapshot] = useState(queue)
@@ -66,9 +66,16 @@ export function QueuePanel() {
       <aside className="sheet" onClick={(e) => e.stopPropagation()}>
         <header className="sheet-head">
           <h3>Warteschlange · {queue.length}</h3>
-          <button type="button" className="icon-btn" aria-label="Warteschlange schließen" onClick={() => setQueueOpen(false)}>
-            <IconClose />
-          </button>
+          <div className="sheet-head-actions">
+            {queue.length ? (
+              <button type="button" className="chip" onClick={clearQueue}>
+                Leeren
+              </button>
+            ) : null}
+            <button type="button" className="icon-btn" aria-label="Warteschlange schließen" onClick={() => setQueueOpen(false)}>
+              <IconClose />
+            </button>
+          </div>
         </header>
         {queue.length > 1 ? (
           <div className="chip-row wrap sort-row sheet-sort" role="toolbar" aria-label="Warteschlange sortieren">

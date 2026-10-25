@@ -17,6 +17,7 @@ import {
 
 export function PlayerBar() {
   const {
+    queue,
     current,
     playing,
     radioNow,
@@ -34,6 +35,9 @@ export function PlayerBar() {
     setExpanded,
     toggleStar,
   } = usePlayer()
+
+  /* No queue, no bar: an empty player would only say "Nichts spielt". */
+  if (!queue.length) return null
 
   const progress = duration ? (currentTime / duration) * 100 : 0
   const live = Boolean(current?.radio)

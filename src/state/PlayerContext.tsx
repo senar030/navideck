@@ -38,6 +38,8 @@ type PlayerContextValue = {
   playIndex: (i: number) => void
   removeFromQueue: (i: number) => void
   reorderQueue: (songs: Song[]) => void
+  /** Empties the queue and stops the sound: the bar goes with it. */
+  clearQueue: () => void
   setQueueOpen: (open: boolean) => void
   setExpanded: (open: boolean) => void
   toggleStar: () => void

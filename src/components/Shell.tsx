@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { useAccount } from '../state/AccountContext'
 import { spaceOf, useNav } from '../state/NavContext'
+import { usePlayer } from '../state/PlayerContext'
 import { AlbumDetail } from './AlbumDetail'
 import { AlbumGrid } from './AlbumGrid'
 import { AppChrome } from './AppChrome'
@@ -48,6 +49,7 @@ import { ViewBoundary } from './ViewBoundary'
 export function Shell() {
   const { view, parent, go } = useNav()
   const { abs, music } = useAccount()
+  const { queue } = usePlayer()
   const [scrolled, setScrolled] = useState(false)
   const space = spaceOf(view)
 
@@ -90,7 +92,7 @@ export function Shell() {
   }, [])
 
   return (
-    <div className="app">
+    <div className={`app ${queue.length ? 'has-player' : ''}`}>
       <nav className="nav" aria-label="Hauptnavigation">
         <div className="nav-brand">
           <SpaceSwitcher />

@@ -49,6 +49,7 @@ export function NowPlaying() {
     index,
     playIndex,
     playTracks,
+    clearQueue,
     toggleStar,
   } = usePlayer()
   const { mixSize } = usePrefs()
@@ -294,7 +295,12 @@ export function NowPlaying() {
       </div>
       {showList ? (
         <aside className="np-queue">
-          <p className="np-queue-title">Als Nächstes</p>
+          <div className="np-queue-head">
+            <p className="np-queue-title">Als Nächstes</p>
+            <button type="button" className="np-queue-clear" onClick={clearQueue}>
+              Leeren
+            </button>
+          </div>
           <div className="np-queue-body" ref={queueRef}>
             {queue.map((song, i) => (
               <button
