@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import type { NavidromeClient } from '../api/client'
+import type { SubsonicClient } from '../api/client'
 import type { Album, AlbumListType, Artist, Genre, SearchResult, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
 
@@ -55,7 +55,7 @@ export function useAlbums(type: AlbumListType, limit = 0) {
  */
 let starredInFlight: { key: string; data: Promise<SearchResult> } | null = null
 
-function loadStarred(client: NavidromeClient, key: string): Promise<SearchResult> {
+function loadStarred(client: SubsonicClient, key: string): Promise<SearchResult> {
   if (starredInFlight?.key === key) return starredInFlight.data
   const entry = { key, data: client.getStarred() }
   starredInFlight = entry
@@ -100,11 +100,11 @@ export function useStarred() {
 type RandomStore<T> = {
   subscribe: (listener: () => void) => () => void
   snapshot: () => { items: T[]; loading: boolean; failed: boolean }
-  refresh: (client: NavidromeClient) => void
-  ensure: (client: NavidromeClient) => void
+  refresh: (client: SubsonicClient) => void
+  ensure: (client: SubsonicClient) => void
 }
 
-function createRandomStore<T>(fetch: (client: NavidromeClient) => Promise<T[]>, count: number): RandomStore<T> {
+function createRandomStore<T>(fetch: (client: SubsonicClient) => Promise<T[]>, count: number): RandomStore<T> {
   let state = { items: [] as T[], loading: false, failed: false }
   let loaded = false
   let inFlight: Promise<void> | null = null
@@ -113,7 +113,7 @@ function createRandomStore<T>(fetch: (client: NavidromeClient) => Promise<T[]>, 
     for (const listener of listeners) listener()
   }
 
-  const refresh = (client: NavidromeClient) => {
+  const refresh = (client: SubsonicClient) => {
     if (inFlight) return
     state = { ...state, loading: true }
     emit()
@@ -156,7 +156,7 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 /** Artists the server has a picture for, so the strip is not mostly placeholders. */
-async function randomArtistPool(client: NavidromeClient): Promise<Artist[]> {
+async function randomArtistPool(client: SubsonicClient): Promise<Artist[]> {
   const groups = await client.getArtists()
   const all = groups.flatMap((group) => group.artist ?? [])
   const withArt = all.filter((artist) => artist.coverArt)

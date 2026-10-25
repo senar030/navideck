@@ -100,7 +100,7 @@ export function SpaceSwitcher() {
           {
             id: 'music' as const,
             label: 'Musik',
-            hint: 'Navidrome',
+            hint: music.kind === 'subsonic' ? 'Subsonic' : 'Navidrome',
             icon: <IconAlbums />,
             view: { name: 'home' } as View,
           },

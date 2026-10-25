@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { NavidromeClient } from '../api/client'
+import { SubsonicClient } from '../api/client'
 import type { MusicFolder } from '../api/types'
 import { AuthContext } from './AuthContext'
 import { useAccount } from './AccountContext'
@@ -21,9 +21,10 @@ function readLibraries(): string[] {
 }
 
 /**
- * Turns the account's Navidrome server into the client the music side uses.
+ * Turns the account's music server into the client the music side uses.
  * Everything musical in the app still speaks Subsonic; this is the one place
- * that knows which server it speaks to.
+ * that knows which server it speaks to. Nextcloud's Music app also has no
+ * library filter, so it always works with the full library.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { music } = useAccount()
@@ -36,13 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const client = useMemo(() => {
     if (!music) return null
-    const next = new NavidromeClient(music.baseUrl, music.username, music.password)
-    next.folderIds = selectedFolderIds
+    const next = new SubsonicClient(
+      music.baseUrl,
+      music.username,
+      music.password,
+      music.kind === 'subsonic' ? 'password' : 'token',
+    )
+    next.folderIds = music.kind === 'subsonic' ? [] : selectedFolderIds
     return next
   }, [music, selectedFolderIds])
 
   useEffect(() => {
-    if (!client) return
+    if (!client || music?.kind === 'subsonic') return
     let cancelled = false
     void client
       .getMusicFolders()
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [client])
+  }, [client, music?.kind])
 
   const setSelectedFolderIds = useCallback((ids: string[]) => {
     setSelected(ids)
@@ -69,11 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       client,
-      folders: client ? folders : NO_FOLDERS,
+      folders: client && music?.kind !== 'subsonic' ? folders : NO_FOLDERS,
       selectedFolderIds,
       setSelectedFolderIds,
     }),
-    [client, folders, selectedFolderIds, setSelectedFolderIds],
+    [client, folders, music?.kind, selectedFolderIds, setSelectedFolderIds],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

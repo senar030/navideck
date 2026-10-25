@@ -227,13 +227,13 @@ function PlaybackSection() {
 
 function LibrariesSection({ onGoServers }: { onGoServers: () => void }) {
   const { client, folders, selectedFolderIds, setSelectedFolderIds } = useAuth()
-  const { abs } = useAccount()
+  const { abs, music } = useAccount()
 
   if (!client && !abs) {
     return (
       <div className="settings-group">
         <h4>Noch kein Server</h4>
-        <p className="muted">Navideck zeigt erst etwas, wenn ein Navidrome- oder Audiobookshelf-Server verbunden ist.</p>
+        <p className="muted">Navideck zeigt erst etwas, wenn ein Musik- oder Hörbuch-Server verbunden ist.</p>
         <button type="button" className="primary-btn" onClick={onGoServers}>
           Server verbinden
         </button>
@@ -246,39 +246,47 @@ function LibrariesSection({ onGoServers }: { onGoServers: () => void }) {
       {client ? (
         <div className="settings-group">
           <div className="settings-group-head">
-            <h4>Navidrome</h4>
+            <h4>{music?.kind === 'subsonic' ? 'Subsonic' : 'Navidrome'}</h4>
             <span className="muted">Musik</span>
           </div>
-          <p className="settings-hint">Keine Auswahl = alle Bibliotheken.</p>
-          <div className="folder-list">
-            {folders.map((folder) => {
-              const checked = selectedFolderIds.length === 0 || selectedFolderIds.includes(folder.id)
-              return (
-                <label key={folder.id} className="folder-row">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      const allIds = folders.map((f) => f.id)
-                      const current = selectedFolderIds.length === 0 ? allIds : selectedFolderIds
-                      const next = current.includes(folder.id)
-                        ? current.filter((x) => x !== folder.id)
-                        : [...current, folder.id]
-                      if (!next.length) return
-                      setSelectedFolderIds(next.length === allIds.length ? [] : next)
-                    }}
-                  />
-                  <span>{folder.name}</span>
-                </label>
-              )
-            })}
-            {!folders.length ? <p className="muted">Keine Bibliotheken gefunden.</p> : null}
-          </div>
-          {selectedFolderIds.length > 0 ? (
-            <button type="button" className="text-btn" onClick={() => setSelectedFolderIds([])}>
-              Alle Bibliotheken
-            </button>
-          ) : null}
+          {music?.kind === 'subsonic' ? (
+            <p className="settings-hint">
+              Der Server führt eine Bibliothek; Navideck zeigt sie vollständig an.
+            </p>
+          ) : (
+            <>
+              <p className="settings-hint">Keine Auswahl = alle Bibliotheken.</p>
+              <div className="folder-list">
+                {folders.map((folder) => {
+                  const checked = selectedFolderIds.length === 0 || selectedFolderIds.includes(folder.id)
+                  return (
+                    <label key={folder.id} className="folder-row">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const allIds = folders.map((f) => f.id)
+                          const current = selectedFolderIds.length === 0 ? allIds : selectedFolderIds
+                          const next = current.includes(folder.id)
+                            ? current.filter((x) => x !== folder.id)
+                            : [...current, folder.id]
+                          if (!next.length) return
+                          setSelectedFolderIds(next.length === allIds.length ? [] : next)
+                        }}
+                      />
+                      <span>{folder.name}</span>
+                    </label>
+                  )
+                })}
+                {!folders.length ? <p className="muted">Keine Bibliotheken gefunden.</p> : null}
+              </div>
+              {selectedFolderIds.length > 0 ? (
+                <button type="button" className="text-btn" onClick={() => setSelectedFolderIds([])}>
+                  Alle Bibliotheken
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
 
@@ -317,8 +325,9 @@ function AppSection() {
       <div className="settings-group">
         <h4>Über Navideck</h4>
         <p className="settings-hint">
-          Musik von Navidrome, Hörbücher und Podcasts von Audiobookshelf, Sendervorschläge von
-          radio-browser.info. Diese App ist self-hosted und wird von Hand neu ausgerollt.
+          Musik von Navidrome oder jedem anderen Subsonic-Server, Hörbücher und Podcasts von
+          Audiobookshelf, Sendervorschläge von radio-browser.info. Diese App läuft im Browser und als
+          Windows-App.
         </p>
         <a
           className="text-btn settings-link"

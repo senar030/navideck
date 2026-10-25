@@ -1,10 +1,10 @@
 import { createContext, useContext } from 'react'
-import type { NavidromeClient } from '../api/client'
+import type { SubsonicClient } from '../api/client'
 import type { MusicFolder } from '../api/types'
 
 type AuthContextValue = {
   /** Null while the account has no Navidrome server, or none that answers. */
-  client: NavidromeClient | null
+  client: SubsonicClient | null
   folders: MusicFolder[]
   selectedFolderIds: string[]
   setSelectedFolderIds: (ids: string[]) => void

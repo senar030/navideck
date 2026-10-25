@@ -1,8 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { useAccount } from '../state/AccountContext'
-import { IconAlbums, IconBook, IconLogo } from './Icons'
+import { IconAlbums, IconBook, IconLogo, IconServer } from './Icons'
 
-type Kind = 'navidrome' | 'audiobookshelf'
+type Kind = 'navidrome' | 'subsonic' | 'audiobookshelf'
+
+const KIND_LABEL: Record<Kind, string> = {
+  navidrome: 'Navidrome',
+  subsonic: 'Subsonic',
+  audiobookshelf: 'Audiobookshelf',
+}
+
+const KIND_URL_PLACEHOLDER: Record<Kind, string> = {
+  navidrome: 'http://192.168.1.10:4533',
+  subsonic: 'https://cloud.example.com/index.php/apps/music/subsonic',
+  audiobookshelf: 'http://192.168.1.10:13378',
+}
 
 /*
  * The first run. A server is the only thing Navideck cannot do without, so this
@@ -56,6 +68,14 @@ export function Onboarding() {
             <span className="muted">Alben, Künstler, Playlists, Favoriten und Radio</span>
             <span className="onboard-go">Verbinden</span>
           </button>
+          <button type="button" className="onboard-choice" onClick={() => setKind('subsonic')}>
+            <span className="onboard-icon" aria-hidden>
+              <IconServer size={28} />
+            </span>
+            <strong>Subsonic</strong>
+            <span className="muted">Nextcloud Music, Airsonic, Gonic und andere</span>
+            <span className="onboard-go">Verbinden</span>
+          </button>
           <button type="button" className="onboard-choice" onClick={() => setKind('audiobookshelf')}>
             <span className="onboard-icon" aria-hidden>
               <IconBook size={28} />
@@ -67,14 +87,14 @@ export function Onboarding() {
         </div>
       ) : (
         <form className="login-card onboard-form" onSubmit={(e) => void submit(e)}>
-          <p className="eyebrow">{kind === 'navidrome' ? 'Navidrome' : 'Audiobookshelf'}</p>
+          <p className="eyebrow">{KIND_LABEL[kind]}</p>
           <h2>Server verbinden</h2>
           <label>
             Server-URL
             <input
               value={server}
               onChange={(e) => setServer(e.target.value)}
-              placeholder={kind === 'navidrome' ? 'http://192.168.1.10:4533' : 'http://192.168.1.10:13378'}
+              placeholder={KIND_URL_PLACEHOLDER[kind]}
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
@@ -82,6 +102,12 @@ export function Onboarding() {
               required
             />
           </label>
+          {kind === 'subsonic' ? (
+            <p className="settings-hint">
+              Nextcloud Music: <strong>Einstellungen → Ampache &amp; Subsonic → API-Passwort erzeugen</strong>.
+              Die Server-URL endet auf <code>/apps/music/subsonic</code>.
+            </p>
+          ) : null}
           <label>
             Benutzername
             <input
@@ -95,7 +121,7 @@ export function Onboarding() {
             />
           </label>
           <label>
-            Passwort
+            {kind === 'subsonic' ? 'API-Passwort' : 'Passwort'}
             <span className="pw-row">
               <input
                 type={showPw ? 'text' : 'password'}
@@ -128,7 +154,8 @@ export function Onboarding() {
 
       <p className="onboard-note muted">
         Die Zugangsdaten bleiben auf diesem Gerät. Bei Audiobookshelf wird nur das Token
-        gespeichert, das der Server ausstellt.
+        gespeichert, das der Server ausstellt. Bei Subsonic ist es das API-Passwort, das du
+        in der Musik-App erzeugt hast.
       </p>
     </main>
   )

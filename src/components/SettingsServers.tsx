@@ -1,6 +1,28 @@
 import { useState, type FormEvent } from 'react'
-import { useAccount, type Source, type SourceHealth } from '../state/AccountContext'
+import { useAccount, isMusicSource, type Source, type SourceHealth } from '../state/AccountContext'
 import { IconAlbums, IconBook, IconCheck, IconRefresh, IconServer, IconUser } from './Icons'
+
+type AddKind = 'navidrome' | 'subsonic' | 'audiobookshelf'
+
+const KIND_LABEL: Record<AddKind, string> = {
+  navidrome: 'Navidrome',
+  subsonic: 'Subsonic',
+  audiobookshelf: 'Audiobookshelf',
+}
+
+const KIND_PLACEHOLDER: Record<AddKind, string> = {
+  navidrome: 'http://192.168.1.10:4533',
+  subsonic: 'https://cloud.example.com/index.php/apps/music/subsonic',
+  audiobookshelf: 'http://192.168.1.10:13378',
+}
+
+function kindLabel(kind: Source['kind']): string {
+  return KIND_LABEL[kind]
+}
+
+function isMusicSourceKind(kind: AddKind): kind is 'navidrome' | 'subsonic' {
+  return kind === 'navidrome' || kind === 'subsonic'
+}
 
 function stateLabel(state: SourceHealth | undefined): string {
   if (!state || state.status === 'checking') return 'Wird geprüft …'
@@ -17,10 +39,12 @@ export function SettingsServers() {
   const { profile, setProfile, sources, health, removeSource, checkSource } = useAccount()
   const [name, setName] = useState(profile)
   const [saved, setSaved] = useState(false)
-  const [adding, setAdding] = useState<'navidrome' | 'audiobookshelf' | null>(null)
+  const [adding, setAdding] = useState<AddKind | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
 
+  const music = sources.find(isMusicSource)
   const hasNavidrome = sources.some((source) => source.kind === 'navidrome')
+  const hasSubsonic = sources.some((source) => source.kind === 'subsonic')
   const hasAbs = sources.some((source) => source.kind === 'audiobookshelf')
 
   function saveProfile(e: FormEvent) {
@@ -87,7 +111,18 @@ export function SettingsServers() {
               <IconAlbums />
               <span>
                 <strong>Navidrome</strong>
-                <span className="muted">Musik</span>
+                <span className="muted">{music ? 'Ersetzt deinen Musik-Server' : 'Musik'}</span>
+              </span>
+            </button>
+          ) : null}
+          {!hasSubsonic ? (
+            <button type="button" className="account-add" onClick={() => setAdding('subsonic')}>
+              <IconServer />
+              <span>
+                <strong>Subsonic</strong>
+                <span className="muted">
+                  {music ? 'Ersetzt deinen Musik-Server' : 'Nextcloud Music, Airsonic, Gonic'}
+                </span>
               </span>
             </button>
           ) : null}
@@ -106,6 +141,7 @@ export function SettingsServers() {
           <SourceForm
             kind={adding}
             existing={sources.find((source) => source.kind === adding)}
+            replaces={isMusicSourceKind(adding) ? music : undefined}
             onClose={() => setAdding(null)}
           />
         ) : null}
@@ -115,7 +151,8 @@ export function SettingsServers() {
         <h4>Zugangsdaten</h4>
         <p className="settings-hint">
           Profil und Zugangsdaten bleiben auf diesem Gerät. Von Audiobookshelf wird nur das Token
-          gespeichert, das der Server ausstellt – nie dein Passwort.
+          gespeichert, das der Server ausstellt – nie dein Passwort. Bei Subsonic liegt das dort
+          erzeugte API-Passwort lokal, damit Navideck deinen Musik-Server ansprechen kann.
         </p>
       </div>
     </>
@@ -145,12 +182,12 @@ function ServerCard({
   return (
     <article className="account-card">
       <span className="account-icon" aria-hidden>
-        {source.kind === 'navidrome' ? <IconAlbums /> : <IconBook />}
+        {source.kind === 'navidrome' ? <IconAlbums /> : source.kind === 'subsonic' ? <IconServer /> : <IconBook />}
       </span>
       <div className="account-copy">
         <strong>{source.name}</strong>
         <span className="muted">
-          {source.kind === 'navidrome' ? 'Navidrome' : 'Audiobookshelf'} · {source.baseUrl}
+          {kindLabel(source.kind)} · {source.baseUrl}
         </span>
         <span className="muted">Angemeldet als {source.username}</span>
         <span className={`account-state is-${status}`}>
@@ -188,10 +225,13 @@ function ServerCard({
 function SourceForm({
   kind,
   existing,
+  replaces,
   onClose,
 }: {
-  kind: 'navidrome' | 'audiobookshelf'
+  kind: AddKind
   existing?: Source
+  /** The music server this one would push out, when switching kinds. */
+  replaces?: Source
   onClose: () => void
 }) {
   const { addSource } = useAccount()
@@ -216,6 +256,8 @@ function SourceForm({
     }
   }
 
+  const replaced = existing ?? replaces
+
   return (
     <form className="account-form" onSubmit={(e) => void submit(e)}>
       <div className="account-form-head">
@@ -223,9 +265,13 @@ function SourceForm({
           <IconServer />
         </span>
         <div>
-          <h4>{existing ? 'Server ersetzen' : 'Server hinzufügen'}</h4>
+          <h4>{replaced ? 'Server ersetzen' : 'Server hinzufügen'}</h4>
           <p className="muted">
-            {kind === 'navidrome' ? 'Navidrome (Musik)' : 'Audiobookshelf (Hörbücher & Podcasts)'}
+            {kind === 'navidrome'
+              ? 'Navidrome (Musik)'
+              : kind === 'subsonic'
+                ? 'Subsonic (Musik, z. B. Nextcloud Music)'
+                : 'Audiobookshelf (Hörbücher & Podcasts)'}
           </p>
         </div>
       </div>
@@ -235,7 +281,7 @@ function SourceForm({
         <input
           value={server}
           onChange={(e) => setServer(e.target.value)}
-          placeholder={kind === 'navidrome' ? 'http://192.168.1.10:4533' : 'http://192.168.1.10:13378'}
+          placeholder={KIND_PLACEHOLDER[kind]}
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
@@ -243,6 +289,14 @@ function SourceForm({
           required
         />
       </label>
+
+      {kind === 'subsonic' ? (
+        <p className="settings-hint">
+          In der Nextcloud Music App unter <strong>Einstellungen → Ampache &amp; Subsonic</strong> ein
+          API-Passwort erzeugen und hier als Passwort eintragen. Die URL endet auf{' '}
+          <code>/apps/music/subsonic</code>.
+        </p>
+      ) : null}
 
       <label className="account-field">
         Benutzername
@@ -258,7 +312,7 @@ function SourceForm({
       </label>
 
       <label className="account-field">
-        Passwort
+        {kind === 'subsonic' ? 'API-Passwort' : 'Passwort'}
         <span className="pw-row">
           <input
             type={showPw ? 'text' : 'password'}
@@ -273,9 +327,11 @@ function SourceForm({
         </span>
       </label>
 
-      {existing ? (
+      {replaced ? (
         <p className="settings-hint">
-          Ersetzt „{existing.name}“. Die Verbindung wird vor dem Speichern geprüft.
+          Ersetzt „{replaced.name}“.{' '}
+          {!existing && replaces ? 'Es kann nur ein Musik-Server verbunden sein. ' : ''}
+          Die Verbindung wird vor dem Speichern geprüft.
         </p>
       ) : null}
 

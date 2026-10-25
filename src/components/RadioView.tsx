@@ -61,7 +61,7 @@ export function RadioView() {
       })
       .catch((err: unknown) => {
         setStationsError(
-          `${describe(err)} Sender folgen braucht Navidrome 0.49 oder neuer — ältere Server kennen die Radio-Schnittstelle nicht.`,
+          `${describe(err)} Sender folgen braucht einen Server mit Radio-Schnittstelle.`,
         )
       })
       .finally(() => setStationsLoaded(true))
@@ -171,7 +171,7 @@ export function RadioView() {
       rememberRadioLogo(hit.url, hit.logo)
       setLogos(readRadioLogos())
       await loadStations()
-      setNotice(`„${hit.name}" steht jetzt in Navidrome — auch für deine anderen Subsonic-Apps.`)
+      setNotice(`„${hit.name}" steht jetzt auf dem Musik-Server — auch für deine anderen Subsonic-Apps.`)
     } catch (err) {
       setActionError(describe(err))
     } finally {
@@ -187,7 +187,7 @@ export function RadioView() {
     try {
       await client.deleteRadioStation(station.id)
       await loadStations()
-      setNotice(`„${station.name}" wurde aus Navidrome entfernt.`)
+      setNotice(`„${station.name}" wurde vom Server entfernt.`)
     } catch (err) {
       setActionError(describe(err))
     } finally {
@@ -223,8 +223,8 @@ export function RadioView() {
         <h2>Radio</h2>
       </header>
       <p className="muted radio-lead">
-        Internetradio läuft direkt aus dem Netz, nicht aus deiner Bibliothek. Gefolgte Sender landen in Navidrome und
-        stehen dort auch jedem anderen Client zur Verfügung.
+        Internetradio läuft direkt aus dem Netz, nicht aus deiner Bibliothek. Gefolgte Sender werden auf dem
+        Musik-Server gespeichert und stehen dort auch jedem anderen Client zur Verfügung.
       </p>
       {notice ? <p className="radio-notice">{notice}</p> : null}
       {actionError ? <p className="error">{actionError}</p> : null}
@@ -274,7 +274,7 @@ export function RadioView() {
                         type="button"
                         className="icon-btn radio-action"
                         aria-label={`${station.name} entfernen`}
-                        data-tip="Aus Navidrome entfernen"
+                        data-tip="Vom Server entfernen"
                         onClick={() => setConfirmId(station.id)}
                       >
                         <IconClose size={18} />
@@ -330,7 +330,7 @@ export function RadioView() {
                       type="button"
                       className="icon-btn radio-action"
                       aria-label={`${hit.name} folgen`}
-                      data-tip="In Navidrome folgen"
+                      data-tip="Auf dem Server folgen"
                       disabled={busyId === hit.uuid}
                       onClick={() => void follow(hit)}
                     >
@@ -351,7 +351,7 @@ export function RadioView() {
         ) : null}
         <p className="muted radio-credit">
           Sendersuche über radio-browser.info · es werden nur HTTPS-Ströme angeboten
-          {admin === false ? ' · Sender folgen kann nur ein Navidrome-Admin' : ''}
+          {admin === false ? ' · Sender folgen kann nur ein Server-Admin' : ''}
         </p>
       </section>
     </div>
@@ -376,7 +376,7 @@ function StationRow({
   return (
     <article className="radio-card">
       <button type="button" className="radio-hit" onClick={onPlay} aria-label={`${name} abspielen`}>
-        {/* A logo uploaded in Navidrome wins over the one the directory told us. */}
+        {/* A logo stored on the server wins over the one the directory told us. */}
         <CoverArt coverArt={coverArt} src={coverArt ? undefined : logo} alt="" size={120} className="radio-art" />
         <span className="radio-text">
           <strong>{name}</strong>
@@ -400,7 +400,7 @@ function bitrateLabel(hit: RadioHit): string | undefined {
 /** Turns a refused request into something the reader can act on. */
 function describe(err: unknown): string {
   if (err instanceof SubsonicError) {
-    if (err.code === 50) return 'Nur ein Navidrome-Admin darf Sender hinzufügen oder entfernen.'
+    if (err.code === 50) return 'Nur ein Admin des Musik-Servers darf Sender hinzufügen oder entfernen.'
     return err.message
   }
   return err instanceof Error ? err.message : 'Unerwarteter Fehler.'

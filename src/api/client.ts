@@ -63,6 +63,13 @@ const CLIENT = 'Navideck'
 const VERSION = '1.16.1'
 const PAGE = 48
 
+/**
+ * Token auth (`t`/`s`) is the safe default, but Nextcloud Music explicitly
+ * rejects it and only accepts the password (`p`, hex-encoded). The server kind
+ * decides which one a client uses.
+ */
+export type SubsonicAuth = 'token' | 'password'
+
 /** Album and playlist lists: cheap to fetch, but not on every view switch. */
 const LIST_TTL = 30_000
 /** Genre and playlist lists scoped to a library cost a full scan, so keep them longer. */
@@ -100,12 +107,18 @@ export function playedSongs(songs: Song[]): Song[] {
   return played.sort((a, b) => playedAt(b) - playedAt(a))
 }
 
-export class NavidromeClient {
+export class SubsonicClient {
   readonly baseUrl: string
   readonly username: string
   private readonly password: string
   private readonly salt: string
   private readonly token: string
+  /**
+   * How the server wants to be told who is calling. Navidrome (and most
+   * Subsonic servers) take a salted token; Nextcloud Music refuses that and
+   * wants the password instead.
+   */
+  private readonly auth: SubsonicAuth
   folderIds: string[] = []
   /*
    * Several views ask for the same thing at the same time — the dashboard wants
@@ -122,10 +135,11 @@ export class NavidromeClient {
   private albumLists = new Map<string, { at: number; data: Promise<Album[]> }>()
   private playlistLists = new Map<string, { at: number; data: Promise<Playlist> }>()
 
-  constructor(baseUrl: string, username: string, password: string) {
+  constructor(baseUrl: string, username: string, password: string, auth: SubsonicAuth = 'token') {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
     this.username = username
     this.password = password
+    this.auth = auth
     this.salt = randomSalt()
     this.token = md5(password + this.salt)
   }
@@ -701,10 +715,12 @@ export class NavidromeClient {
   }
 
   private buildUrl(method: string, extra: Record<string, string> = {}): string {
+    const auth: Record<string, string> =
+      this.auth === 'password'
+        ? { u: this.username, p: `enc:${hexPassword(this.password)}` }
+        : { u: this.username, t: this.token, s: this.salt }
     const params = new URLSearchParams({
-      u: this.username,
-      t: this.token,
-      s: this.salt,
+      ...auth,
       v: VERSION,
       c: CLIENT,
       f: 'json',
@@ -723,7 +739,7 @@ export class NavidromeClient {
       res = await fetch(url)
     } catch {
       throw new Error(
-        'Server nicht erreichbar. Prüfe die URL, ob Navidrome läuft und ob CORS erlaubt ist.',
+        'Server nicht erreichbar. Prüfe die URL und ob der Server läuft (im Browser muss er außerdem CORS erlauben).',
       )
     }
     if (!res.ok) {
@@ -774,6 +790,11 @@ function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
 function randomSalt(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** `p=enc:` carries the password's UTF-8 bytes as hex, not the string itself. */
+function hexPassword(value: string): string {
+  return Array.from(new TextEncoder().encode(value), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 export const ALBUM_PAGE = PAGE

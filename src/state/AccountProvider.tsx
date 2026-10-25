@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AbsClient, absLogin, type AbsLibrary, type AbsProgress, type AbsUser } from '../api/abs'
-import { NavidromeClient } from '../api/client'
-import { normalizeServerUrl } from '../lib/format'
+import { SubsonicClient } from '../api/client'
+import { normalizeServerUrl, normalizeSubsonicUrl } from '../lib/format'
 import {
   AccountContext,
+  isMusicSource,
   newId,
   type AbsSession,
   type AbsSource,
-  type NavidromeSource,
+  type MusicSource,
   type NewSource,
   type ProgressInput,
   type Source,
@@ -18,6 +19,11 @@ const ACCOUNT_KEY = 'navideck.account.v1'
 const LEGACY_KEY = 'navideck.auth'
 
 type Account = { profile: string; sources: Source[] }
+
+/** Nextcloud Music refuses Subsonic token auth and takes the password instead. */
+function authFor(source: MusicSource) {
+  return source.kind === 'subsonic' ? 'password' : 'token'
+}
 
 /** Progress arrives as a list; the app wants it by item and episode. */
 function mergeProgress(
@@ -93,8 +99,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     async (source: Source) => {
       setHealth((h) => ({ ...h, [source.id]: { status: 'checking' } }))
       try {
-        if (source.kind === 'navidrome') {
-          await new NavidromeClient(source.baseUrl, source.username, source.password).ping()
+        if (isMusicSource(source)) {
+          await new SubsonicClient(source.baseUrl, source.username, source.password, authFor(source)).ping()
         } else {
           const client = new AbsClient(source.baseUrl, source.token)
           const user = await client.getMe()
@@ -124,22 +130,38 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const addSource = useCallback(
     async (input: NewSource) => {
-      const server = normalizeServerUrl(input.server)
+      const server =
+        input.kind === 'subsonic' ? normalizeSubsonicUrl(input.server) : normalizeServerUrl(input.server)
       if (!server) throw new Error('Bitte eine Server-Adresse angeben.')
       if (!input.username.trim()) throw new Error('Bitte einen Benutzernamen angeben.')
 
       let source: Source
-      if (input.kind === 'navidrome') {
-        const client = new NavidromeClient(server, input.username.trim(), input.password)
-        await client.ping()
-        source = {
-          id: account.sources.find((s) => s.kind === 'navidrome')?.id ?? newId(),
-          kind: 'navidrome',
-          name: input.name?.trim() || 'Navidrome',
+      if (input.kind === 'navidrome' || input.kind === 'subsonic') {
+        const username = input.username.trim()
+        await new SubsonicClient(
+          server,
+          username,
+          input.password,
+          input.kind === 'subsonic' ? 'password' : 'token',
+        ).ping()
+        const base = {
+          /*
+           * One music server at a time. When the other kind was connected, its
+           * id is reused so the health state and the settings card stay put.
+           */
+          id:
+            account.sources.find((s) => s.kind === input.kind)?.id ??
+            account.sources.find(isMusicSource)?.id ??
+            newId(),
+          name: input.name?.trim() || (input.kind === 'subsonic' ? 'Subsonic' : 'Navidrome'),
           baseUrl: server,
-          username: input.username.trim(),
+          username,
           password: input.password,
-        } satisfies NavidromeSource
+        }
+        source =
+          input.kind === 'subsonic'
+            ? { ...base, kind: 'subsonic' }
+            : { ...base, kind: 'navidrome' }
       } else {
         const login = await absLogin(server, input.username, input.password)
         const client = new AbsClient(login.baseUrl, login.token)
@@ -164,7 +186,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       commit({
         ...account,
         profile: account.profile || input.username.trim(),
-        sources: [...account.sources.filter((s) => s.kind !== source.kind), source],
+        sources: [
+          ...account.sources.filter((s) =>
+            isMusicSource(source) ? !isMusicSource(s) : s.kind !== source.kind,
+          ),
+          source,
+        ],
       })
     },
     [account, commit],
@@ -232,7 +259,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const music = useMemo(
-    () => (account.sources.find((s): s is NavidromeSource => s.kind === 'navidrome') ?? null),
+    () => (account.sources.find(isMusicSource) ?? null),
     [account.sources],
   )
 

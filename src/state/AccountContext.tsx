@@ -22,6 +22,18 @@ export type NavidromeSource = SourceBase & {
   password: string
 }
 
+/**
+ * Any other Subsonic server — Nextcloud Music, Airsonic, Gonic, Supysonic.
+ * Nextcloud hands out a separate "API password" in its Music settings; that is
+ * what this stores, never the login password.
+ */
+export type SubsonicSource = SourceBase & {
+  kind: 'subsonic'
+  password: string
+}
+
+export type MusicSource = NavidromeSource | SubsonicSource
+
 export type AbsSource = SourceBase & {
   kind: 'audiobookshelf'
   /** The server's own token; the password is never stored. */
@@ -29,11 +41,17 @@ export type AbsSource = SourceBase & {
   userId: string
 }
 
-export type Source = NavidromeSource | AbsSource
+export type Source = MusicSource | AbsSource
 
 export type NewSource =
   | { kind: 'navidrome'; server: string; username: string; password: string; name?: string }
+  | { kind: 'subsonic'; server: string; username: string; password: string; name?: string }
   | { kind: 'audiobookshelf'; server: string; username: string; password: string; name?: string }
+
+/** Both kinds speak Subsonic and fill the same music area. */
+export function isMusicSource(source: Source): source is MusicSource {
+  return source.kind === 'navidrome' || source.kind === 'subsonic'
+}
 
 /** An Audiobookshelf server that has answered, with the libraries it offers. */
 export type AbsSession = {
@@ -59,8 +77,8 @@ export type AccountContextValue = {
   setProfile: (name: string) => void
   sources: Source[]
   health: Record<string, SourceHealth>
-  /** The Navidrome server the music side uses. */
-  music: NavidromeSource | null
+  /** The music server the music side uses, whichever kind it is. */
+  music: MusicSource | null
   abs: AbsSession | null
   /** Listening progress on the Audiobookshelf server, by item and episode. */
   progress: Record<string, AbsProgress>

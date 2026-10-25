@@ -47,3 +47,14 @@ export function normalizeServerUrl(input: string): string {
   if (!/^https?:\/\//i.test(url)) url = `http://${url}`
   return url.replace(/\/+$/, '')
 }
+
+/**
+ * Nextcloud's Music app serves the Subsonic API below /apps/music/subsonic.
+ * People paste the Music page instead of the API URL, so that link gets
+ * completed here.
+ */
+export function normalizeSubsonicUrl(input: string): string {
+  const url = normalizeServerUrl(input)
+  if (!url) return url
+  return /\/apps\/music$/i.test(url) ? `${url}/subsonic` : url
+}
