@@ -29,10 +29,10 @@
 
   /* metrics */
   --tap: 2.25rem;
-  --radius: 0.85rem;
-  --r-sm: 0.6rem;
-  --r-lg: 1.15rem;
-  --pill: 999px;
+  --radius: 0.7rem;
+  --r-sm: 0.5rem;
+  --r-lg: 0.95rem;
+  --pill: 0.6rem;
   --player: 5.6rem;
   --nav: 4.6rem;
   --gap: 0.9rem;
@@ -3497,7 +3497,7 @@ html[data-theme='light'] .hero-banner {
     height: min(70vh, 36rem);
     border-left: 0;
     border-top: 1px solid var(--line);
-    border-radius: 1.3rem 1.3rem 0 0;
+    border-radius: 0.9rem 0.9rem 0 0;
   }
 
   @keyframes sheet-in {
@@ -3670,9 +3670,9 @@ html[data-ui='deck'] {
   --player: 7.9rem;
   --nav: 6.6rem;
   --gap: 1.1rem;
-  --radius: 1rem;
-  --r-sm: 0.7rem;
-  --r-lg: 1.35rem;
+  --radius: 0.85rem;
+  --r-sm: 0.6rem;
+  --r-lg: 1.05rem;
 }
 
 html[data-ui='deck'] .app {
@@ -4021,7 +4021,7 @@ html[data-ui='deck'] .pw-row input {
     margin: 0 0.7rem 0.7rem;
     padding: 0.4rem 0.45rem 0.4rem 0.4rem;
     border: 1px solid var(--line-strong);
-    border-radius: 1.4rem;
+    border-radius: 0.9rem;
     background: var(--surface);
     box-shadow: inset 0 1px 0 var(--hair);
   }
