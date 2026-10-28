@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALBUM_PAGE, playedSongs } from '../api/client'
 import type { Album, AlbumListType, Song } from '../api/types'
 import { useAuth } from '../state/AuthContext'
+import { usePlayer } from '../state/PlayerContext'
+import { usePrefs } from '../state/PrefsContext'
 import {
   AlbumTile,
   ArtistTile,
@@ -15,6 +17,7 @@ import {
   type SectionId,
   type SectionProps,
 } from './DashboardParts'
+import { IconArrowRight, IconSpark } from './Icons'
 import {
   randomAlbumStore,
   randomArtistStore,
@@ -234,6 +237,76 @@ export function GenrePlaylistsSection(props: SectionProps) {
       ) : (
         <Empty>Keine Genres gefunden.</Empty>
       )}
+    </DashBlock>
+  )
+}
+
+export function InstantMixSection(props: SectionProps) {
+  const { client } = useAuth()
+  const { playTracks } = usePlayer()
+  const { mixSize } = usePrefs()
+  const genres = useGenres()
+  const [mixing, setMixing] = useState(false)
+  const [busyGenre, setBusyGenre] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  async function start(genre?: string) {
+    if (!client || mixing || busyGenre) return
+    if (genre) setBusyGenre(genre)
+    else setMixing(true)
+    setError('')
+    try {
+      const songs = await client.getRandomSongs(mixSize, genre)
+      if (songs.length) playTracks(songs, 0)
+      else setError('Keine Titel für einen Mix gefunden.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Der Mix konnte nicht erstellt werden.')
+    } finally {
+      if (genre) setBusyGenre(null)
+      else setMixing(false)
+    }
+  }
+
+  const busy = mixing || busyGenre !== null
+
+  return (
+    <DashBlock label="Sofort-Mix" {...props}>
+      <button
+        type="button"
+        className={`instant-mix ${mixing ? 'is-busy' : ''}`}
+        disabled={busy}
+        onClick={() => void start()}
+      >
+        <span className="instant-mix-icon" aria-hidden>
+          <IconSpark size={28} />
+        </span>
+        <span className="instant-mix-text">
+          <strong>{mixing ? 'Mix wird erstellt…' : 'Sofort-Mix'}</strong>
+          <small>{mixSize} zufällige Titel aus deiner Bibliothek</small>
+        </span>
+        <IconArrowRight size={20} />
+      </button>
+
+      {error ? <p className="error mix-error">{error}</p> : null}
+
+      {genres.length ? (
+        <div className="mix-genres">
+          <span className="mix-genres-label">Nach Genre</span>
+          <div className="chip-row wrap">
+            {genres.map((genre) => (
+              <button
+                key={genre.value}
+                type="button"
+                className={`chip mix-chip ${busyGenre === genre.value ? 'is-on' : ''}`}
+                disabled={busy}
+                onClick={() => void start(genre.value)}
+              >
+                <IconSpark size={14} /> {genre.value}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </DashBlock>
   )
 }

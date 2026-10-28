@@ -1,16 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useBookItems, useAllEpisodes } from '../lib/useAbsLibrary'
-import { useAuth } from '../state/AuthContext'
-import { usePlayer } from '../state/PlayerContext'
-import { usePrefs } from '../state/PrefsContext'
 import { useAccount, type SourceHealth } from '../state/AccountContext'
 import { useNav, type View } from '../state/NavContext'
 import { DashboardBoard } from './DashboardBoard'
-import { IconAlbums, IconArrowRight, IconBook, IconPodcast, IconSpark } from './Icons'
-import { ResumePlaying } from './ResumePlaying'
+import { IconAlbums, IconArrowRight, IconBook, IconPodcast } from './Icons'
 
-/** v1: the aggregated start page, one order for every area's widgets. */
-const START_KEY = 'navideck.dashboard.start.v1'
+/** v2: the instant mix became a widget of its own. */
+const START_KEY = 'navideck.dashboard.start.v2'
 
 function greeting(): string {
   const hour = new Date().getHours()
@@ -26,19 +22,14 @@ function healthLabel(state: SourceHealth | undefined): string {
 }
 
 /*
- * The app's own start page. It opens with the one action that needs no thought
- * (a random mix), then the widgets of every area in one customizable order.
+ * The app's own start page: every area's widgets in one customizable order,
+ * with the instant mix as the first of them.
  */
 export function StartHub() {
   const { profile, music, abs, podcasts, sources, health } = useAccount()
   const { go } = useNav()
-  const { client } = useAuth()
-  const { playTracks } = usePlayer()
-  const { mixSize } = usePrefs()
   const books = useBookItems()
   const episodes = useAllEpisodes()
-  const [mixing, setMixing] = useState(false)
-  const [mixError, setMixError] = useState('')
 
   const showCount = useMemo(
     () => new Set((episodes.data ?? []).map((ref) => ref.item.id)).size,
@@ -86,46 +77,8 @@ export function StartHub() {
     })
   }
 
-  async function instantMix() {
-    if (!client || mixing) return
-    setMixing(true)
-    setMixError('')
-    try {
-      const songs = await client.getRandomSongs(mixSize)
-      if (songs.length) playTracks(songs, 0)
-      else setMixError('Der Server hat keine Titel für einen Mix gefunden.')
-    } catch (err) {
-      setMixError(err instanceof Error ? err.message : 'Der Mix konnte nicht erstellt werden.')
-    } finally {
-      setMixing(false)
-    }
-  }
-
   return (
     <div className="view start-view">
-      {client ? (
-        <div className="instant-mix-wrap">
-          <button
-            type="button"
-            className={`instant-mix ${mixing ? 'is-busy' : ''}`}
-            disabled={mixing}
-            onClick={() => void instantMix()}
-          >
-            <span className="instant-mix-icon" aria-hidden>
-              <IconSpark size={28} />
-            </span>
-            <span className="instant-mix-text">
-              <strong>{mixing ? 'Mix wird erstellt…' : 'Sofort-Mix'}</strong>
-              <small>{mixSize} zufällige Titel aus deiner Bibliothek</small>
-            </span>
-            <IconArrowRight size={20} />
-          </button>
-          {mixError ? <p className="error">{mixError}</p> : null}
-        </div>
-      ) : null}
-
-      <ResumePlaying />
-
       <DashboardBoard
         storageKey={START_KEY}
         scope="all"

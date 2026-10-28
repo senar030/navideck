@@ -2464,75 +2464,6 @@ html[data-theme='light'] .hero-banner {
    Dashboard
    ========================================================================== */
 
-/*
- * "Weiterhören" is the one thing on the start page that is not a category: it
- * only appears while a queue exists and picks that queue up where it stopped.
- */
-.resume {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.9rem 1.1rem 0.9rem 0.9rem;
-  margin-bottom: 1.8rem;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background:
-    radial-gradient(130% 150% at 0% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 64%),
-    color-mix(in srgb, var(--surface) 72%, transparent);
-  box-shadow: var(--shadow-sm);
-  animation: view-in 0.34s var(--ease);
-  /*
-   * Boxed to its content instead of the full page width: one track does not
-   * need the room of an album row, and the title still decides how wide it gets
-   * (up to the cap, where it ellipsises). The phone override below takes the
-   * full width back.
-   */
-  width: fit-content;
-  max-width: min(100%, 36rem);
-}
-
-.resume-art {
-  width: 4.6rem;
-  height: 4.6rem;
-  aspect-ratio: auto;
-  box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--hair);
-}
-
-.resume-text {
-  min-width: 0;
-  display: block;
-}
-
-.resume-text .eyebrow {
-  margin: 0 0 0.25rem;
-}
-
-.resume-title {
-  margin: 0;
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.resume-sub {
-  margin: 0.15rem 0 0;
-  font-size: var(--fs-sm);
-}
-
-.resume-facts {
-  margin: 0.3rem 0 0;
-  font-size: 0.75rem;
-}
-
-.resume-btn {
-  width: 4.2rem;
-  height: 4.2rem;
-}
-
 .dash-block {
   margin-bottom: 1.7rem;
 }
@@ -2549,9 +2480,23 @@ html[data-theme='light'] .hero-banner {
 
 .dash-head h3 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: var(--fs-lg);
   font-weight: 600;
   letter-spacing: -0.015em;
+}
+
+.dash-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--muted);
+}
+
+.dash-cat svg {
+  display: block;
 }
 
 .dash-head-tools {
@@ -3616,28 +3561,6 @@ html[data-theme='light'] .hero-banner {
     gap: 0.4rem;
     align-items: stretch;
   }
-
-  /* On a phone the "Weiterhören" button gets its own full-width line. */
-  .resume {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.85rem;
-    padding: 0.8rem 0.9rem 0.9rem;
-    /* … and the panel spans the row, unlike on the desktop. */
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .resume-art {
-    width: 3.4rem;
-    height: 3.4rem;
-  }
-
-  .resume-btn {
-    grid-column: 1 / -1;
-    width: 100%;
-    height: 3.3rem;
-    border-radius: var(--pill);
-  }
 }
 
 @media (min-width: 1600px) {
@@ -4540,12 +4463,6 @@ html[data-ui='deck'] .pw-row input {
   gap: 1.6rem;
 }
 
-/* The view's own gap already separates it from what follows. */
-.abs-view > .resume,
-.start-view > .resume {
-  margin-bottom: 0;
-}
-
 .abs-shelf {
   display: flex;
   flex-direction: column;
@@ -5349,13 +5266,7 @@ html[data-ui='deck'] .pw-row input {
   margin-top: 0.25rem;
 }
 
-/* The one action at the very top: no choices, just a fresh mix. */
-.instant-mix-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
+/* The instant mix widget: the plain mix first, then one chip per genre. */
 .instant-mix {
   display: flex;
   align-items: center;
@@ -5420,6 +5331,32 @@ html[data-ui='deck'] .pw-row input {
 
 .instant-mix.is-busy .instant-mix-icon svg {
   animation: spin 1.4s linear infinite;
+}
+
+.mix-error {
+  margin: 0.5rem 0 0;
+}
+
+.mix-genres {
+  margin-top: 0.9rem;
+}
+
+.mix-genres-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mix-genres .chip-row {
+  gap: 0.35rem;
+}
+
+.mix-chip {
+  gap: 0.3rem;
 }
 
 .start-sub {

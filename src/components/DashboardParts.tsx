@@ -14,7 +14,7 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
-import { IconArrowDown, IconArrowRight, IconArrowUp, IconPlay, IconRefresh, IconTrash } from './Icons'
+import { IconAlbums, IconArrowDown, IconArrowRight, IconArrowUp, IconBook, IconPlay, IconPodcast, IconRefresh, IconTrash } from './Icons'
 
 /*
  * The pieces every start-page category is built from: the block chrome, the row
@@ -23,6 +23,9 @@ import { IconArrowDown, IconArrowRight, IconArrowUp, IconPlay, IconRefresh, Icon
 
 /** Tiles shown per category on phones, where a row scrolls sideways. */
 const PREVIEW = 15
+
+/** Which area a block belongs to; its icon marks the heading. */
+export type SectionCategory = 'music' | 'books' | 'podcasts' | 'mixed'
 
 /** Categories behind a start-page "Weitere laden…" tile. */
 export type SectionId =
@@ -36,6 +39,7 @@ export type SectionId =
   | 'starredArtists'
   | 'starredAlbums'
   | 'starredSongs'
+  | 'instantMix'
   | 'continueAll'
   | 'continueBooks'
   | 'continuePodcasts'
@@ -46,11 +50,28 @@ export type SectionId =
   | 'podcastShows'
 
 export type SectionProps = {
+  category: SectionCategory
   editing: boolean
   canUp: boolean
   canDown: boolean
   onMove: (dir: -1 | 1) => void
   onRemove: () => void
+}
+
+function CategoryMark({ category }: { category: SectionCategory }) {
+  return (
+    <span className="dash-cat" aria-hidden>
+      {category === 'music' ? <IconAlbums size={15} /> : null}
+      {category === 'books' ? <IconBook size={15} /> : null}
+      {category === 'podcasts' ? <IconPodcast size={15} /> : null}
+      {category === 'mixed' ? (
+        <>
+          <IconBook size={15} />
+          <IconPodcast size={15} />
+        </>
+      ) : null}
+    </span>
+  )
 }
 
 /* ==========================================================================
@@ -61,6 +82,7 @@ export function DashBlock({
   label,
   action,
   children,
+  category,
   editing,
   canUp,
   canDown,
@@ -70,7 +92,10 @@ export function DashBlock({
   return (
     <section className={`dash-block ${editing ? 'is-editing' : ''}`}>
       <header className="dash-head">
-        <h3>{label}</h3>
+        <h3>
+          {label}
+          <CategoryMark category={category} />
+        </h3>
         <div className="dash-head-tools">
           {action && !editing ? action : null}
           {editing ? (

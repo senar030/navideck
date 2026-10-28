@@ -15,7 +15,6 @@ import {
 } from './AbsParts'
 import { LayoutToggle } from './LayoutToggle'
 import { DashboardBoard } from './DashboardBoard'
-import { ResumePlaying } from './ResumePlaying'
 
 const BOOK_SORTS: { id: BookSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -32,8 +31,6 @@ export function AudiobookHome() {
 
   return (
     <div className="view abs-view">
-      <ResumePlaying />
-
       <DashboardBoard
         storageKey="navideck.dashboard.books.v1"
         scope="books"

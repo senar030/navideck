@@ -16,7 +16,6 @@ import { EpisodeCard, EpisodeRow, MissingAbs, PodcastCard, SortChips } from './A
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
-import { ResumePlaying } from './ResumePlaying'
 import { sortFeed } from '../lib/podcastFeed'
 import { splitLabels } from '../lib/format'
 import { DashboardBoard } from './DashboardBoard'
@@ -42,8 +41,6 @@ export function PodcastHome() {
 
   return (
     <div className="view abs-view">
-      <ResumePlaying />
-
       <DashboardBoard
         storageKey="navideck.dashboard.podcasts.v1"
         scope="podcasts"

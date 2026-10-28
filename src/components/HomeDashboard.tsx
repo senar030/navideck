@@ -1,5 +1,4 @@
 import { DashboardBoard } from './DashboardBoard'
-import { ResumePlaying } from './ResumePlaying'
 
 /** v3: the categories changed again — one new, two gone and two swapped — so old
  * saved orders are not carried over. */
@@ -8,7 +7,6 @@ const DASH_KEY = 'navideck.dashboard.v3'
 export function HomeDashboard() {
   return (
     <div className="view dashboard">
-      <ResumePlaying />
       <DashboardBoard
         storageKey={DASH_KEY}
         scope="music"

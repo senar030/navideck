@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import type { SectionId, SectionProps } from './DashboardParts'
+import type { SectionCategory, SectionId, SectionProps } from './DashboardParts'
 import {
   AlbumFeed,
   FrequentAlbumsSection,
   GenrePlaylistsSection,
+  InstantMixSection,
   NewAlbumsSection,
   RandomAlbumsSection,
   RandomArtistsSection,
@@ -36,7 +37,7 @@ import {
 export type { SectionId }
 
 /** Where a block's data comes from; `mixed` needs books or podcasts. */
-export type SectionScope = 'music' | 'books' | 'podcasts' | 'mixed'
+export type SectionScope = SectionCategory
 
 export type SectionDef = {
   id: SectionId
@@ -59,6 +60,8 @@ export const SECTIONS: SectionDef[] = [
   { id: 'starredArtists', label: 'Favoriten Künstler', pageTitle: 'Favoriten Künstler', scope: 'music', Section: StarredArtistsSection, Page: StarredArtistsPage },
   { id: 'starredAlbums', label: 'Favoriten Alben', pageTitle: 'Favoriten Alben', scope: 'music', Section: StarredAlbumsSection, Page: StarredAlbumsPage },
   { id: 'starredSongs', label: 'Favoriten Songs', pageTitle: 'Favoriten Songs', scope: 'music', Section: StarredSongsSection, Page: StarredSongsPage },
+
+  { id: 'instantMix', label: 'Sofort-Mix', pageTitle: 'Sofort-Mix', scope: 'music', Section: InstantMixSection },
 
   { id: 'continueAll', label: 'Weiterhören', pageTitle: 'Weiterhören', scope: 'mixed', Section: ContinueAllSection },
   { id: 'continueBooks', label: 'Weiterhören', pageTitle: 'Weiterhören', scope: 'books', Section: ContinueBooksSection },
@@ -97,6 +100,7 @@ export const DEFAULT_PODCAST_SECTIONS: SectionId[] = ['continuePodcasts', 'lates
 
 /** The app start page: a little of everything, the rest can be added. */
 export const DEFAULT_START_SECTIONS: SectionId[] = [
+  'instantMix',
   'continueAll',
   'recentAlbums',
   'randomBooks',

@@ -173,6 +173,7 @@ export function DashboardBoard({ storageKey, scope, renderHead }: BoardProps) {
             }}
           >
             <Section
+              category={def.scope}
               editing={edit}
               canUp={index > 0}
               canDown={index < ids.length - 1}
