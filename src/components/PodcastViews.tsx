@@ -223,10 +223,19 @@ export function PodcastAdd() {
       setError('Dem Server fehlt eine Podcast-Bibliothek mit Ordner.')
       return
     }
+    if (!folder.fullPath) {
+      setError('Dem Podcast-Ordner fehlt der Pfad. Bitte in Audiobookshelf prüfen.')
+      return
+    }
     setAdding(result.id)
     setError('')
     try {
-      await abs.client.addPodcast({ libraryId: library.id, folderId: folder.id, result })
+      await abs.client.addPodcast({
+        libraryId: library.id,
+        folderId: folder.id,
+        folderPath: folder.fullPath,
+        result,
+      })
       setAdded((a) => ({ ...a, [result.id]: true }))
       // The show will appear in the lists once they reload.
       forget(abs.client.baseUrl)

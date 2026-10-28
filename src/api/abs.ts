@@ -268,16 +268,42 @@ export class AbsError extends Error {
   }
 }
 
+/** One directory name the server will accept for a new show. */
+function podcastFolderName(title: string): string {
+  const cleaned = Array.from(title)
+    .filter((char) => char.charCodeAt(0) >= 32)
+    .join('')
+    .replace(/[<>:"/\\|?*]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/g, '')
+  return cleaned.slice(0, 120) || 'Podcast'
+}
+
 const TIMEOUT_MS = 15_000
 
 async function failure(res: Response): Promise<string> {
+  /*
+   * Audiobookshelf explains most refuseals as plain text ("Podcast already
+   * exists", "Podcast path must be inside..."), not as JSON. Read the body once
+   * and prefer it over the generic status text.
+   */
+  let text = ''
   try {
-    const data: unknown = await res.json()
-    if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
-      return data.error
-    }
+    text = (await res.text()).trim()
   } catch {
-    /* not JSON, fall through */
+    /* no body */
+  }
+  if (text) {
+    try {
+      const data: unknown = JSON.parse(text)
+      if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
+        return data.error
+      }
+    } catch {
+      /* plain text is the message */
+    }
+    return text.length > 300 ? `${text.slice(0, 300)}…` : text
   }
   if (res.status === 401) return 'Anmeldung abgelaufen'
   if (res.status === 403) return 'Dafür fehlt die Berechtigung'
@@ -478,16 +504,30 @@ export class AbsClient {
     return Array.isArray(data) ? data : (data.results ?? [])
   }
 
-  /** Hands a feed the server found to the library; it downloads the episodes. */
+  /** Hand a feed the server found to the library; it downloads the episodes. */
   async addPodcast(input: {
     libraryId: string
     folderId: string
+    /** The library folder's own path, e.g. `/podcasts`. */
+    folderPath: string
     result: AbsPodcastSearchResult
   }): Promise<AbsLibraryItem> {
     const { result } = input
+    if (!input.folderPath.trim()) {
+      throw new AbsError(0, 'Dem Podcast-Ordner fehlt der Pfad. Bitte in Audiobookshelf prüfen.')
+    }
+    const base = input.folderPath.trim().replace(/\\/g, '/').replace(/\/+$/, '')
+    /*
+     * The server wants the folder the new show will live in and refuses (400)
+     * anything outside the library folder. One directory below the library
+     * root, named after the show; characters Windows cannot use in a name are
+     * dropped so the server can create it.
+     */
+    const path = `${base}/${podcastFolderName(result.title)}`
     const body = {
       libraryId: input.libraryId,
       folderId: input.folderId,
+      path,
       media: {
         metadata: {
           title: result.title,
