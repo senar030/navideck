@@ -108,6 +108,8 @@ export type AbsEpisode = {
   publishedAt?: number | null
   addedAt?: number
   libraryId?: string
+  /** The feed's identifier, used to match an episode against the feed. */
+  guid?: string | null
   /** The show, as the recent-episodes endpoint sends it with every episode. */
   podcast?: (AbsPodcast & { libraryItemId?: string }) | null
   audioFile?: AbsAudioFile | null
@@ -132,6 +134,13 @@ export type AbsPodcast = {
   coverPath?: string | null
   numEpisodes?: number
   episodes?: AbsEpisode[]
+  /** Whether the server downloads new feed episodes by itself. */
+  autoDownloadEpisodes?: boolean
+  /** Cron expression for that check. */
+  autoDownloadSchedule?: string
+  maxEpisodesToKeep?: number
+  maxNewEpisodesToDownload?: number
+  lastEpisodeCheck?: number
 }
 
 export type AbsLibraryItem = {
@@ -188,6 +197,42 @@ export type AbsPodcastSearchResult = {
   feedUrl?: string
   pageUrl?: string
   explicit?: boolean
+}
+
+/** One episode as the server parsed it from the RSS feed. */
+export type AbsFeedEpisode = {
+  title: string
+  subtitle?: string
+  description?: string
+  descriptionPlain?: string
+  pubDate?: string
+  episodeType?: string
+  season?: string
+  episode?: string
+  author?: string
+  duration?: string
+  durationSeconds?: number | null
+  explicit?: string
+  publishedAt?: number | null
+  enclosure?: { url: string; type?: string | null; length?: string | number | null } | null
+  guid?: string | null
+}
+
+/** What `/api/podcasts/feed` returns: the show and its feed episodes. */
+export type AbsFeedPodcast = {
+  metadata: {
+    title?: string
+    author?: string
+    description?: string
+    descriptionPlain?: string
+    image?: string
+    feedUrl?: string
+    genres?: string[]
+    explicit?: boolean
+    language?: string
+    type?: string
+  }
+  episodes: AbsFeedEpisode[]
 }
 
 export type AbsShelf = {
@@ -385,6 +430,35 @@ export class AbsClient {
     }
   }
 
+  /** For endpoints that answer with an empty body or a plain "OK". */
+  private async requestVoid(path: string, init: RequestInit = {}): Promise<void> {
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS)
+    try {
+      let res: Response
+      try {
+        res = await fetch(`${this.baseUrl}${path}`, {
+          ...init,
+          signal: controller.signal,
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+            ...init.headers,
+          },
+        })
+      } catch {
+        throw new AbsError(
+          0,
+          'Server nicht erreichbar. Oder er erlaubt den Zugriff aus dem Browser nicht (CORS).',
+        )
+      }
+      if (!res.ok) throw new AbsError(res.status, await failure(res))
+    } finally {
+      window.clearTimeout(timer)
+    }
+  }
+
   /* ---------------------------------------------------------------- account */
 
   /** Confirms the token and returns the user it belongs to. */
@@ -497,11 +571,42 @@ export class AbsClient {
 
   /* --------------------------------------------------------------- podcasts */
 
-  async searchPodcasts(term: string): Promise<AbsPodcastSearchResult[]> {
+  async searchPodcasts(term: string, country = 'de'): Promise<AbsPodcastSearchResult[]> {
+    const query = new URLSearchParams({ term, country })
     const data = await this.request<AbsPodcastSearchResult[] | { results: AbsPodcastSearchResult[] }>(
-      `/api/search/podcast?term=${encodeURIComponent(term)}`,
+      `/api/search/podcast?${query.toString()}`,
     )
     return Array.isArray(data) ? data : (data.results ?? [])
+  }
+
+  /** Lets the server fetch and parse the RSS feed, episodes included. */
+  async getPodcastFeed(rssFeed: string): Promise<AbsFeedPodcast> {
+    const data = await this.request<{ podcast?: AbsFeedPodcast }>('/api/podcasts/feed', {
+      method: 'POST',
+      body: JSON.stringify({ rssFeed }),
+    })
+    if (!data.podcast) throw new AbsError(0, 'Der Server konnte den Feed nicht lesen.')
+    return data.podcast
+  }
+
+  /** Queues the selected feed episodes; the server adds them to the show. */
+  async downloadEpisodes(itemId: string, episodes: AbsFeedEpisode[]): Promise<void> {
+    if (!episodes.length) return
+    await this.requestVoid(`/api/podcasts/${encodeURIComponent(itemId)}/download-episodes`, {
+      method: 'POST',
+      body: JSON.stringify(episodes),
+    })
+  }
+
+  /** Turns automatic episode downloads on or off for an existing show. */
+  async updatePodcast(
+    itemId: string,
+    patch: { autoDownloadEpisodes?: boolean; autoDownloadSchedule?: string },
+  ): Promise<void> {
+    await this.request(`/api/items/${encodeURIComponent(itemId)}/media`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
   }
 
   /** Hand a feed the server found to the library; it downloads the episodes. */
@@ -511,6 +616,8 @@ export class AbsClient {
     /** The library folder's own path, e.g. `/podcasts`. */
     folderPath: string
     result: AbsPodcastSearchResult
+    autoDownloadEpisodes?: boolean
+    autoDownloadSchedule?: string
   }): Promise<AbsLibraryItem> {
     const { result } = input
     if (!input.folderPath.trim()) {
@@ -529,6 +636,8 @@ export class AbsClient {
       folderId: input.folderId,
       path,
       media: {
+        autoDownloadEpisodes: Boolean(input.autoDownloadEpisodes),
+        ...(input.autoDownloadSchedule ? { autoDownloadSchedule: input.autoDownloadSchedule } : {}),
         metadata: {
           title: result.title,
           author: result.artistName ?? '',

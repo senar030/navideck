@@ -1,20 +1,45 @@
 import { useMemo, useState } from 'react'
+import type { AbsEpisode, AbsFeedPodcast } from '../api/abs'
 import { podcastOf, sortEpisodes } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAsync } from '../lib/useAsync'
 import { stripHtml } from '../lib/format'
+import { episodeKey, sortFeed } from '../lib/podcastFeed'
 import { useAccount } from '../state/AccountContext'
 import { AbsCover, EpisodeRow, MissingAbs } from './AbsParts'
-import { IconPlay } from './Icons'
+import { IconPlay, IconPlus } from './Icons'
+import { PodcastSetup } from './PodcastSetup'
 
 const PAGE = 80
 
+type DownloadSetup = {
+  feed: AbsFeedPodcast | null
+  loading: boolean
+  error: string
+  existing: Set<string>
+  selected: Set<number>
+  autoDownload: boolean
+}
+
+/** A library episode's feed identity, so feed rows can be marked as present. */
+function libraryEpisodeKey(episode: AbsEpisode): string {
+  const guid = episode.guid?.trim()
+  if (guid) return guid
+  return `${episode.title.trim()}|${episode.publishedAt ?? episode.pubDate ?? ''}`
+}
+
 export function PodcastDetail({ id }: { id: string }) {
-  const { podcasts, progress } = useAccount()
+  const { podcasts, progress, abs } = useAccount()
   const { playEpisode } = useAbsPlayer()
   const [limit, setLimit] = useState(PAGE)
+  const [refresh, setRefresh] = useState(0)
+  const [setup, setSetup] = useState<DownloadSetup | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
   const client = podcasts?.client ?? null
-  const result = useAsync(client ? () => client.getItem(id) : null, [client, id])
+  /* Only Audiobookshelf asks the server to fetch feed episodes for a show. */
+  const admin = podcasts?.kind === 'audiobookshelf' ? (abs?.client ?? null) : null
+  const result = useAsync(client ? () => client.getItem(id) : null, [client, id, refresh])
 
   const item = result.data
   const podcast = item ? podcastOf(item) : null
@@ -30,6 +55,128 @@ export function PodcastDetail({ id }: { id: string }) {
   const cover = client.coverUrl(id)
   const shown = episodes.slice(0, limit)
   const latest = episodes[0]
+
+  async function openDownloads() {
+    if (!admin || !podcast) return
+    const feedUrl = podcast.metadata.feedUrl
+    if (!feedUrl) {
+      setNotice('Dieser Podcast hat keine Feed-Adresse, aus der Folgen geladen werden könnten.')
+      return
+    }
+    setNotice('')
+    setSetup({
+      feed: null,
+      loading: true,
+      error: '',
+      existing: new Set(),
+      selected: new Set(),
+      autoDownload: Boolean(podcast.autoDownloadEpisodes),
+    })
+    try {
+      const feed = sortFeed(await admin.getPodcastFeed(feedUrl))
+      const libraryKeys = new Set((podcast.episodes ?? []).map(libraryEpisodeKey))
+      const libraryTitles = new Set(
+        (podcast.episodes ?? []).map((episode) => episode.title.trim().toLowerCase()),
+      )
+      const existing = new Set<string>()
+      const selected = new Set<number>()
+      feed.episodes.forEach((episode, index) => {
+        const key = episodeKey(episode)
+        const present =
+          libraryKeys.has(key) || libraryTitles.has(episode.title.trim().toLowerCase())
+        if (present) {
+          existing.add(key)
+          return
+        }
+        if (selected.size < 5) selected.add(index)
+      })
+      setSetup((current) =>
+        current
+          ? { ...current, feed, loading: false, existing, selected }
+          : current,
+      )
+    } catch (err) {
+      setSetup((current) =>
+        current
+          ? {
+              ...current,
+              loading: false,
+              error: err instanceof Error ? err.message : 'Der Feed konnte nicht geladen werden.',
+            }
+          : current,
+      )
+    }
+  }
+
+  function toggleEpisode(index: number) {
+    setSetup((current) => {
+      if (!current) return current
+      const selected = new Set(current.selected)
+      if (selected.has(index)) selected.delete(index)
+      else selected.add(index)
+      return { ...current, selected }
+    })
+  }
+
+  function selectAll(value: boolean) {
+    setSetup((current) => {
+      const feed = current?.feed
+      if (!current || !feed) return current
+      return {
+        ...current,
+        selected: value
+          ? new Set(
+              feed.episodes
+                .map((_, index) => index)
+                .filter((index) => !current.existing.has(episodeKey(feed.episodes[index]))),
+            )
+          : new Set<number>(),
+      }
+    })
+  }
+
+  async function confirmDownloads() {
+    if (!admin || !setup || !item || !podcast) return
+    const chosen = setup.feed
+      ? setup.feed.episodes.filter((_, index) => setup.selected.has(index))
+      : []
+    const autoChanged = setup.autoDownload !== Boolean(podcast.autoDownloadEpisodes)
+    if (!chosen.length && !autoChanged) {
+      setSetup(null)
+      return
+    }
+    setSaving(true)
+    setSetup((current) => (current ? { ...current, error: '' } : current))
+    try {
+      if (autoChanged) {
+        await admin.updatePodcast(item.id, { autoDownloadEpisodes: setup.autoDownload })
+      }
+      if (chosen.length) {
+        await admin.downloadEpisodes(item.id, chosen)
+        setNotice(
+          `${chosen.length} ${chosen.length === 1 ? 'Folge wird' : 'Folgen werden'} heruntergeladen. Sie erscheinen, sobald der Server sie geholt hat.`,
+        )
+      } else {
+        setNotice('Einstellungen gespeichert.')
+      }
+      setSetup(null)
+      setRefresh((n) => n + 1)
+    } catch (err) {
+      setSetup((current) =>
+        current
+          ? {
+              ...current,
+              error: err instanceof Error ? err.message : 'Die Folgen konnten nicht geladen werden.',
+            }
+          : current,
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const chosenCount = setup?.selected.size ?? 0
+  const autoChanged = setup ? setup.autoDownload !== Boolean(podcast.autoDownloadEpisodes) : false
 
   return (
     <div className="view detail abs-detail">
@@ -60,6 +207,11 @@ export function PodcastDetail({ id }: { id: string }) {
                   <IconPlay size={22} /> Neueste Folge
                 </button>
               ) : null}
+              {admin ? (
+                <button type="button" className="chip" onClick={() => void openDownloads()}>
+                  <IconPlus size={16} /> Folgen laden
+                </button>
+              ) : null}
               {podcast.metadata.feedUrl ? (
                 <a
                   className="text-btn"
@@ -74,6 +226,15 @@ export function PodcastDetail({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {notice ? (
+        <p className="podcast-notice">
+          {notice}{' '}
+          <button type="button" className="text-btn" onClick={() => setRefresh((n) => n + 1)}>
+            Liste aktualisieren
+          </button>
+        </p>
+      ) : null}
 
       {podcast.metadata.description ? (
         <section className="abs-section">
@@ -105,6 +266,37 @@ export function PodcastDetail({ id }: { id: string }) {
           </div>
         ) : null}
       </section>
+
+      {setup ? (
+        <PodcastSetup
+          heading="Folgen herunterladen"
+          cover={cover}
+          title={podcast.metadata.title}
+          author={podcast.metadata.author ?? undefined}
+          feed={setup.feed}
+          loading={setup.loading}
+          error={setup.error}
+          existing={setup.existing}
+          selected={setup.selected}
+          onToggle={toggleEpisode}
+          onSelectAll={() => selectAll(true)}
+          onSelectNone={() => selectAll(false)}
+          autoDownload={setup.autoDownload}
+          onAutoDownload={(value) =>
+            setSetup((current) => (current ? { ...current, autoDownload: value } : current))
+          }
+          busy={saving}
+          confirmLabel={
+            chosenCount
+              ? `${chosenCount} ${chosenCount === 1 ? 'Folge' : 'Folgen'} herunterladen`
+              : autoChanged
+                ? 'Einstellungen speichern'
+                : 'Schließen'
+          }
+          onConfirm={() => void confirmDownloads()}
+          onClose={() => setSetup(null)}
+        />
+      ) : null}
     </div>
   )
 }

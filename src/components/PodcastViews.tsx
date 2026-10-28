@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import type { AbsPodcastSearchResult } from '../api/abs'
+import type { AbsFeedPodcast, AbsPodcastSearchResult } from '../api/abs'
 import { forget } from '../lib/absCache'
 import {
   sortEpisodeRefs,
@@ -17,7 +17,9 @@ import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
 import { ResumePlaying } from './ResumePlaying'
+import { sortFeed } from '../lib/podcastFeed'
 import { DashboardBoard } from './DashboardBoard'
+import { PodcastSetup } from './PodcastSetup'
 
 const PODCAST_SORTS: { id: PodcastSort; label: string }[] = [
   { id: 'title', label: 'Titel' },
@@ -190,22 +192,67 @@ export function EpisodesView() {
   )
 }
 
+const COUNTRIES = [
+  { code: 'de', label: 'Deutsch' },
+  { code: 'us', label: 'Englisch (US)' },
+  { code: 'gb', label: 'Englisch (UK)' },
+  { code: 'fr', label: 'Französisch' },
+  { code: 'es', label: 'Spanisch' },
+  { code: 'it', label: 'Italienisch' },
+  { code: 'nl', label: 'Niederländisch' },
+  { code: 'pl', label: 'Polnisch' },
+  { code: 'se', label: 'Schwedisch' },
+  { code: 'dk', label: 'Dänisch' },
+  { code: 'no', label: 'Norwegisch' },
+  { code: 'fi', label: 'Finnisch' },
+  { code: 'pt', label: 'Portugiesisch' },
+  { code: 'tr', label: 'Türkisch' },
+  { code: 'jp', label: 'Japanisch' },
+  { code: 'au', label: 'Englisch (AU)' },
+] as const
+
+const COUNTRY_KEY = 'navideck.podcastCountry'
+const EMPTY_KEYS = new Set<string>()
+
+function readCountry(): string {
+  try {
+    const saved = localStorage.getItem(COUNTRY_KEY)
+    if (saved && COUNTRIES.some((country) => country.code === saved)) return saved
+  } catch {
+    /* ignore */
+  }
+  return 'de'
+}
+
+type PodcastSetupState = {
+  result: AbsPodcastSearchResult
+  feed: AbsFeedPodcast | null
+  loading: boolean
+  error: string
+  selected: Set<number>
+  autoDownload: boolean
+}
+
 export function PodcastAdd() {
   const { abs, podcasts } = useAccount()
   const [term, setTerm] = useState('')
+  const [country, setCountry] = useState(readCountry)
   const [results, setResults] = useState<AbsPodcastSearchResult[] | null>(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const [adding, setAdding] = useState<number | null>(null)
   const [added, setAdded] = useState<Record<number, boolean>>({})
+  const [setup, setSetup] = useState<PodcastSetupState | null>(null)
+  const [saving, setSaving] = useState(false)
 
   async function search(e: FormEvent) {
     e.preventDefault()
     if (!abs || !term.trim()) return
     setBusy(true)
     setError('')
+    setNotice('')
     try {
-      const list = await abs.client.searchPodcasts(term.trim())
+      const list = await abs.client.searchPodcasts(term.trim(), country)
       setResults(list)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Suche fehlgeschlagen')
@@ -215,8 +262,80 @@ export function PodcastAdd() {
     }
   }
 
-  async function add(result: AbsPodcastSearchResult) {
+  function chooseCountry(code: string) {
+    setCountry(code)
+    try {
+      localStorage.setItem(COUNTRY_KEY, code)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /*
+   * Choosing a show opens the setup window first: the feed decides how many
+   * episodes exist, and the reader decides how many to bring over right away.
+   */
+  async function openSetup(result: AbsPodcastSearchResult) {
     if (!abs) return
+    if (!result.feedUrl) {
+      setError('Zu dieser Sendung hat der Server keine Feed-Adresse.')
+      return
+    }
+    setError('')
+    setNotice('')
+    setSetup({
+      result,
+      feed: null,
+      loading: true,
+      error: '',
+      selected: new Set(),
+      autoDownload: true,
+    })
+    try {
+      const feed = sortFeed(await abs.client.getPodcastFeed(result.feedUrl))
+      const selected = new Set<number>(feed.episodes.slice(0, 3).map((_, index) => index))
+      setSetup((current) =>
+        current && current.result.id === result.id
+          ? { ...current, feed, loading: false, selected }
+          : current,
+      )
+    } catch (err) {
+      setSetup((current) =>
+        current && current.result.id === result.id
+          ? {
+              ...current,
+              loading: false,
+              error: err instanceof Error ? err.message : 'Der Feed konnte nicht geladen werden.',
+            }
+          : current,
+      )
+    }
+  }
+
+  function toggleEpisode(index: number) {
+    setSetup((current) => {
+      if (!current) return current
+      const selected = new Set(current.selected)
+      if (selected.has(index)) selected.delete(index)
+      else selected.add(index)
+      return { ...current, selected }
+    })
+  }
+
+  function selectAll(value: boolean) {
+    setSetup((current) => {
+      if (!current?.feed) return current
+      return {
+        ...current,
+        selected: value
+          ? new Set(current.feed.episodes.map((_, index) => index))
+          : new Set<number>(),
+      }
+    })
+  }
+
+  async function confirmSetup() {
+    if (!abs || !setup) return
     const library = abs.podcasts
     const folder = library?.folders?.[0]
     if (!library || !folder) {
@@ -227,22 +346,54 @@ export function PodcastAdd() {
       setError('Dem Podcast-Ordner fehlt der Pfad. Bitte in Audiobookshelf prüfen.')
       return
     }
-    setAdding(result.id)
+    const chosen = setup.feed
+      ? setup.feed.episodes.filter((_, index) => setup.selected.has(index))
+      : []
+    setSaving(true)
     setError('')
+    setNotice('')
     try {
-      await abs.client.addPodcast({
+      const item = await abs.client.addPodcast({
         libraryId: library.id,
         folderId: folder.id,
         folderPath: folder.fullPath,
-        result,
+        result: setup.result,
+        autoDownloadEpisodes: setup.autoDownload,
       })
-      setAdded((a) => ({ ...a, [result.id]: true }))
+      setAdded((a) => ({ ...a, [setup.result.id]: true }))
       // The show will appear in the lists once they reload.
       forget(abs.client.baseUrl)
+      if (chosen.length) {
+        try {
+          await abs.client.downloadEpisodes(item.id, chosen)
+          setNotice(
+            `„${setup.result.title}“ hinzugefügt; ${chosen.length} ${
+              chosen.length === 1 ? 'Folge wird' : 'Folgen werden'
+            } heruntergeladen.`,
+          )
+        } catch (err) {
+          setError(
+            `Der Podcast wurde angelegt, aber die Folgen konnten nicht gestartet werden: ${
+              err instanceof Error ? err.message : 'Unbekannter Fehler'
+            }`,
+          )
+        }
+      } else {
+        setNotice(`„${setup.result.title}“ hinzugefügt.`)
+      }
+      setSetup(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Podcast konnte nicht hinzugefügt werden')
+      setSetup((current) =>
+        current
+          ? {
+              ...current,
+              error:
+                err instanceof Error ? err.message : 'Podcast konnte nicht hinzugefügt werden',
+            }
+          : current,
+      )
     } finally {
-      setAdding(null)
+      setSaving(false)
     }
   }
 
@@ -260,6 +411,8 @@ export function PodcastAdd() {
       </div>
     )
   }
+
+  const chosenCount = setup?.selected.size ?? 0
 
   return (
     <div className="view abs-view">
@@ -280,12 +433,26 @@ export function PodcastAdd() {
             aria-label="Podcast suchen"
           />
         </span>
+        <select
+          className="abs-country"
+          aria-label="Sprache der Suche"
+          title="Sprache der Suche"
+          value={country}
+          onChange={(e) => chooseCountry(e.target.value)}
+        >
+          {COUNTRIES.map((entry) => (
+            <option key={entry.code} value={entry.code}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
         <button type="submit" className="primary-btn" disabled={busy || !term.trim()}>
           {busy ? 'Suche …' : 'Suchen'}
         </button>
       </form>
 
       {error ? <p className="error">{error}</p> : null}
+      {notice ? <p className="podcast-notice">{notice}</p> : null}
 
       {results && !results.length ? <p className="muted">Nichts gefunden.</p> : null}
 
@@ -307,15 +474,13 @@ export function PodcastAdd() {
             <button
               type="button"
               className={`chip ${added[result.id] ? 'is-on' : ''}`}
-              disabled={adding === result.id || added[result.id]}
-              onClick={() => void add(result)}
+              disabled={added[result.id]}
+              onClick={() => void openSetup(result)}
             >
               {added[result.id] ? (
                 <>
                   <IconCheck size={16} /> Hinzugefügt
                 </>
-              ) : adding === result.id ? (
-                'Wird hinzugefügt …'
               ) : (
                 <>
                   <IconPlus size={16} /> Hinzufügen
@@ -325,6 +490,35 @@ export function PodcastAdd() {
           </article>
         ))}
       </div>
+
+      {setup ? (
+        <PodcastSetup
+          heading="Podcast hinzufügen"
+          cover={setup.result.cover}
+          title={setup.result.title}
+          author={setup.result.artistName}
+          feed={setup.feed}
+          loading={setup.loading}
+          error={setup.error}
+          existing={EMPTY_KEYS}
+          selected={setup.selected}
+          onToggle={toggleEpisode}
+          onSelectAll={() => selectAll(true)}
+          onSelectNone={() => selectAll(false)}
+          autoDownload={setup.autoDownload}
+          onAutoDownload={(value) =>
+            setSetup((current) => (current ? { ...current, autoDownload: value } : current))
+          }
+          busy={saving}
+          confirmLabel={
+            setup.feed && chosenCount
+              ? `Hinzufügen · ${chosenCount} ${chosenCount === 1 ? 'Folge' : 'Folgen'}`
+              : 'Ohne Folgen hinzufügen'
+          }
+          onConfirm={() => void confirmSetup()}
+          onClose={() => setSetup(null)}
+        />
+      ) : null}
     </div>
   )
 }
