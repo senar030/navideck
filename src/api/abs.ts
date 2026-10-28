@@ -132,6 +132,8 @@ export type AbsPodcastMeta = {
 export type AbsPodcast = {
   metadata: AbsPodcastMeta
   coverPath?: string | null
+  /** Free-form labels Audiobookshelf keeps on the item. */
+  tags?: string[]
   numEpisodes?: number
   episodes?: AbsEpisode[]
   /** Whether the server downloads new feed episodes by itself. */
@@ -598,14 +600,34 @@ export class AbsClient {
     })
   }
 
-  /** Turns automatic episode downloads on or off for an existing show. */
+  /** Changes metadata, tags and auto-download settings on an existing show. */
   async updatePodcast(
     itemId: string,
-    patch: { autoDownloadEpisodes?: boolean; autoDownloadSchedule?: string },
+    patch: {
+      autoDownloadEpisodes?: boolean
+      autoDownloadSchedule?: string
+      tags?: string[]
+      metadata?: {
+        title?: string
+        author?: string | null
+        description?: string | null
+        genres?: string[]
+        language?: string | null
+        explicit?: boolean
+      }
+    },
   ): Promise<void> {
     await this.request(`/api/items/${encodeURIComponent(itemId)}/media`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
+    })
+  }
+
+  /** Removes a library item; `hard` also deletes its folder on the server. */
+  async deleteLibraryItem(itemId: string, hard = false): Promise<void> {
+    const suffix = hard ? '?hard=1' : ''
+    await this.requestVoid(`/api/items/${encodeURIComponent(itemId)}${suffix}`, {
+      method: 'DELETE',
     })
   }
 
@@ -618,6 +640,10 @@ export class AbsClient {
     result: AbsPodcastSearchResult
     autoDownloadEpisodes?: boolean
     autoDownloadSchedule?: string
+    /** Free-form labels, stored at the podcast (not in its metadata). */
+    tags?: string[]
+    /** Categories; defaults to the genres the search returned. */
+    genres?: string[]
   }): Promise<AbsLibraryItem> {
     const { result } = input
     if (!input.folderPath.trim()) {
@@ -636,6 +662,7 @@ export class AbsClient {
       folderId: input.folderId,
       path,
       media: {
+        tags: input.tags ?? [],
         autoDownloadEpisodes: Boolean(input.autoDownloadEpisodes),
         ...(input.autoDownloadSchedule ? { autoDownloadSchedule: input.autoDownloadSchedule } : {}),
         metadata: {
@@ -643,7 +670,7 @@ export class AbsClient {
           author: result.artistName ?? '',
           description: result.descriptionPlain || result.description || '',
           releaseDate: result.releaseDate ?? null,
-          genres: result.genres ?? [],
+          genres: input.genres ?? result.genres ?? [],
           feedUrl: result.feedUrl ?? '',
           imageUrl: result.cover ?? null,
           itunesPageUrl: result.pageUrl ?? null,

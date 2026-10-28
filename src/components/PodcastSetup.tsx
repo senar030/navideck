@@ -31,6 +31,11 @@ export function PodcastSetup({
   onSelectNone,
   autoDownload,
   onAutoDownload,
+  editingMeta = false,
+  tags,
+  onTags,
+  genres,
+  onGenres,
   busy,
   confirmLabel,
   onConfirm,
@@ -51,6 +56,12 @@ export function PodcastSetup({
   onSelectNone: () => void
   autoDownload: boolean
   onAutoDownload: (value: boolean) => void
+  /** Show the tag and genre fields (only while adding a show). */
+  editingMeta?: boolean
+  tags?: string
+  onTags?: (value: string) => void
+  genres?: string
+  onGenres?: (value: string) => void
   busy: boolean
   confirmLabel: string
   onConfirm: () => void
@@ -103,6 +114,28 @@ export function PodcastSetup({
               <small>Der Server prüft den Feed und lädt neue Folgen selbst herunter.</small>
             </span>
           </label>
+
+          {editingMeta ? (
+            <div className="podcast-meta-fields">
+              <label className="account-field">
+                Genres / Kategorien
+                <input
+                  value={genres ?? ''}
+                  onChange={(event) => onGenres?.(event.target.value)}
+                  placeholder="z. B. Technik, Wissenschaft"
+                />
+              </label>
+              <label className="account-field">
+                Tags
+                <input
+                  value={tags ?? ''}
+                  onChange={(event) => onTags?.(event.target.value)}
+                  placeholder="z. B. interview, deutsch"
+                />
+              </label>
+              <p className="settings-hint">Mehrere Einträge durch Kommas trennen.</p>
+            </div>
+          ) : null}
 
           {episodes.length ? (
             <>

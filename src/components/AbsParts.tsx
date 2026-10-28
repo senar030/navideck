@@ -11,6 +11,7 @@ import {
   podcastOf,
   progressOf,
 } from '../lib/absHelpers'
+import { stripHtml } from '../lib/format'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { CoverArt } from './CoverArt'
@@ -254,6 +255,9 @@ export function EpisodeRow({
         <strong>{episode.title}</strong>
         <span className="muted">{facts}</span>
         <span className="episode-pod">{title}</span>
+        {episode.description ? (
+          <span className="episode-desc">{stripHtml(episode.description)}</span>
+        ) : null}
         <ProgressBar value={share} />
       </button>
       <div className="episode-tools">
@@ -334,6 +338,9 @@ export function EpisodeCard({
           {show}
           {episodeTime(episode) ? ` · ${formatDate(episodeTime(episode))}` : ''}
         </span>
+        {episode.description ? (
+          <span className="album-desc">{stripHtml(episode.description)}</span>
+        ) : null}
         <ProgressBar value={share} />
       </button>
       <button

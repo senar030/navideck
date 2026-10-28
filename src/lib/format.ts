@@ -58,3 +58,8 @@ export function normalizeSubsonicUrl(input: string): string {
   if (!url) return url
   return /\/apps\/music$/i.test(url) ? `${url}/subsonic` : url
 }
+
+/** Comma-separated labels, trimmed, without duplicates. */
+export function splitLabels(value: string): string[] {
+  return [...new Set(value.split(',').map((part) => part.trim()).filter(Boolean))]
+}

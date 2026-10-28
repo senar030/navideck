@@ -18,6 +18,7 @@ import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
 import { ResumePlaying } from './ResumePlaying'
 import { sortFeed } from '../lib/podcastFeed'
+import { splitLabels } from '../lib/format'
 import { DashboardBoard } from './DashboardBoard'
 import { PodcastSetup } from './PodcastSetup'
 
@@ -231,6 +232,8 @@ type PodcastSetupState = {
   error: string
   selected: Set<number>
   autoDownload: boolean
+  tags: string
+  genres: string
 }
 
 export function PodcastAdd() {
@@ -290,13 +293,23 @@ export function PodcastAdd() {
       error: '',
       selected: new Set(),
       autoDownload: true,
+      tags: '',
+      genres: (result.genres ?? []).join(', '),
     })
     try {
       const feed = sortFeed(await abs.client.getPodcastFeed(result.feedUrl))
       const selected = new Set<number>(feed.episodes.slice(0, 3).map((_, index) => index))
       setSetup((current) =>
         current && current.result.id === result.id
-          ? { ...current, feed, loading: false, selected }
+          ? {
+              ...current,
+              feed,
+              loading: false,
+              selected,
+              genres: feed.metadata.genres?.length
+                ? feed.metadata.genres.join(', ')
+                : current.genres,
+            }
           : current,
       )
     } catch (err) {
@@ -359,6 +372,8 @@ export function PodcastAdd() {
         folderPath: folder.fullPath,
         result: setup.result,
         autoDownloadEpisodes: setup.autoDownload,
+        tags: splitLabels(setup.tags),
+        genres: splitLabels(setup.genres),
       })
       setAdded((a) => ({ ...a, [setup.result.id]: true }))
       // The show will appear in the lists once they reload.
@@ -508,6 +523,15 @@ export function PodcastAdd() {
           autoDownload={setup.autoDownload}
           onAutoDownload={(value) =>
             setSetup((current) => (current ? { ...current, autoDownload: value } : current))
+          }
+          editingMeta
+          tags={setup.tags}
+          onTags={(value) =>
+            setSetup((current) => (current ? { ...current, tags: value } : current))
+          }
+          genres={setup.genres}
+          onGenres={(value) =>
+            setSetup((current) => (current ? { ...current, genres: value } : current))
           }
           busy={saving}
           confirmLabel={

@@ -6,8 +6,10 @@ import { useAsync } from '../lib/useAsync'
 import { stripHtml } from '../lib/format'
 import { episodeKey, sortFeed } from '../lib/podcastFeed'
 import { useAccount } from '../state/AccountContext'
+import { useNav } from '../state/NavContext'
 import { AbsCover, EpisodeRow, MissingAbs } from './AbsParts'
-import { IconPlay, IconPlus } from './Icons'
+import { IconPlay, IconPlus, IconSettings } from './Icons'
+import { PodcastOptions } from './PodcastOptions'
 import { PodcastSetup } from './PodcastSetup'
 
 const PAGE = 80
@@ -31,9 +33,11 @@ function libraryEpisodeKey(episode: AbsEpisode): string {
 export function PodcastDetail({ id }: { id: string }) {
   const { podcasts, progress, abs } = useAccount()
   const { playEpisode } = useAbsPlayer()
+  const { go } = useNav()
   const [limit, setLimit] = useState(PAGE)
   const [refresh, setRefresh] = useState(0)
   const [setup, setSetup] = useState<DownloadSetup | null>(null)
+  const [options, setOptions] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
   const client = podcasts?.client ?? null
@@ -197,6 +201,15 @@ export function PodcastDetail({ id }: { id: string }) {
                 .filter(Boolean)
                 .join(' · ')}
             </p>
+            {podcast.tags?.length ? (
+              <div className="podcast-tags">
+                {podcast.tags.map((tag) => (
+                  <span key={tag} className="podcast-tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <div className="hero-actions">
               {latest ? (
                 <button
@@ -212,15 +225,10 @@ export function PodcastDetail({ id }: { id: string }) {
                   <IconPlus size={16} /> Folgen laden
                 </button>
               ) : null}
-              {podcast.metadata.feedUrl ? (
-                <a
-                  className="text-btn"
-                  href={podcast.metadata.feedUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Feed öffnen
-                </a>
+              {admin ? (
+                <button type="button" className="chip" onClick={() => setOptions(true)}>
+                  <IconSettings size={16} /> Optionen
+                </button>
               ) : null}
             </div>
           </div>
@@ -295,6 +303,20 @@ export function PodcastDetail({ id }: { id: string }) {
           }
           onConfirm={() => void confirmDownloads()}
           onClose={() => setSetup(null)}
+        />
+      ) : null}
+
+      {options ? (
+        <PodcastOptions
+          item={item}
+          podcast={podcast}
+          onClose={() => setOptions(false)}
+          onDownload={() => {
+            setOptions(false)
+            void openDownloads()
+          }}
+          onSaved={() => setRefresh((n) => n + 1)}
+          onDeleted={() => go({ name: 'podcasts' })}
         />
       ) : null}
     </div>
