@@ -80,58 +80,6 @@ export function ShuffleButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-type SortOption<T extends string> = { id: T; label: string }
-
-export function SortChips<T extends string>({
-  options,
-  value,
-  desc,
-  onChange,
-  onDesc,
-  ascLabel,
-  descLabel,
-  children,
-}: {
-  options: SortOption<T>[]
-  value: T
-  desc: boolean
-  onChange: (value: T) => void
-  /** Omit to hide the direction chip, e.g. when every option has its own order. */
-  onDesc?: () => void
-  ascLabel: string
-  descLabel: string
-  /** Controls that belong beside the sort chips, e.g. the layout toggle. */
-  children?: ReactNode
-}) {
-  return (
-    <div className="view-head-tools">
-      <div className="chip-row">
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`chip ${value === option.id ? 'is-on' : ''}`}
-            onClick={() => onChange(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      {onDesc ? (
-        <button
-          type="button"
-          className={`chip ${desc ? 'is-on' : ''}`}
-          aria-label="Sortierrichtung umdrehen"
-          onClick={onDesc}
-        >
-          {desc ? descLabel : ascLabel}
-        </button>
-      ) : null}
-      {children}
-    </div>
-  )
-}
-
 /* ---------------------------------------------------------------------- cards */
 
 export function BookCard({

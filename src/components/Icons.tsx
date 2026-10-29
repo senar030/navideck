@@ -314,6 +314,15 @@ export function IconTrash({ size = 22 }: IconProps) {
     </svg>
   )
 }
+
+export function IconSort({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 6h10M4 12h7M4 18h4" />
+      <path d="M18 20V4M15 7l3-3 3 3" />
+    </svg>
+  )
+}
 export function IconServer({ size = 22 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

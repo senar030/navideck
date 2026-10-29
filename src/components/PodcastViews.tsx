@@ -12,10 +12,11 @@ import { useAllEpisodes, usePodcastItems } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
-import { EpisodeCard, EpisodeRow, MissingAbs, PodcastCard, SortChips } from './AbsParts'
+import { EpisodeCard, EpisodeRow, MissingAbs, PodcastCard } from './AbsParts'
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconPlus, IconSearch } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { SortMenu } from './SortMenu'
 import { sortFeed } from '../lib/podcastFeed'
 import { splitLabels } from '../lib/format'
 import { DashboardBoard } from './DashboardBoard'
@@ -76,17 +77,18 @@ export function PodcastsView() {
           <h2>Sendungen</h2>
           <p className="muted">{list.length ? `${list.length} Podcasts` : podcastSource.name}</p>
         </div>
-        <SortChips
-          options={PODCAST_SORTS}
-          value={sort}
-          desc={desc}
-          onChange={setSort}
-          onDesc={() => setDesc((d) => !d)}
-          ascLabel="↑ Aufsteigend"
-          descLabel="↓ Absteigend"
-        >
+        <div className="view-head-tools">
+          <SortMenu
+            options={PODCAST_SORTS}
+            value={sort}
+            desc={desc}
+            onChange={setSort}
+            onDesc={() => setDesc((d) => !d)}
+            ascLabel="↑ Aufsteigend"
+            descLabel="↓ Absteigend"
+          />
           <LayoutToggle section="podcasts" />
-        </SortChips>
+        </div>
       </header>
 
       {podcasts.error ? <p className="error">{podcasts.error}</p> : null}
@@ -134,16 +136,10 @@ export function EpisodesView() {
           <h2>Episoden</h2>
           <p className="muted">{list.length ? `${list.length} Folgen` : podcastSource.name}</p>
         </div>
-        <SortChips
-          options={EPISODE_SORTS}
-          value={sort}
-          desc={false}
-          onChange={setSort}
-          ascLabel="Aufsteigend"
-          descLabel="Absteigend"
-        >
+        <div className="view-head-tools">
+          <SortMenu options={EPISODE_SORTS} value={sort} onChange={setSort} />
           <LayoutToggle section="episodes" />
-        </SortChips>
+        </div>
       </header>
 
       {episodes.error ? <p className="error">{episodes.error}</p> : null}

@@ -7,6 +7,7 @@ import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { SortMenu } from './SortMenu'
 import { usePrefs } from '../state/PrefsContext'
 
 const FILTERS: { id: AlbumListType; label: string }[] = [
@@ -95,18 +96,7 @@ export function AlbumGrid() {
       <header className="view-head">
         <h2>Alben</h2>
         <div className="view-head-tools">
-          <div className="chip-row">
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`chip ${type === f.id ? 'is-on' : ''}`}
-                onClick={() => setType(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <SortMenu options={FILTERS} value={type} onChange={setType} />
           <LayoutToggle section="albums" />
         </div>
       </header>

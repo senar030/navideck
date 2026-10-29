@@ -870,12 +870,57 @@ html[data-nav='bar'] .nav-brand {
 
 .view-head-tools {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.55rem;
   flex: 1;
   min-width: 0;
+}
+
+/*
+ * Sort options live in a popover instead of a wrapping chip row, so the heading
+ * and the two controls stay on one line on a phone.
+ */
+.sort-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.sort-toggle {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.sort-pop {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 40;
+  width: min(21rem, calc(100vw - 2rem));
+  padding: 0.8rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: view-in 0.16s var(--ease);
+}
+
+.sort-pop-title {
+  margin: 0 0 0.45rem;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sort-pop-sub {
+  margin-top: 0.8rem;
+}
+
+.sort-pop .chip-row {
+  gap: 0.35rem;
 }
 
 /*

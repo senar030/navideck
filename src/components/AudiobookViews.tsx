@@ -11,8 +11,8 @@ import {
   CollectionCard,
   MissingAbs,
   SeriesCard,
-  SortChips,
 } from './AbsParts'
+import { SortMenu } from './SortMenu'
 import { LayoutToggle } from './LayoutToggle'
 import { DashboardBoard } from './DashboardBoard'
 
@@ -67,17 +67,18 @@ export function BooksView() {
           <h2>Bücher</h2>
           <p className="muted">{list.length ? `${list.length} Hörbücher` : abs.books.name}</p>
         </div>
-        <SortChips
-          options={BOOK_SORTS}
-          value={sort}
-          desc={desc}
-          onChange={setSort}
-          onDesc={() => setDesc((d) => !d)}
-          ascLabel="↑ Aufsteigend"
-          descLabel="↓ Absteigend"
-        >
+        <div className="view-head-tools">
+          <SortMenu
+            options={BOOK_SORTS}
+            value={sort}
+            desc={desc}
+            onChange={setSort}
+            onDesc={() => setDesc((d) => !d)}
+            ascLabel="↑ Aufsteigend"
+            descLabel="↓ Absteigend"
+          />
           <LayoutToggle section="books" />
-        </SortChips>
+        </div>
       </header>
 
       {books.error ? <p className="error">{books.error}</p> : null}
