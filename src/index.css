@@ -64,6 +64,24 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/*
+ * "Scharf" corner mode. The tokens cover the shared shapes; the universal rule
+ * catches the few places that still carry a hand-written radius (circles,
+ * sheets, player pill), so no rounded corner survives anywhere.
+ */
+html[data-corners='sharp'] {
+  --radius: 0px;
+  --r-sm: 0px;
+  --r-lg: 0px;
+  --pill: 0px;
+}
+
+html[data-corners='sharp'] *,
+html[data-corners='sharp'] *::before,
+html[data-corners='sharp'] *::after {
+  border-radius: 0 !important;
+}
+
 html[data-theme='light'] {
   color-scheme: light;
   --bg: #f3eefb;

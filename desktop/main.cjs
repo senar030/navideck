@@ -3,9 +3,9 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 /*
- * Navideck as a Windows application. It carries the built web app and serves it
- * from a private scheme, so nothing here needs the NAS: the servers are still
- * reached over the network, but the app itself is local.
+ * Navideck as a desktop application for Windows and Linux. It carries the built
+ * web app and serves it from a private scheme, so nothing here needs the NAS:
+ * the servers are still reached over the network, but the app itself is local.
  */
 const DIST = path.join(__dirname, 'dist')
 const WINDOW_FILE = () => path.join(app.getPath('userData'), 'window.json')

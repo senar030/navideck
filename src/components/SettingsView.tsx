@@ -139,7 +139,7 @@ export function SettingsView() {
 
 function AppearanceSection() {
   const { theme, setTheme, palette, setPalette } = useTheme()
-  const { uiMode, setUiMode } = usePrefs()
+  const { uiMode, setUiMode, corners, setCorners } = usePrefs()
 
   return (
     <>
@@ -191,6 +191,21 @@ function AppearanceSection() {
             onClick={() => setUiMode('desktop')}
           >
             <IconDesktop size={16} /> Desktop
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-group">
+        <h4>Ecken</h4>
+        <p className="settings-hint">
+          Rund behält die weichen Kanten. Scharf stellt Flächen, Chips, Cover und runde Knöpfe komplett eckig dar.
+        </p>
+        <div className="chip-row">
+          <button type="button" className={`chip ${corners === 'round' ? 'is-on' : ''}`} onClick={() => setCorners('round')}>
+            Rund
+          </button>
+          <button type="button" className={`chip ${corners === 'sharp' ? 'is-on' : ''}`} onClick={() => setCorners('sharp')}>
+            Scharf
           </button>
         </div>
       </div>

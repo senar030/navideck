@@ -1,0 +1,83 @@
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            script: dist
+          - platform: linux
+            os: ubuntu-latest
+            script: dist:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install desktop dependencies
+        run: npm ci --prefix desktop
+
+      - name: Package desktop app
+        run: npm run ${{ matrix.script }} --prefix desktop
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: navideck-${{ matrix.platform }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Read release version
+        run: echo "VERSION=${GITHUB_REF_NAME#desktop-v}" >> "$GITHUB_ENV"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Navideck für Windows und Linux ${{ env.VERSION }}
+          body_path: desktop/RELEASE_NOTES.md
+          files: |
+            release-assets/*.exe
+            release-assets/*.AppImage
+          fail_on_unmatched_files: true

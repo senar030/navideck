@@ -1,0 +1,20 @@
+---
+description: Publish a desktop release after every user-facing change
+alwaysApply: true
+---
+
+# Desktop release after changes
+
+After a completed user-facing change:
+
+1. Bump `desktop/package.json` (minor for features, patch for fixes).
+2. Update `desktop/RELEASE_NOTES.md` in German.
+3. Commit and push `main`.
+4. Push the tag `desktop-v<version>`.
+5. Wait for the `Desktop release` workflow to publish the Windows installer
+   and Linux AppImage.
+6. Run `node scripts/fetch-desktop-release.mjs <version>` to put both files into
+   the local `release/` folder.
+
+Never commit `release/`. The push to `main` also triggers the Docker image for
+Portainer.

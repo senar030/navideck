@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "icons": "node scripts/generate-icons.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "desktop:install": "npm install --prefix desktop",
+    "desktop:win": "npm run build && npm run dist --prefix desktop",
+    "desktop:linux": "npm run build && npm run dist:linux --prefix desktop",
+    "release:fetch": "node scripts/fetch-desktop-release.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

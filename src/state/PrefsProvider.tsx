@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { MIX_SIZES, PrefsContext, type LayoutKey, type LayoutMode, type MixSize, type UiMode } from './PrefsContext'
+import {
+  MIX_SIZES,
+  PrefsContext,
+  type CornerMode,
+  type LayoutKey,
+  type LayoutMode,
+  type MixSize,
+  type UiMode,
+} from './PrefsContext'
 
 const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
   albums: 'grid',
@@ -19,6 +27,7 @@ const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
 const KEY = 'navideck.mixSize'
 const LAYOUT_KEY = 'navideck.layout'
 const UI_KEY = 'navideck.uiMode'
+const CORNERS_KEY = 'navideck.corners'
 
 function readMixSize(): MixSize {
   const n = Number(localStorage.getItem(KEY))
@@ -50,6 +59,10 @@ function readUiMode(): UiMode {
   return next
 }
 
+function readCorners(): CornerMode {
+  return localStorage.getItem(CORNERS_KEY) === 'sharp' ? 'sharp' : 'round'
+}
+
 function readLayout(): Record<LayoutKey, LayoutMode> {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY)
@@ -73,6 +86,11 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.ui = next
     return next
   })
+  const [corners, setCornersState] = useState<CornerMode>(() => {
+    const next = readCorners()
+    document.documentElement.dataset.corners = next
+    return next
+  })
 
   useEffect(() => {
     localStorage.setItem(KEY, String(mixSize))
@@ -86,6 +104,11 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.ui = uiMode
     localStorage.setItem(UI_KEY, uiMode)
   }, [uiMode])
+
+  useEffect(() => {
+    document.documentElement.dataset.corners = corners
+    localStorage.setItem(CORNERS_KEY, corners)
+  }, [corners])
 
   const setMixSize = useCallback((n: MixSize) => {
     setMixSizeState(n)
@@ -103,9 +126,13 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setUiModeState((mode) => (mode === 'deck' ? 'desktop' : 'deck'))
   }, [])
 
+  const setCorners = useCallback((mode: CornerMode) => {
+    setCornersState(mode)
+  }, [])
+
   const value = useMemo(
-    () => ({ mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode }),
-    [mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode],
+    () => ({ mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode, corners, setCorners }),
+    [mixSize, setMixSize, layout, setLayout, uiMode, toggleUiMode, setUiMode, corners, setCorners],
   )
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>
 }

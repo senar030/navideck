@@ -1,16 +1,20 @@
 {
   "name": "navideck-desktop",
   "productName": "Navideck",
-  "version": "1.5.0",
-  "description": "Navideck als Windows-App",
-  "author": "senar030",
+  "version": "1.6.0",
+  "description": "Navideck als Desktop-App für Windows und Linux",
+  "author": {
+    "name": "senar030",
+    "email": "228953803+senar030@users.noreply.github.com"
+  },
   "license": "MIT",
   "private": true,
   "main": "main.cjs",
   "scripts": {
     "prepare:dist": "node scripts/prepare.mjs",
     "start": "electron .",
-    "dist": "node scripts/prepare.mjs && electron-builder --win nsis --x64"
+    "dist": "node scripts/prepare.mjs && electron-builder --win nsis --x64",
+    "dist:linux": "node scripts/prepare.mjs && electron-builder --linux AppImage --x64"
   },
   "devDependencies": {
     "electron": "^45.0.0",
@@ -40,6 +44,27 @@
         }
       ],
       "artifactName": "Navideck-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Navideck-${version}-${arch}.${ext}",
+      "category": "AudioVideo",
+      "executableName": "navideck",
+      "synopsis": "Navidrome-Client für Desktop und Handheld",
+      "description": "Navidrome-Client für Windows und Linux, optimiert für Maus, Touch und Steam Deck.",
+      "desktop": {
+        "entry": {
+          "Name": "Navideck",
+          "Comment": "Navidrome-Client für Desktop und Handheld"
+        }
+      }
     },
     "nsis": {
       "oneClick": false,

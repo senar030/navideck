@@ -17,6 +17,7 @@ export type LayoutKey =
   | 'podcasts'
   | 'episodes'
 export type UiMode = 'deck' | 'desktop'
+export type CornerMode = 'round' | 'sharp'
 
 type PrefsContextValue = {
   mixSize: MixSize
@@ -26,6 +27,8 @@ type PrefsContextValue = {
   uiMode: UiMode
   toggleUiMode: () => void
   setUiMode: (mode: UiMode) => void
+  corners: CornerMode
+  setCorners: (mode: CornerMode) => void
 }
 
 /*

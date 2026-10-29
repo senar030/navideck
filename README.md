@@ -41,23 +41,38 @@ can also switch sources there: Audiobookshelf or a Subsonic server (Navidrome ha
 no podcasts). Subsonic podcast progress is kept on the device, because the
 Subsonic API has no endpoint for it.
 
-## Windows app
+## Desktop app (Windows and Linux)
 
-`desktop/` packages the same web build as a native Windows application, so the UI
-starts from the PC instead of the NAS. It still reaches the servers over the
-network (Tailscale works the same way).
+`desktop/` packages the same web build as a native application, so the UI starts
+from the PC instead of the NAS. It still reaches the servers over the network
+(Tailscale works the same way).
 
 ```bash
-npm run build                 # the web build is the source of truth
-cd desktop
-npm install
-npm run dist                  # -> desktop/release/Navideck-Setup-<version>.exe
+npm run desktop:install       # once
+npm run desktop:win           # -> desktop/release/Navideck-Setup-<version>.exe
+npm run desktop:linux         # -> desktop/release/Navideck-<version>-x86_64.AppImage
 ```
 
-The installer is per-user, needs no admin rights and creates a desktop shortcut.
-The app keeps servers and the current session in `%APPDATA%\Navideck`; installing a
-newer version replaces the program files and leaves that folder alone. Builds are
-unsigned, so Windows SmartScreen may ask once.
+The Windows installer is per-user, needs no admin rights and creates a desktop
+shortcut. The app keeps servers and the current session in `%APPDATA%\Navideck`;
+installing a newer version replaces the program files and leaves that folder
+alone. Builds are unsigned, so Windows SmartScreen may ask once.
+
+On **Bazzite** the AppImage is the whole installation: download it, make it
+executable (`chmod +x Navideck-*.AppImage`) and start it with a double click. It
+carries Electron and needs nothing installed system-wide.
+
+### Releases
+
+Bump the version in `desktop/package.json`, update `desktop/RELEASE_NOTES.md`,
+push `main`, then push a `desktop-v<version>` tag. The **Desktop release**
+workflow builds the Windows installer and the Linux AppImage and attaches both
+to the GitHub release. To copy the published files into the local `release/`
+folder:
+
+```bash
+npm run release:fetch -- 1.6.0
+```
 
 ## Install as an app (PWA)
 
