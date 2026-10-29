@@ -77,6 +77,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
     const fromHash = parseHash()
     return [fromHash]
   })
+  const [backTick, setBackTick] = useState(0)
   const view = stack[stack.length - 1] ?? HOME
 
   useEffect(() => {
@@ -85,11 +86,13 @@ export function NavProvider({ children }: { children: ReactNode }) {
       const hist = event.state as HistState | null
       if (hist?.stack?.length) {
         setStack(hist.stack)
+        setBackTick((tick) => tick + 1)
         return
       }
       const fallback: View[] = [parseHash()]
       history.pushState({ stack: fallback } satisfies HistState, '', toHash(fallback[0]))
       setStack(fallback)
+      setBackTick((tick) => tick + 1)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -111,8 +114,12 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const back = useCallback(() => {
-    if (window.history.length > 1) history.back()
-    else setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
+    if (window.history.length > 1) {
+      history.back()
+      return
+    }
+    setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
+    setBackTick((tick) => tick + 1)
   }, [])
 
   const value = useMemo(
@@ -122,8 +129,9 @@ export function NavProvider({ children }: { children: ReactNode }) {
       go,
       back,
       canBack: stack.length > 1,
+      backTick,
     }),
-    [view, go, back, stack],
+    [view, go, back, stack, backTick],
   )
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>

@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { pickRandom } from '../lib/absHelpers'
+import { useSessionSeed } from '../lib/sessionRandom'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import {
   useAuthorList,
@@ -163,14 +164,14 @@ function ContinueAllSection(props: SectionProps) {
 function RandomBooksSection(props: SectionProps) {
   const books = useBookItems()
   const { go } = useNav()
-  const [seed, setSeed] = useState(0)
+  const [seed, reshuffle] = useSessionSeed('randomBooks')
   const items = useMemo(() => pickRandom(books.data ?? [], 14, seed), [books.data, seed])
 
   return (
     <DashBlock
       label="Zufällige Bücher"
       {...props}
-      action={<ReshuffleButton loading={books.loading} onClick={() => setSeed((n) => n + 1)} />}
+      action={<ReshuffleButton loading={books.loading} onClick={reshuffle} />}
     >
       {books.error ? (
         <p className="error">{books.error}</p>
@@ -194,14 +195,14 @@ function RandomBooksSection(props: SectionProps) {
 function RandomAuthorsSection(props: SectionProps) {
   const authors = useAuthorList()
   const { go } = useNav()
-  const [seed, setSeed] = useState(0)
+  const [seed, reshuffle] = useSessionSeed('randomAuthors')
   const items = useMemo(() => pickRandom(authors.data ?? [], 12, seed), [authors.data, seed])
 
   return (
     <DashBlock
       label="Zufällige Autoren"
       {...props}
-      action={<ReshuffleButton loading={authors.loading} onClick={() => setSeed((n) => n + 1)} />}
+      action={<ReshuffleButton loading={authors.loading} onClick={reshuffle} />}
     >
       {authors.error ? (
         <p className="error">{authors.error}</p>

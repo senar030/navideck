@@ -1338,7 +1338,6 @@ em {
   align-items: center;
   gap: 0.15rem;
   min-height: 2.4rem;
-  margin-bottom: 0.4rem;
   padding-right: 0.5rem;
   border-radius: var(--pill);
   color: var(--accent);

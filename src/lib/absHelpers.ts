@@ -162,16 +162,17 @@ export function sortEpisodeRefs<T extends { episode: AbsEpisode }>(
   return copy
 }
 
-/** A stable random handful, so a strip does not reshuffle on every render. */
 /**
  * A shuffled selection. `salt` lets a caller ask for a different draw from the
- * same list — the strip rotates once each time the number changes.
+ * same list — the strip rotates once each time the number changes. The draw is
+ * deterministic for a given salt, so a remounted strip keeps the same items.
  */
 export function pickRandom<T>(list: T[], count: number, salt = 0): T[] {
   if (list.length <= count) return [...list]
   const copy = [...list]
+  const random = seededRandom(salt)
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     const tmp = copy[i]
     copy[i] = copy[j]
     copy[j] = tmp
@@ -179,6 +180,18 @@ export function pickRandom<T>(list: T[], count: number, salt = 0): T[] {
   const offset = salt % copy.length
   const rotated = offset ? [...copy.slice(offset), ...copy.slice(0, offset)] : copy
   return rotated.slice(0, count)
+}
+
+/** Small deterministic PRNG (mulberry32); the same salt always draws the same. */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 /** Where a book's stored position falls inside its list of tracks. */

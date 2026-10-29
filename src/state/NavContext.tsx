@@ -71,6 +71,8 @@ export type NavContextValue = {
   go: (view: View) => void
   back: () => void
   canBack: boolean
+  /** Rises whenever the browser (or the back button) walks history backwards. */
+  backTick: number
 }
 
 /*

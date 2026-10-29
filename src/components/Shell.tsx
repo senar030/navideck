@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useAccount } from '../state/AccountContext'
 import { spaceOf, useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
+import { restoreScroll, saveScroll } from '../lib/scrollMemory'
 import { AlbumDetail } from './AlbumDetail'
 import { AlbumGrid } from './AlbumGrid'
 import { AppChrome } from './AppChrome'
@@ -47,11 +48,30 @@ import { SpaceSwitcher } from './SpaceSwitcher'
 import { ViewBoundary } from './ViewBoundary'
 
 export function Shell() {
-  const { view, parent, go } = useNav()
+  const { view, parent, go, backTick } = useNav()
   const { abs, music, podcasts } = useAccount()
   const { queue } = usePlayer()
   const [scrolled, setScrolled] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const lastBackTick = useRef(backTick)
   const space = spaceOf(view)
+  const scrollKey = 'id' in view ? `${view.name}:${view.id}` : view.name
+
+  /*
+   * A list you come back to should be where you left it. A newly opened page,
+   * however, starts at the top. `backTick` changes only for history navigation,
+   * so the two cases are easy to tell apart.
+   */
+  useLayoutEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    if (backTick !== lastBackTick.current) {
+      lastBackTick.current = backTick
+      return restoreScroll(body, scrollKey)
+    }
+    lastBackTick.current = backTick
+    body.scrollTop = 0
+  }, [scrollKey, backTick])
 
   /*
    * Settings is a page of its own, but the navigation belongs to the area you
@@ -157,11 +177,13 @@ export function Shell() {
         <AppChrome scrolled={scrolled} />
         <div
           className="main-body"
+          ref={bodyRef}
           onScroll={(e) => {
             // A dead zone between the two thresholds: without it a finger
             // resting near the top would flip the bar back and forth, and every
             // flip re-renders the whole view.
             const top = e.currentTarget.scrollTop
+            saveScroll(scrollKey, top)
             setScrolled((prev) => (top > 24 ? true : top < 8 ? false : prev))
           }}
         >
