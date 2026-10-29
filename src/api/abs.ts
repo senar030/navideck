@@ -257,6 +257,29 @@ function trackOf(itemId: string, file: AbsAudioFile, index: number, startOffset:
 }
 
 /**
+ * The server's tracks are normally sorted and carry a running start offset.
+ * A few libraries answer without usable offsets (all zero), which made every
+ * saved position resolve to the last file. Fall back to offsets built from the
+ * file durations in that case.
+ */
+function normalizeTracks(input: AbsTrack[]): AbsTrack[] {
+  const tracks = [...input].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+  const offsets = tracks.map((track) => Number(track.startOffset))
+  const usable = offsets.every(
+    (offset, i) => Number.isFinite(offset) && offset >= 0 && (i === 0 ? offset < 1 : offset > offsets[i - 1]),
+  )
+  if (usable) return tracks
+
+  let start = 0
+  return tracks.map((track) => {
+    const duration = Math.max(0, Number(track.duration) || 0)
+    const normalized = { ...track, startOffset: start, duration }
+    start += duration
+    return normalized
+  })
+}
+
+/**
  * Fills in what the player needs and the server may not send: `tracks` for a
  * book, `audioTrack` for an episode, and a duration for a book. The item detail
  * only lists audio files unless it is asked to expand them, and a book without
@@ -269,7 +292,7 @@ export function expandItem(item: AbsLibraryItem): AbsLibraryItem {
     const files = (book.audioFiles ?? []).filter((file) => file.ino && !file.exclude)
     let startOffset = 0
     const tracks = book.tracks?.length
-      ? book.tracks
+      ? normalizeTracks(book.tracks)
       : files.map((file, index) => {
           const track = trackOf(item.id, file, index, startOffset)
           startOffset += track.duration

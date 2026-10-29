@@ -12,6 +12,12 @@ const SESSION_KEY = 'navideck.session'
 /** How often a live stream is asked what is on air. */
 const RADIO_POLL_MS = 25_000
 
+/** The last start call wins; an older seek must not touch a newer track. */
+let startSequence = 0
+
+/** Which song an element really holds; queue refs can be one render behind. */
+const songByElement = new WeakMap<HTMLAudioElement, Song>()
+
 /** What the last poll of a station's status page said. */
 type RadioPoll = { url: string; now: RadioNow | null; misses: number }
 
@@ -68,6 +74,7 @@ function release(element: HTMLAudioElement) {
     element.removeAttribute('src')
     element.load()
     delete element.dataset.songId
+    songByElement.delete(element)
   } catch {
     /* nothing to do */
   }
@@ -271,27 +278,76 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    */
   const start = useCallback((element: HTMLAudioElement, song: Song) => {
     element.dataset.songId = song.id
-    /*
-     * A book resumes somewhere inside its file; the offset is applied as soon
-     * as the element knows how long the file is. Only the entry that carries it
-     * jumps — the following files of the same book start at zero.
-     */
-    if (song.startAt) {
-      const at = song.startAt
-      const jump = () => {
-        try {
-          element.currentTime = at
-        } catch {
-          /* not seekable yet */
-        }
-      }
-      if (element.readyState >= 1) jump()
-      else element.addEventListener('loadedmetadata', jump, { once: true })
+    songByElement.set(element, song)
+    const token = ++startSequence
+
+    const begin = () => {
+      if (token !== startSequence) return
+      void element.play().then(
+        () => {
+          if (token === startSequence) setPlaying(true)
+        },
+        () => {
+          if (token === startSequence) setPlaying(false)
+        },
+      )
     }
-    void element.play().then(
-      () => setPlaying(true),
-      () => setPlaying(false),
-    )
+
+    const at = song.startAt ?? 0
+    if (!(at > 0)) {
+      begin()
+      return
+    }
+
+    /*
+     * A book resumes inside its file. Seek before the first sound: playing from
+     * zero and jumping a moment later meant a second at the wrong place, and
+     * the seek's new range request arrived while the element was already busy.
+     * On a slow link that left the book stuck at the seek. Only the entry that
+     * carries an offset seeks — the next files of the same book start at zero.
+     */
+    let done = false
+    let timer = 0
+    const cleanup = () => {
+      element.removeEventListener('loadedmetadata', seek)
+      element.removeEventListener('seeked', ready)
+      element.removeEventListener('canplay', ready)
+      window.clearTimeout(timer)
+    }
+    const finish = () => {
+      if (done) return
+      done = true
+      cleanup()
+      begin()
+    }
+    const ready = () => finish()
+    const seek = () => {
+      if (done) return
+      if (token !== startSequence) {
+        cleanup()
+        return
+      }
+      if (Math.abs(element.currentTime - at) <= 0.5) {
+        finish()
+        return
+      }
+      /*
+       * Wait for the seek to land before pressing play; `canplay` covers the
+       * browsers that do not emit `seeked` for a position already buffered.
+       */
+      element.addEventListener('seeked', ready, { once: true })
+      element.addEventListener('canplay', ready, { once: true })
+      try {
+        element.currentTime = at
+      } catch {
+        finish()
+        return
+      }
+      timer = window.setTimeout(finish, 5000)
+    }
+
+    if (element.readyState >= 1) seek()
+    else element.addEventListener('loadedmetadata', seek, { once: true })
   }, [])
 
   const loadAndPlay = useCallback(
@@ -306,10 +362,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const url = song.radio?.url ?? song.abs?.url ?? client!.streamUrl(song.id)
       scrobbled.current = Boolean(song.radio || song.abs)
 
-      const holds = (element: HTMLAudioElement) =>
-        element.dataset.songId === song.id &&
-        element.getAttribute('src') === url &&
-        element.readyState >= 1
+      const sameSource = (element: HTMLAudioElement) =>
+        element.dataset.songId === song.id && element.getAttribute('src') === url
+      const holds = (element: HTMLAudioElement) => sameSource(element) && element.readyState >= 1
 
       if (holds(active)) {
         // The same track again (repeat one, or tapping what already plays):
@@ -344,6 +399,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         )
         // Only after the sound is on its way: emptying the other element is
         // heavy enough to be heard as a gap when it runs first.
+        release(previous)
+      } else if (sameSource(active)) {
+        /*
+         * The same file is already on its way — the session started loading it,
+         * or an earlier click did. Calling load() again aborts that request and
+         * makes the server read the large file from the beginning a second time,
+         * which is exactly the long stall before a book starts. Wait for the
+         * request already in flight instead.
+         */
+        setCurrentTime(song.startAt ?? active.currentTime)
+        start(active, song)
+      } else if (sameSource(idle())) {
+        // The other element is still loading this file; take it over as it is.
+        const previous = active
+        active = idle()
+        active.volume = previous.volume
+        active.muted = previous.muted
+        start(active, song)
         release(previous)
       } else {
         /*
@@ -581,6 +654,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!song || (!client && !song.radio && !song.abs)) return
     const element = active
     element.dataset.songId = song.id
+    songByElement.set(element, song)
     element.src = song.radio?.url ?? song.abs?.url ?? client!.streamUrl(song.id)
     if (song.radio) {
       /*
@@ -664,7 +738,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const now = performance.now()
       if (now - lastTick.current < 200) return
       lastTick.current = now
-      const song = queueRef.current[indexRef.current]
+      const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
       // A live stream has no progress to show and nothing to scrobble.
       if (song?.radio) return
       setCurrentTime(active.currentTime)
@@ -691,7 +765,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     const onEnded = (event: Event) => {
       if (!mine(event)) return
-      const song = queueRef.current[indexRef.current]
+      const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
       if (song?.abs) {
         const entry = song.abs
         // The last file of a book, or the only file of an episode, is the end.
@@ -707,7 +781,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const onPause = (event: Event) => {
       if (!mine(event)) return
       setPlaying(false)
-      const song = queueRef.current[indexRef.current]
+      const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
       if (song?.abs) reportAbs(song, song.abs.startOffset + active.currentTime)
     }
     for (const element of elements) {

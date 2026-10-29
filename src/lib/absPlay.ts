@@ -19,8 +19,25 @@ export function bookQueue(client: AbsClient, item: AbsLibraryItem, resumeAt: num
 
   const offsets = tracks.map((track) => track.startOffset ?? 0)
   const cover = client.coverUrl(item.id)
-  const startIndex = trackAt(offsets, resumeAt)
-  const startAt = Math.max(0, resumeAt - offsets[startIndex])
+  const total = book.duration || tracks.reduce((sum, track) => sum + Math.max(0, track.duration ?? 0), 0)
+  /* A position at or past the end is not a resume point; start over. */
+  if (total > 0 && resumeAt >= total) resumeAt = 0
+  resumeAt = Math.max(0, resumeAt)
+  let startIndex = trackAt(offsets, resumeAt)
+  /*
+   * Rounding between the saved position and a file boundary must not leave the
+   * player on the previous file's last second. Walk forward once the position
+   * lies at (or past) the end of the chosen track, but only when its duration
+   * is known.
+   */
+  while (startIndex < tracks.length - 1) {
+    const duration = Math.max(0, tracks[startIndex].duration ?? 0)
+    if (!(duration > 0) || resumeAt < offsets[startIndex] + duration) break
+    startIndex += 1
+  }
+  let startAt = Math.max(0, resumeAt - offsets[startIndex])
+  const trackDuration = Math.max(0, tracks[startIndex].duration ?? 0)
+  if (trackDuration > 0) startAt = Math.min(startAt, trackDuration)
   const songs: Song[] = tracks.map((track, i) => ({
     id: `${item.id}#${track.index ?? i}`,
     title: book.metadata.title,
