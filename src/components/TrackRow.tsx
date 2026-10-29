@@ -49,7 +49,7 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
     <div className={`track-row ${showCover ? 'has-cover' : ''} ${active ? 'is-active' : ''}`}>
       <button type="button" className="track-main" onClick={() => playTracks(tracks, index)}>
         {showCover ? (
-          <CoverArt coverArt={song.coverArt} alt="" size={80} className="track-cover" />
+          <CoverArt coverArt={song.coverArt} alt="" size={80} className={`track-cover ${song.abs ? 'abs-art' : ''}`} />
         ) : (
           <span className="track-num">
             {active && playing ? <IconPlay size={18} /> : (song.track ?? index + 1)}

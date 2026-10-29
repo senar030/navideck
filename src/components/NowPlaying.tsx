@@ -153,7 +153,7 @@ export function NowPlaying() {
               disabled={live}
               onClick={() => setShowLyrics(true)}
             >
-              <CoverArt coverArt={current.coverArt} src={current.abs?.cover ?? current.radio?.logo} alt="" size={900} className="np-cover" />
+              <CoverArt coverArt={current.coverArt} src={current.abs?.cover ?? current.radio?.logo} alt="" size={900} className={`np-cover ${current.abs ? 'abs-art' : ''}`} />
             </button>
             <div className="np-flip-face np-flip-back">
               <div

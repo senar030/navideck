@@ -20,7 +20,7 @@ import { IconPlay, IconPodcast, IconRefresh } from './Icons'
 /* --------------------------------------------------------------- building blocks */
 
 export function AbsCover({ src, alt = '', size = 400, className = '' }: { src?: string; alt?: string; size?: number; className?: string }) {
-  return <CoverArt src={src} alt={alt} size={size} className={className} />
+  return <CoverArt src={src} alt={alt} size={size} className={`abs-art ${className}`.trim()} />
 }
 
 export function ProgressBar({ value, className = '' }: { value: number; className?: string }) {

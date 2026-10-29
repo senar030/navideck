@@ -473,7 +473,7 @@ export function PodcastAdd() {
       <div className="abs-search-results">
         {(results ?? []).map((result) => (
           <article key={result.id} className="abs-search-row">
-            <CoverArt src={result.cover} alt="" size={200} className="abs-search-art" />
+            <CoverArt src={result.cover} alt="" size={200} className="abs-search-art abs-art" />
             <div className="abs-search-text">
               <strong>{result.title}</strong>
               <span className="muted">
