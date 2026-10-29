@@ -4,7 +4,6 @@ import { forget } from '../lib/absCache'
 import {
   sortEpisodeRefs,
   sortPodcasts,
-  type EpisodeSort,
   type PodcastSort,
 } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
@@ -28,11 +27,10 @@ const PODCAST_SORTS: { id: PodcastSort; label: string }[] = [
   { id: 'episodes', label: 'Folgen' },
 ]
 
-const EPISODE_SORTS: { id: EpisodeSort; label: string }[] = [
-  { id: 'newest', label: 'Neueste' },
-  { id: 'oldest', label: 'Älteste' },
-  { id: 'duration', label: 'Länge' },
+const EPISODE_SORTS: { id: 'date' | 'title' | 'duration'; label: string; defaultDesc?: boolean }[] = [
+  { id: 'date', label: 'Datum', defaultDesc: true },
   { id: 'title', label: 'Titel' },
+  { id: 'duration', label: 'Dauer', defaultDesc: true },
 ]
 
 export function PodcastHome() {
@@ -82,10 +80,10 @@ export function PodcastsView() {
             options={PODCAST_SORTS}
             value={sort}
             desc={desc}
-            onChange={setSort}
-            onDesc={() => setDesc((d) => !d)}
-            ascLabel="↑ Aufsteigend"
-            descLabel="↓ Absteigend"
+            onChange={(next, nextDesc) => {
+              setSort(next)
+              setDesc(nextDesc)
+            }}
           />
           <LayoutToggle section="podcasts" />
         </div>
@@ -114,16 +112,16 @@ export function EpisodesView() {
   const { layout } = usePrefs()
   const { playEpisode } = useAbsPlayer()
   const episodes = useAllEpisodes()
-  const [sort, setSort] = useState<EpisodeSort>('newest')
+  const [sort, setSort] = useState<'date' | 'title' | 'duration'>('date')
+  const [desc, setDesc] = useState(true)
   const [limit, setLimit] = useState(PAGE)
 
-  /* Each option already says which way it points. */
   const list = useMemo(() => {
-    if (sort === 'duration') return sortEpisodeRefs(episodes.data ?? [], 'duration', true)
-    if (sort === 'oldest') return sortEpisodeRefs(episodes.data ?? [], 'oldest', false)
-    if (sort === 'title') return sortEpisodeRefs(episodes.data ?? [], 'title', false)
-    return sortEpisodeRefs(episodes.data ?? [], 'newest', false)
-  }, [episodes.data, sort])
+    const refs = episodes.data ?? []
+    if (sort === 'title') return sortEpisodeRefs(refs, 'title', desc)
+    if (sort === 'duration') return sortEpisodeRefs(refs, 'duration', desc)
+    return sortEpisodeRefs(refs, desc ? 'newest' : 'oldest', false)
+  }, [episodes.data, sort, desc])
 
   if (!podcastSource) return <MissingAbs noun="Podcast" />
 
@@ -137,7 +135,15 @@ export function EpisodesView() {
           <p className="muted">{list.length ? `${list.length} Folgen` : podcastSource.name}</p>
         </div>
         <div className="view-head-tools">
-          <SortMenu options={EPISODE_SORTS} value={sort} onChange={setSort} />
+          <SortMenu
+            options={EPISODE_SORTS}
+            value={sort}
+            desc={desc}
+            onChange={(next, nextDesc) => {
+              setSort(next)
+              setDesc(nextDesc)
+            }}
+          />
           <LayoutToggle section="episodes" />
         </div>
       </header>

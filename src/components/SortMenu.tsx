@@ -1,30 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
-import { IconSort } from './Icons'
+import { IconArrowDown, IconArrowUp, IconSort } from './Icons'
 
-export type SortOption<T extends string> = { id: T; label: string }
+export type SortOption<T extends string> = {
+  id: T
+  label: string
+  /** Direction the option starts with; a second tap flips it. */
+  defaultDesc?: boolean
+}
 
 /*
- * One sort button for every list page: the heading stays on the left, the
- * options live in a small popover and the layout switch sits beside it. This
- * keeps a phone header on one line instead of wrapping a row of chips.
+ * One sort button for every list: the heading stays on the left and the
+ * options live in a compact popover, one under the other. The active option
+ * carries an arrow; tapping it again reverses the order. The layout switch
+ * sits beside the button, so a phone header stays on one line.
  */
 export function SortMenu<T extends string>({
   options,
   value,
-  onChange,
   desc = false,
-  onDesc,
-  ascLabel = 'Aufsteigend',
-  descLabel = 'Absteigend',
+  onChange,
+  reversible = true,
 }: {
   options: SortOption<T>[]
   value: T
-  onChange: (value: T) => void
   desc?: boolean
-  /** Omit when every option already carries its own direction. */
-  onDesc?: () => void
-  ascLabel?: string
-  descLabel?: string
+  onChange: (value: T, desc: boolean) => void
+  /** Filters that are not a field (e.g. "Newest") have no reversed form. */
+  reversible?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -63,34 +65,37 @@ export function SortMenu<T extends string>({
       {open ? (
         <div className="sort-pop" role="group" aria-label="Sortieren">
           <p className="sort-pop-title">Sortieren</p>
-          <div className="chip-row wrap">
-            {options.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`chip ${value === option.id ? 'is-on' : ''}`}
-                onClick={() => {
-                  onChange(option.id)
-                  setOpen(false)
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="sort-list">
+            {options.map((option) => {
+              const current = option.id === value
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`sort-option ${current ? 'is-on' : ''}`}
+                  aria-pressed={current}
+                  onClick={() => {
+                    if (!reversible) {
+                      onChange(option.id, false)
+                      setOpen(false)
+                      return
+                    }
+                    if (current) onChange(option.id, !desc)
+                    else onChange(option.id, Boolean(option.defaultDesc))
+                  }}
+                >
+                  <span>{option.label}</span>
+                  {current && reversible ? (
+                    <span className="sort-dir">
+                      {desc ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
           </div>
-
-          {onDesc ? (
-            <>
-              <p className="sort-pop-title sort-pop-sub">Richtung</p>
-              <button
-                type="button"
-                className={`chip ${desc ? 'is-on' : ''}`}
-                aria-label="Sortierrichtung umdrehen"
-                onClick={onDesc}
-              >
-                {desc ? descLabel : ascLabel}
-              </button>
-            </>
+          {reversible ? (
+            <p className="sort-hint">Aktive Option erneut wählen, um die Richtung zu drehen.</p>
           ) : null}
         </div>
       ) : null}

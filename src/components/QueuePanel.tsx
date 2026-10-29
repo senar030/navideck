@@ -5,6 +5,7 @@ import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconClose } from './Icons'
 import { MarqueeText } from './MarqueeText'
+import { SortMenu } from './SortMenu'
 
 const OPTIONS: { id: SongSort; label: string }[] = [
   { id: 'original', label: 'Standard' },
@@ -54,8 +55,7 @@ export function QueuePanel() {
 
   if (!queueOpen) return null
 
-  function pick(next: SongSort) {
-    const nextDesc = next === sort ? !desc : false
+  function applySort(next: SongSort, nextDesc: boolean) {
     setSort(next)
     setDesc(nextDesc)
     reorderQueue(sortSongs(snapshot, next, nextDesc))
@@ -67,6 +67,9 @@ export function QueuePanel() {
         <header className="sheet-head">
           <h3>Warteschlange · {queue.length}</h3>
           <div className="sheet-head-actions">
+            {queue.length > 1 ? (
+              <SortMenu options={OPTIONS} value={sort} desc={desc} onChange={applySort} />
+            ) : null}
             {queue.length ? (
               <button type="button" className="chip" onClick={clearQueue}>
                 Leeren
@@ -77,21 +80,6 @@ export function QueuePanel() {
             </button>
           </div>
         </header>
-        {queue.length > 1 ? (
-          <div className="chip-row wrap sort-row sheet-sort" role="toolbar" aria-label="Warteschlange sortieren">
-            {OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={`chip ${sort === opt.id ? 'is-on' : ''}`}
-                onClick={() => pick(opt.id)}
-              >
-                {opt.label}
-                {sort === opt.id ? (desc ? ' ↓' : ' ↑') : ''}
-              </button>
-            ))}
-          </div>
-        ) : null}
         <div className="sheet-body" ref={listRef}>
           {queue.map((song, i) => (
             <div key={`${song.id}-${i}`} className={`queue-row ${i === index ? 'is-active' : ''}`}>

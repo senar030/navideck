@@ -522,7 +522,17 @@ export class AbsClient {
   }
 
   async getAuthor(authorId: string): Promise<{ author?: AbsAuthor; libraryItems?: AbsLibraryItem[] }> {
-    return this.request(`/api/authors/${encodeURIComponent(authorId)}`)
+    /*
+     * Audiobookshelf only includes the author's books when asked to; without
+     * `include=items` the response is just the author and the page kept
+     * waiting for books that never arrived. Newer servers return the author at
+     * the root, older ones wrapped it, so both shapes are read.
+     */
+    const data = await this.request<
+      AbsAuthor & { author?: AbsAuthor; libraryItems?: AbsLibraryItem[] }
+    >(`/api/authors/${encodeURIComponent(authorId)}?include=items`)
+    const author = data.author ?? data
+    return { author, libraryItems: data.libraryItems ?? [] }
   }
 
   async getSeries(libraryId: string): Promise<AbsSeries[]> {

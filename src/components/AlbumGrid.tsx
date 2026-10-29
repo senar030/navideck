@@ -96,7 +96,7 @@ export function AlbumGrid() {
       <header className="view-head">
         <h2>Alben</h2>
         <div className="view-head-tools">
-          <SortMenu options={FILTERS} value={type} onChange={setType} />
+          <SortMenu options={FILTERS} value={type} onChange={(next) => setType(next)} reversible={false} />
           <LayoutToggle section="albums" />
         </div>
       </header>

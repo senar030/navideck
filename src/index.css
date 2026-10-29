@@ -897,7 +897,7 @@ html[data-nav='bar'] .nav-brand {
   top: calc(100% + 0.35rem);
   right: 0;
   z-index: 40;
-  width: min(21rem, calc(100vw - 2rem));
+  width: min(17rem, calc(100vw - 2rem));
   padding: 0.8rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-lg);
@@ -915,12 +915,66 @@ html[data-nav='bar'] .nav-brand {
   color: var(--muted);
 }
 
-.sort-pop-sub {
-  margin-top: 0.8rem;
+.sort-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
 }
 
-.sort-pop .chip-row {
-  gap: 0.35rem;
+.sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-align: left;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.sort-option:hover {
+  background: var(--hover);
+}
+
+.sort-option.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sort-dir {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.sort-hint {
+  margin: 0.5rem 0 0;
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Play-all and the sort button share one compact row. */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.sort-bar .sort-play {
+  margin-bottom: 0;
+}
+
+.sort-bar .sort-menu {
+  margin-left: auto;
 }
 
 /*

@@ -24,6 +24,11 @@ const BOOK_SORTS: { id: BookSort; label: string }[] = [
   { id: 'duration', label: 'Länge' },
 ]
 
+const AUTHOR_SORTS: { id: 'name' | 'books'; label: string; defaultDesc?: boolean }[] = [
+  { id: 'name', label: 'Name' },
+  { id: 'books', label: 'Anzahl Bücher', defaultDesc: true },
+]
+
 export function AudiobookHome() {
   const { abs } = useAccount()
 
@@ -72,10 +77,10 @@ export function BooksView() {
             options={BOOK_SORTS}
             value={sort}
             desc={desc}
-            onChange={setSort}
-            onDesc={() => setDesc((d) => !d)}
-            ascLabel="↑ Aufsteigend"
-            descLabel="↓ Absteigend"
+            onChange={(next, nextDesc) => {
+              setSort(next)
+              setDesc(nextDesc)
+            }}
           />
           <LayoutToggle section="books" />
         </div>
@@ -104,17 +109,21 @@ export function AuthorsView() {
   const { go } = useNav()
   const { layout } = usePrefs()
   const authors = useAuthorList()
-  const [byCount, setByCount] = useState(false)
+  const [sort, setSort] = useState<'name' | 'books'>('name')
+  const [desc, setDesc] = useState(false)
 
   const list = useMemo(() => {
     const copy = [...(authors.data ?? [])]
-    copy.sort((a, b) =>
-      byCount
-        ? (b.numBooks ?? 0) - (a.numBooks ?? 0) || a.name.localeCompare(b.name, 'de', { sensitivity: 'base' })
-        : a.name.localeCompare(b.name, 'de', { sensitivity: 'base', numeric: true }),
-    )
+    copy.sort((a, b) => {
+      if (sort === 'books') {
+        const diff = (a.numBooks ?? 0) - (b.numBooks ?? 0)
+        if (diff !== 0) return desc ? -diff : diff
+      }
+      const cmp = a.name.localeCompare(b.name, 'de', { sensitivity: 'base', numeric: true })
+      return sort === 'name' && desc ? -cmp : cmp
+    })
     return copy
-  }, [authors.data, byCount])
+  }, [authors.data, sort, desc])
 
   if (!abs?.books) return <MissingAbs noun="Hörbuch" />
 
@@ -126,14 +135,15 @@ export function AuthorsView() {
           <p className="muted">{list.length ? `${list.length} Autoren` : abs.books.name}</p>
         </div>
         <div className="view-head-tools">
-          <div className="chip-row">
-            <button type="button" className={`chip ${byCount ? '' : 'is-on'}`} onClick={() => setByCount(false)}>
-              A–Z
-            </button>
-            <button type="button" className={`chip ${byCount ? 'is-on' : ''}`} onClick={() => setByCount(true)}>
-              Meiste Bücher
-            </button>
-          </div>
+          <SortMenu
+            options={AUTHOR_SORTS}
+            value={sort}
+            desc={desc}
+            onChange={(next, nextDesc) => {
+              setSort(next)
+              setDesc(nextDesc)
+            }}
+          />
           <LayoutToggle section="absAuthors" />
         </div>
       </header>
