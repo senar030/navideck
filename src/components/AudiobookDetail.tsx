@@ -20,11 +20,15 @@ import { IconPlay } from './Icons'
 
 /* -------------------------------------------------------------------- books */
 
+/* Huge books can carry hundreds of chapters; render the first page only. */
+const CHAPTER_PAGE = 80
+
 export function BookDetail({ id }: { id: string }) {
   const { abs, progress } = useAccount()
   const { go } = useNav()
   const { playBookAt } = useAbsPlayer()
   const [busy, setBusy] = useState(false)
+  const [allChaptersFor, setAllChaptersFor] = useState<string | null>(null)
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getItem(id) : null, [client, id])
 
@@ -41,8 +45,11 @@ export function BookDetail({ id }: { id: string }) {
 
   const cover = abs.client.coverUrl(id)
   const chapters = book.chapters ?? []
-  const resumeAt = entry?.currentTime ?? 0
+  const showAllChapters = allChaptersFor === id
+  const shownChapters = showAllChapters ? chapters : chapters.slice(0, CHAPTER_PAGE)
+  const resumeAt = entry && !entry.isFinished ? (entry.currentTime ?? 0) : 0
   const left = Math.max(0, (entry?.duration ?? book.duration ?? 0) - resumeAt)
+  const canResume = Boolean(entry && !entry.isFinished && resumeAt > 0)
 
   async function start(at?: number) {
     setBusy(true)
@@ -98,14 +105,14 @@ export function BookDetail({ id }: { id: string }) {
             <div className="hero-actions">
               <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
                 <IconPlay size={22} />
-                {busy ? 'Lädt …' : share > 0.005 ? 'Weiterhören' : 'Abspielen'}
+                {busy ? 'Lädt …' : canResume ? 'Weiterhören' : 'Abspielen'}
               </button>
-              {share > 0.005 ? (
+              {canResume ? (
                 <button type="button" className="text-btn" disabled={busy} onClick={() => void start(0)}>
                   Von vorn
                 </button>
               ) : null}
-              {share > 0.005 && !entry?.isFinished ? (
+              {canResume ? (
                 <span className="muted abs-left">
                   {Math.round(share * 100)} % · noch {formatHours(left)}
                 </span>
@@ -127,7 +134,7 @@ export function BookDetail({ id }: { id: string }) {
         <section className="abs-section">
           <h3>Kapitel</h3>
           <div className="abs-chapters">
-            {chapters.map((chapter, index) => (
+            {shownChapters.map((chapter, index) => (
               <button
                 key={`${chapter.start}-${index}`}
                 type="button"
@@ -140,6 +147,15 @@ export function BookDetail({ id }: { id: string }) {
               </button>
             ))}
           </div>
+          {chapters.length > CHAPTER_PAGE ? (
+            <button
+              type="button"
+              className="text-btn abs-chapters-more"
+              onClick={() => setAllChaptersFor(showAllChapters ? null : id)}
+            >
+              {showAllChapters ? 'Weniger anzeigen' : `Weitere ${chapters.length - CHAPTER_PAGE} Kapitel anzeigen`}
+            </button>
+          ) : null}
         </section>
       ) : null}
 
@@ -161,10 +177,11 @@ export function BookDetail({ id }: { id: string }) {
 /* ------------------------------------------------------------------ authors */
 
 export function AuthorDetail({ id }: { id: string }) {
-  const { abs } = useAccount()
+  const { abs, progress } = useAccount()
   const { go } = useNav()
   const { layout } = usePrefs()
   const { playBook } = useAbsPlayer()
+  const [busy, setBusy] = useState(false)
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getAuthor(id) : null, [client, id])
   const author = result.data?.author
@@ -174,30 +191,77 @@ export function AuthorDetail({ id }: { id: string }) {
   if (result.error) return <p className="error">{result.error}</p>
   if (!author) return <p className="muted">Autor wird geladen …</p>
 
+  const image = author.imagePath ? abs.client.authorImageUrl(author.id) : undefined
+
+  /* The hero starts the book this listener dipped into most recently. */
+  let startBook: AbsLibraryItem | null = books[0] ?? null
+  let latest = 0
+  for (const item of books) {
+    const entry = progressOf(progress, item.id)
+    if (!entry || entry.isFinished) continue
+    const at = entry.currentTime ?? 0
+    if (at <= 0) continue
+    if ((entry.lastUpdate ?? 0) >= latest) {
+      latest = entry.lastUpdate ?? 0
+      startBook = item
+    }
+  }
+  const resumeEntry = startBook ? progressOf(progress, startBook.id) : undefined
+  const resume = Boolean(resumeEntry && !resumeEntry.isFinished && (resumeEntry.currentTime ?? 0) > 0)
+  const hours = books.reduce((sum, item) => sum + (bookOf(item).duration ?? 0), 0)
+
+  async function start() {
+    if (!startBook) return
+    setBusy(true)
+    try {
+      await playBook(startBook)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="view abs-detail">
-      <header className="abs-person">
-        <AbsCover src={abs.client.authorImageUrl(author.id)} alt="" size={300} className="abs-person-art" />
-        <div className="abs-person-copy">
-          <p className="eyebrow">Autor</p>
-          <h2>{author.name}</h2>
-          <p className="muted">
-            {books.length} {books.length === 1 ? 'Buch' : 'Bücher'}
-          </p>
-          {author.description ? <p className="abs-person-bio">{stripHtml(author.description)}</p> : null}
+      <div className="hero-banner">
+        {image ? <img className="hero-bg" src={image} alt="" /> : null}
+        <div className="hero-veil" />
+        <div className="hero">
+          <AbsCover src={image} className="hero-cover avatar" />
+          <div className="hero-copy">
+            <p className="eyebrow">Autor</p>
+            <h2>{author.name}</h2>
+            <p className="hero-meta muted">
+              {books.length} {books.length === 1 ? 'Buch' : 'Bücher'}
+              {hours > 0 ? ` · ${formatHours(hours)}` : ''}
+            </p>
+            {startBook ? (
+              <div className="hero-actions">
+                <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
+                  <IconPlay size={22} />
+                  {busy ? 'Lädt …' : resume ? 'Weiterhören' : 'Hören'}
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
-      </header>
-
-      <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
-        {books.map((item) => (
-          <BookCard
-            key={item.id}
-            item={item}
-            onOpen={() => go({ name: 'abs-book', id: item.id })}
-            onPlay={() => void playBook(item)}
-          />
-        ))}
       </div>
+
+      {author.description ? <p className="artist-bio">{stripHtml(author.description)}</p> : null}
+
+      <section className="block">
+        <h3>Bücher</h3>
+        {!books.length ? <Notice title="Noch keine Bücher" /> : null}
+        <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
+          {books.map((item) => (
+            <BookCard
+              key={item.id}
+              item={item}
+              onOpen={() => go({ name: 'abs-book', id: item.id })}
+              onPlay={() => void playBook(item)}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

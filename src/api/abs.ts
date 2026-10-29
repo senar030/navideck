@@ -396,6 +396,12 @@ export class AbsClient {
   readonly kind = 'audiobookshelf' as const
   readonly baseUrl: string
   readonly token: string
+  /*
+   * Detail pages and the play button ask for the same expanded item, and a
+   * large book is the slowest answer the server gives. Share the pending
+   * request and keep the result briefly; metadata edits invalidate it.
+   */
+  private itemCache = new Map<string, { at: number; data: Promise<AbsLibraryItem> }>()
 
   constructor(baseUrl: string, token: string) {
     this.baseUrl = normalizeServerUrl(baseUrl)
@@ -507,11 +513,24 @@ export class AbsClient {
   }
 
   async getItem(itemId: string): Promise<AbsLibraryItem> {
-    const data = await this.request<{ libraryItem?: AbsLibraryItem } | AbsLibraryItem>(
+    const hit = this.itemCache.get(itemId)
+    if (hit && Date.now() - hit.at < 30_000) return hit.data
+    const data = this.request<{ libraryItem?: AbsLibraryItem } | AbsLibraryItem>(
       `/api/items/${encodeURIComponent(itemId)}?expanded=1`,
     )
-    const item = 'libraryItem' in data && data.libraryItem ? data.libraryItem : (data as AbsLibraryItem)
-    return expandItem(item)
+      .then((answer) => {
+        const item =
+          'libraryItem' in answer && answer.libraryItem
+            ? answer.libraryItem
+            : (answer as AbsLibraryItem)
+        return expandItem(item)
+      })
+      .catch((error: unknown) => {
+        this.itemCache.delete(itemId)
+        throw error
+      })
+    this.itemCache.set(itemId, { at: Date.now(), data })
+    return data
   }
 
   async getAuthors(libraryId: string): Promise<AbsAuthor[]> {
@@ -608,6 +627,7 @@ export class AbsClient {
       method: 'POST',
       body: JSON.stringify(episodes),
     })
+    this.itemCache.delete(itemId)
   }
 
   /** Changes metadata, tags and auto-download settings on an existing show. */
@@ -631,6 +651,7 @@ export class AbsClient {
       method: 'PATCH',
       body: JSON.stringify(patch),
     })
+    this.itemCache.delete(itemId)
   }
 
   /** Removes a library item; `hard` also deletes its folder on the server. */
@@ -639,6 +660,7 @@ export class AbsClient {
     await this.requestVoid(`/api/items/${encodeURIComponent(itemId)}${suffix}`, {
       method: 'DELETE',
     })
+    this.itemCache.delete(itemId)
   }
 
   /** Hand a feed the server found to the library; it downloads the episodes. */

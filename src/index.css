@@ -4783,6 +4783,10 @@ html[data-ui='deck'] .pw-row input {
   font-variant-numeric: tabular-nums;
 }
 
+.abs-chapters-more {
+  margin: 0.55rem 0 0;
+}
+
 .abs-person {
   display: flex;
   align-items: flex-start;

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { AbsEpisode, AbsLibraryItem } from '../api/abs'
-import { progressOf } from './absHelpers'
+import { bookOf, progressOf } from './absHelpers'
 import { bookQueue, episodeSong } from './absPlay'
 import { useAccount } from '../state/AccountContext'
 import { usePlayer } from '../state/PlayerContext'
@@ -17,8 +17,12 @@ export function useAbsPlayer() {
   const playBookAt = useCallback(
     async (item: AbsLibraryItem, seconds: number) => {
       if (!abs) return
-      // The list only carries a minified book; the tracks come with the item.
-      const full = await abs.client.getItem(item.id)
+      /*
+       * A detail page already holds the expanded item, tracks included; only a
+       * minified card needs the extra request. Refetching a large book for the
+       * play button was the slow part of starting a book.
+       */
+      const full = bookOf(item).tracks?.length ? item : await abs.client.getItem(item.id)
       const queue = bookQueue(abs.client, full, seconds)
       if (queue) playTracks(queue.songs, queue.startIndex)
     },
@@ -27,7 +31,8 @@ export function useAbsPlayer() {
 
   const playBook = useCallback(
     async (item: AbsLibraryItem) => {
-      await playBookAt(item, progressOf(progress, item.id)?.currentTime ?? 0)
+      const saved = progressOf(progress, item.id)
+      await playBookAt(item, saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0)
     },
     [playBookAt, progress],
   )
