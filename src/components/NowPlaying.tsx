@@ -314,7 +314,7 @@ export function NowPlaying() {
                 </span>
                 <span className="track-meta">
                   <MarqueeText className="track-title">{song.title}</MarqueeText>
-                  <span className="track-sub">{song.artist}</span>
+                  <MarqueeText className="track-sub">{song.artist}</MarqueeText>
                 </span>
                 <span className="track-time">{song.radio ? 'LIVE' : formatTime(song.duration)}</span>
               </button>

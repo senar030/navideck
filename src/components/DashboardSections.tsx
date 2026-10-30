@@ -17,7 +17,7 @@ import {
   type SectionId,
   type SectionProps,
 } from './DashboardParts'
-import { IconArrowRight, IconSpark } from './Icons'
+import { IconArrowRight, IconPlay } from './Icons'
 import {
   randomAlbumStore,
   randomArtistStore,
@@ -278,7 +278,7 @@ export function InstantMixSection(props: SectionProps) {
         onClick={() => void start()}
       >
         <span className="instant-mix-icon" aria-hidden>
-          <IconSpark size={28} />
+          <IconPlay size={28} />
         </span>
         <span className="instant-mix-text">
           <strong>{mixing ? 'Mix wird erstellt…' : 'Sofort-Mix'}</strong>
@@ -301,7 +301,7 @@ export function InstantMixSection(props: SectionProps) {
                 disabled={busy}
                 onClick={() => void start(genre.value)}
               >
-                <IconSpark size={14} /> {genre.value}
+                <IconPlay size={14} /> {genre.value}
               </button>
             ))}
           </div>

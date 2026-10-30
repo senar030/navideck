@@ -16,6 +16,7 @@ import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay, IconPodcast, IconRefresh } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 /* --------------------------------------------------------------- building blocks */
 
@@ -99,8 +100,8 @@ export function BookCard({
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
         <AbsCover src={abs?.client.coverUrl(item.id)} alt="" />
-        <span className="album-name">{book.metadata.title}</span>
-        <span className="album-artist">{book.metadata.authorName || 'Unbekannte Autorin'}</span>
+        <MarqueeText className="album-name">{book.metadata.title}</MarqueeText>
+        <MarqueeText className="album-artist">{book.metadata.authorName || 'Unbekannte Autorin'}</MarqueeText>
         <ProgressBar value={share} />
       </button>
       {onPlay ? (
@@ -126,10 +127,10 @@ export function PodcastCard({ item, onOpen }: { item: AbsLibraryItem; onOpen: ()
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
         <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" />
-        <span className="album-name">{podcast.metadata.title}</span>
-        <span className="album-artist">
+        <MarqueeText className="album-name">{podcast.metadata.title}</MarqueeText>
+        <MarqueeText className="album-artist">
           {count ? `${count} ${count === 1 ? 'Folge' : 'Folgen'}` : podcast.metadata.author || 'Podcast'}
-        </span>
+        </MarqueeText>
       </button>
     </article>
   )
@@ -141,10 +142,10 @@ export function AuthorCard({ author, onOpen }: { author: AbsAuthor; onOpen: () =
     <button type="button" className="artist-row abs-author" onClick={onOpen}>
       <AbsCover src={abs?.client.authorImageUrl(author.id)} alt="" size={200} className="avatar" />
       <span>
-        <strong>{author.name}</strong>
-        <em>
+        <MarqueeText className="artist-name">{author.name}</MarqueeText>
+        <MarqueeText className="artist-count">
           {author.numBooks ?? 0} {(author.numBooks ?? 0) === 1 ? 'Buch' : 'Bücher'}
-        </em>
+        </MarqueeText>
       </span>
     </button>
   )
@@ -200,9 +201,9 @@ export function EpisodeRow({
     <article className="episode-row">
       <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" size={120} className="episode-art" />
       <button type="button" className="episode-text" onClick={onPlay}>
-        <strong>{episode.title}</strong>
-        <span className="muted">{facts}</span>
-        <span className="episode-pod">{title}</span>
+        <MarqueeText className="episode-title">{episode.title}</MarqueeText>
+        <MarqueeText className="episode-facts muted">{facts}</MarqueeText>
+        <MarqueeText className="episode-pod">{title}</MarqueeText>
         {episode.description ? (
           <span className="episode-desc">{stripHtml(episode.description)}</span>
         ) : null}
@@ -236,10 +237,10 @@ export function CollectionCard({
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
         <AbsCover src={first ? abs?.client.coverUrl(first.id) : undefined} alt="" />
-        <span className="album-name">{collection.name}</span>
-        <span className="album-artist">
+        <MarqueeText className="album-name">{collection.name}</MarqueeText>
+        <MarqueeText className="album-artist">
           {books.length} {books.length === 1 ? 'Buch' : 'Bücher'}
-        </span>
+        </MarqueeText>
       </button>
     </article>
   )
@@ -253,10 +254,10 @@ export function SeriesCard({ series, onOpen }: { series: AbsSeries; onOpen: () =
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
         <AbsCover src={first ? abs?.client.coverUrl(first.id) : undefined} alt="" />
-        <span className="album-name">{series.name}</span>
-        <span className="album-artist">
+        <MarqueeText className="album-name">{series.name}</MarqueeText>
+        <MarqueeText className="album-artist">
           {books.length} {books.length === 1 ? 'Band' : 'Bände'}
-        </span>
+        </MarqueeText>
       </button>
     </article>
   )
@@ -281,11 +282,11 @@ export function EpisodeCard({
     <article className="album-card abs-card">
       <button type="button" className="album-hit" onClick={onOpen}>
         <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" />
-        <span className="album-name">{episode.title}</span>
-        <span className="album-artist">
+        <MarqueeText className="album-name">{episode.title}</MarqueeText>
+        <MarqueeText className="album-artist">
           {show}
           {episodeTime(episode) ? ` · ${formatDate(episodeTime(episode))}` : ''}
-        </span>
+        </MarqueeText>
         {episode.description ? (
           <span className="album-desc">{stripHtml(episode.description)}</span>
         ) : null}

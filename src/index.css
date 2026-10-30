@@ -1654,12 +1654,6 @@ a.chip {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .is-running > .marquee-run {
-    animation: none;
-  }
-}
-
 /* Seek slider */
 
 .seek {
@@ -2068,6 +2062,25 @@ html[data-theme='light'] .hero-banner {
   letter-spacing: -0.015em;
 }
 
+.genre-text .genre-name,
+.genre-text .genre-count {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genre-text .genre-name {
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.genre-text .genre-count {
+  color: var(--muted);
+  font-size: 0.88em;
+}
+
 .genre-card .play-fab {
   position: absolute;
   top: 0.6rem;
@@ -2307,16 +2320,28 @@ html[data-theme='light'] .hero-banner {
   box-shadow: var(--shadow-sm);
 }
 
-.artist-row span,
-.playlist-row span {
+.artist-row > span,
+.playlist-row > span {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.artist-row strong,
-.playlist-row strong {
+.artist-row .artist-name,
+.playlist-row .playlist-name {
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-row .artist-count,
+.playlist-row .playlist-count {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.88em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .az {
@@ -2441,14 +2466,16 @@ html[data-theme='light'] .hero-banner {
   flex: 1 1 0;
 }
 
-.radio-text strong {
+.radio-text strong,
+.radio-text .radio-name {
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.radio-text em {
+.radio-text em,
+.radio-text .radio-sub {
   font-style: normal;
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -4885,7 +4912,8 @@ html[data-ui='deck'] .pw-row input {
   text-align: left;
 }
 
-.episode-text strong {
+.episode-text strong,
+.episode-text .episode-title {
   overflow: hidden;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -5496,7 +5524,21 @@ html[data-ui='deck'] .pw-row input {
 }
 
 .mix-genres .chip-row {
+  /* Three rows at most, then the genres continue to the right. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, minmax(0, auto));
+  grid-auto-columns: max-content;
+  align-content: start;
   gap: 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.35rem;
+  scrollbar-width: none;
+}
+
+.mix-genres .chip-row::-webkit-scrollbar {
+  display: none;
 }
 
 .mix-chip {
@@ -5557,6 +5599,13 @@ html[data-ui='deck'] .pw-row input {
 
 .start-space-text strong {
   font-size: var(--fs-md);
+}
+
+.start-space-text .start-space-name {
+  overflow: hidden;
+  font-size: var(--fs-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .start-space-text .muted {

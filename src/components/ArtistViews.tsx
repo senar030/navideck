@@ -8,6 +8,7 @@ import { CoverArt } from './CoverArt'
 import { usePrefs } from '../state/PrefsContext'
 import { IconPlay, IconStar } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
 export function ArtistList() {
@@ -58,10 +59,10 @@ export function ArtistList() {
                   >
                     <CoverArt coverArt={artist.coverArt} alt="" size={120} className="avatar" />
                     <span>
-                      <strong>{artist.name}</strong>
-                      <em>
+                      <MarqueeText className="artist-name">{artist.name}</MarqueeText>
+                      <MarqueeText className="artist-count">
                         {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
-                      </em>
+                      </MarqueeText>
                     </span>
                   </button>
                 ))}
@@ -176,7 +177,7 @@ export function ArtistDetail({ id }: { id: string }) {
             {info.similarArtist.map((a) => (
               <button key={a.id} type="button" className="artist-head" onClick={() => go({ name: 'artist', id: a.id })}>
                 <CoverArt coverArt={a.coverArt} alt="" size={120} className="avatar" />
-                <span>{a.name}</span>
+                <MarqueeText>{a.name}</MarqueeText>
               </button>
             ))}
           </div>
@@ -189,7 +190,7 @@ export function ArtistDetail({ id }: { id: string }) {
             <article key={album.id} className="album-card">
               <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
                 <CoverArt coverArt={album.coverArt} alt="" size={400} />
-                <span className="album-name">{album.name}</span>
+                <MarqueeText className="album-name">{album.name}</MarqueeText>
                 <span className="album-artist">{album.year}</span>
               </button>
             </article>

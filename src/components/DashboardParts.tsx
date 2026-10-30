@@ -15,6 +15,7 @@ import { usePlayer } from '../state/PlayerContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { IconAlbums, IconArrowDown, IconArrowRight, IconArrowUp, IconBook, IconPlay, IconPodcast, IconRefresh, IconTrash } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 /*
  * The pieces every start-page category is built from: the block chrome, the row
@@ -266,8 +267,8 @@ export function AlbumTile({ album }: { album: Album }) {
     <article className="album-card">
       <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
         <CoverArt coverArt={album.coverArt} alt="" size={240} />
-        <span className="album-name">{album.name}</span>
-        <span className="album-artist">{album.artist}</span>
+        <MarqueeText className="album-name">{album.name}</MarqueeText>
+        <MarqueeText className="album-artist">{album.artist}</MarqueeText>
       </button>
       <button
         type="button"
@@ -299,8 +300,8 @@ export function SongTile({ song, tracks, compact }: { song: Song; tracks: Song[]
         >
           <CoverArt coverArt={song.coverArt} alt="" size={96} className="list-art" />
           <span className="list-text">
-            <span className="album-name">{song.title}</span>
-            <span className="album-artist">{song.artist ?? song.album}</span>
+            <MarqueeText className="album-name">{song.title}</MarqueeText>
+            <MarqueeText className="album-artist">{song.artist ?? song.album}</MarqueeText>
           </span>
         </button>
       </article>
@@ -311,8 +312,8 @@ export function SongTile({ song, tracks, compact }: { song: Song; tracks: Song[]
     <article className="album-card song-card">
       <button type="button" className="album-hit" onClick={() => playTracks(tracks, index)}>
         <CoverArt coverArt={song.coverArt} alt="" size={240} />
-        <span className="album-name">{song.title}</span>
-        <span className="album-artist">{song.artist ?? song.album}</span>
+        <MarqueeText className="album-name">{song.title}</MarqueeText>
+        <MarqueeText className="album-artist">{song.artist ?? song.album}</MarqueeText>
       </button>
       <button
         type="button"
@@ -334,10 +335,10 @@ export function ArtistTile({ artist }: { artist: Artist }) {
     <article className="album-card artist-card">
       <button type="button" className="album-hit" onClick={() => go({ name: 'artist', id: artist.id })}>
         <CoverArt coverArt={artist.coverArt} alt="" size={240} className="avatar" />
-        <span className="album-name">{artist.name}</span>
-        <span className="album-artist">
+        <MarqueeText className="album-name">{artist.name}</MarqueeText>
+        <MarqueeText className="album-artist">
           {count === undefined ? '' : `${count} ${count === 1 ? 'Album' : 'Alben'}`}
-        </span>
+        </MarqueeText>
       </button>
     </article>
   )
@@ -376,8 +377,8 @@ export function GenrePlayTile({ genre, compact }: { genre: Genre; compact?: bool
             <IconPlay size={20} />
           </span>
           <span className="list-text">
-            <span className="album-name">{genre.value}</span>
-            <span className="album-artist">{count}</span>
+            <MarqueeText className="album-name">{genre.value}</MarqueeText>
+            <MarqueeText className="album-artist">{count}</MarqueeText>
           </span>
         </button>
       </article>
@@ -390,7 +391,7 @@ export function GenrePlayTile({ genre, compact }: { genre: Genre; compact?: bool
         <span className="genre-play-face">
           <IconPlay size={34} />
         </span>
-        <span className="album-name">{genre.value}</span>
+        <MarqueeText className="album-name">{genre.value}</MarqueeText>
         <span className="album-artist">{count}</span>
       </button>
     </article>

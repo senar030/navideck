@@ -8,6 +8,7 @@ import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { LayoutToggle } from './LayoutToggle'
 import { IconPlay, IconRadio } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 export function GenreList() {
   const { client, selectedFolderIds } = useAuth()
@@ -113,10 +114,10 @@ function GenreCard({
           <CoverArt coverArt={artist?.coverArt} alt="" size={300} className="avatar" />
         </span>
         <span className="genre-text">
-          <strong>{genre.value}</strong>
-          <em>
+          <MarqueeText className="genre-name">{genre.value}</MarqueeText>
+          <MarqueeText className="genre-count">
             {genre.albumCount ?? 0} Alben · {genre.songCount ?? 0} Titel
-          </em>
+          </MarqueeText>
         </span>
       </button>
       <button
@@ -221,10 +222,10 @@ export function GenreDetail({ name }: { name: string }) {
               >
                 <CoverArt coverArt={artist.coverArt} alt="" size={120} className="avatar" />
                 <span>
-                  <strong>{artist.name}</strong>
-                  <em>
+                  <MarqueeText className="artist-name">{artist.name}</MarqueeText>
+                  <MarqueeText className="artist-count">
                     {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
-                  </em>
+                  </MarqueeText>
                 </span>
               </button>
             ))}
@@ -239,8 +240,8 @@ export function GenreDetail({ name }: { name: string }) {
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
                   <CoverArt coverArt={album.coverArt} alt="" size={400} />
-                  <span className="album-name">{album.name}</span>
-                  <span className="album-artist">{album.artist}</span>
+                  <MarqueeText className="album-name">{album.name}</MarqueeText>
+                  <MarqueeText className="album-artist">{album.artist}</MarqueeText>
                 </button>
                 <button
                   type="button"

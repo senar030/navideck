@@ -56,7 +56,7 @@ export function PlayerBar() {
           <CoverArt coverArt={current?.coverArt} src={current?.abs?.cover ?? current?.radio?.logo} alt="" size={120} className={`player-cover ${current?.abs ? 'abs-art' : ''}`} />
           <span className="track-meta">
             <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
-            <span className="track-sub">{subtitle}</span>
+            <MarqueeText className="track-sub">{subtitle}</MarqueeText>
           </span>
         </button>
         <button
@@ -94,7 +94,7 @@ export function PlayerBar() {
         <CoverArt coverArt={current?.coverArt} src={current?.abs?.cover ?? current?.radio?.logo} alt="" size={160} className={`player-cover ${current?.abs ? 'abs-art' : ''}`} />
         <span className="track-meta">
           <MarqueeText className="track-title">{current?.title ?? 'Nichts spielt'}</MarqueeText>
-          <span className="track-sub">{subtitle}</span>
+          <MarqueeText className="track-sub">{subtitle}</MarqueeText>
         </span>
       </button>
       <div className="player-controls">

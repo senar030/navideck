@@ -87,7 +87,7 @@ export function QueuePanel() {
                 <CoverArt coverArt={song.coverArt} src={song.abs?.cover ?? song.radio?.logo} alt="" size={80} className={`track-cover ${song.abs ? 'abs-art' : ''}`} />
                 <span className="track-meta">
                   <MarqueeText className="track-title">{song.title}</MarqueeText>
-                  <span className="track-sub">{song.artist}</span>
+                  <MarqueeText className="track-sub">{song.artist}</MarqueeText>
                 </span>
               </button>
               <span className="track-time">{song.radio ? 'LIVE' : formatTime(song.duration)}</span>

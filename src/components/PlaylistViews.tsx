@@ -8,6 +8,7 @@ import { CoverArt } from './CoverArt'
 import { usePrefs } from '../state/PrefsContext'
 import { IconPlay } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
 export function PlaylistList() {
@@ -42,11 +43,11 @@ export function PlaylistList() {
           >
             <CoverArt coverArt={list.coverArt} alt="" size={160} />
             <span>
-              <strong>{list.name}</strong>
-              <em>
+              <MarqueeText className="playlist-name">{list.name}</MarqueeText>
+              <MarqueeText className="playlist-count">
                 {list.songCount ?? 0} Titel
                 {list.duration ? ` · ${formatTime(list.duration)}` : ''}
-              </em>
+              </MarqueeText>
             </span>
           </button>
         ))}

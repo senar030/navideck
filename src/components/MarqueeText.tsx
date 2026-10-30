@@ -39,6 +39,25 @@ function watch(element: Element, onChange: (onScreen: boolean) => void) {
   }
 }
 
+/* One observer for every ribbon: a grid can carry hundreds of titles. */
+const sizeWatchers = new WeakMap<Element, () => void>()
+let sizeObserver: ResizeObserver | null = null
+
+function watchSize(element: Element, onChange: () => void) {
+  if (typeof ResizeObserver === 'undefined') return () => {}
+  if (!sizeObserver) {
+    sizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) sizeWatchers.get(entry.target)?.()
+    })
+  }
+  sizeWatchers.set(element, onChange)
+  sizeObserver.observe(element)
+  return () => {
+    sizeWatchers.delete(element)
+    sizeObserver?.unobserve(element)
+  }
+}
+
 /**
  * A title that is too long for its box: shortened with an ellipsis, and — while
  * it is on screen — drifting to the end and slowly back again, so a long
@@ -51,9 +70,12 @@ export function MarqueeText({ children, className = '', enabled = true, delay = 
   const [onScreen, setOnScreen] = useState(false)
   /*
    * Whether a title may move at all is decided while rendering, so the effect
-   * below has nothing to undo and only ever measures.
+   * below has nothing to undo and only ever measures. The app's ribbon is a
+   * deliberate request, so it also runs when the OS asks for reduced motion:
+   * a slow, single-line drift is easy to ignore, and the alternative was that
+   * long titles stayed unreadable.
    */
-  const still = !enabled || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+  const still = !enabled
 
   useEffect(() => {
     const element = box.current
@@ -80,14 +102,13 @@ export function MarqueeText({ children, className = '', enabled = true, delay = 
      * set state.
      */
     const frame = requestAnimationFrame(measure)
-    const resize = new ResizeObserver(measure)
-    resize.observe(element)
+    const resize = watchSize(element, measure)
     const stop = watch(element, setOnScreen)
     /* Web fonts arrive after the first paint and change the text width. */
     void element.ownerDocument.fonts?.ready.then(measure).catch(() => {})
     return () => {
       cancelAnimationFrame(frame)
-      resize.disconnect()
+      resize()
       stop()
     }
   }, [children, still])

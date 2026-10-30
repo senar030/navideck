@@ -14,6 +14,7 @@ import { useAuth } from '../state/AuthContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconClose, IconExternal, IconPlay, IconPlus, IconSearch } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 /** How long the search waits for the next keystroke before asking the server. */
 const SEARCH_DELAY_MS = 400
@@ -379,8 +380,8 @@ function StationRow({
         {/* A logo stored on the server wins over the one the directory told us. */}
         <CoverArt coverArt={coverArt} src={coverArt ? undefined : logo} alt="" size={120} className="radio-art" />
         <span className="radio-text">
-          <strong>{name}</strong>
-          {subtitle ? <em>{subtitle}</em> : null}
+          <MarqueeText className="radio-name">{name}</MarqueeText>
+          {subtitle ? <MarqueeText className="radio-sub">{subtitle}</MarqueeText> : null}
         </span>
         <span className="radio-start" aria-hidden>
           <IconPlay size={16} />

@@ -17,6 +17,7 @@ import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { AbsCover, BookCard, MissingAbs, Notice, ProgressBar } from './AbsParts'
 import { IconPlay } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 /* -------------------------------------------------------------------- books */
 
@@ -142,7 +143,7 @@ export function BookDetail({ id }: { id: string }) {
                 onClick={() => void start(chapter.start)}
               >
                 <span className="abs-chapter-index">{index + 1}</span>
-                <span className="abs-chapter-title">{chapter.title || `Kapitel ${index + 1}`}</span>
+                <MarqueeText className="abs-chapter-title">{chapter.title || `Kapitel ${index + 1}`}</MarqueeText>
                 <span className="abs-chapter-time muted">{formatHours(chapter.end - chapter.start)}</span>
               </button>
             ))}

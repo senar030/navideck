@@ -7,6 +7,7 @@ import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { IconPlay } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { MarqueeText } from './MarqueeText'
 import { SortMenu } from './SortMenu'
 import { usePrefs } from '../state/PrefsContext'
 
@@ -106,8 +107,8 @@ export function AlbumGrid() {
           <article key={album.id} className="album-card">
             <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
               <CoverArt coverArt={album.coverArt} alt="" size={400} />
-              <span className="album-name">{album.name}</span>
-              <span className="album-artist">{album.artist}</span>
+              <MarqueeText className="album-name">{album.name}</MarqueeText>
+              <MarqueeText className="album-artist">{album.artist}</MarqueeText>
             </button>
             <button
               type="button"

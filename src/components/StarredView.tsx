@@ -5,6 +5,7 @@ import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { LayoutToggle } from './LayoutToggle'
+import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
 export function StarredView() {
@@ -46,10 +47,10 @@ export function StarredView() {
                 >
                   <CoverArt coverArt={artist.coverArt} alt="" size={120} className="avatar" />
                   <span>
-                    <strong>{artist.name}</strong>
-                    <em>
+                    <MarqueeText className="artist-name">{artist.name}</MarqueeText>
+                    <MarqueeText className="artist-count">
                       {artist.albumCount ?? 0} {(artist.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
-                    </em>
+                    </MarqueeText>
                   </span>
                 </button>
               ) : (
@@ -60,7 +61,7 @@ export function StarredView() {
                   onClick={() => go({ name: 'artist', id: artist.id })}
                 >
                   <CoverArt coverArt={artist.coverArt} alt="" size={160} className="avatar" />
-                  <span>{artist.name}</span>
+                  <MarqueeText>{artist.name}</MarqueeText>
                 </button>
               ),
             )}
@@ -75,8 +76,8 @@ export function StarredView() {
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => go({ name: 'album', id: album.id })}>
                   <CoverArt coverArt={album.coverArt} alt="" size={300} />
-                  <span className="album-name">{album.name}</span>
-                  <span className="album-artist">{album.artist}</span>
+                  <MarqueeText className="album-name">{album.name}</MarqueeText>
+                  <MarqueeText className="album-artist">{album.artist}</MarqueeText>
                 </button>
               </article>
             ))}

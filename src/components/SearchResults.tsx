@@ -5,6 +5,7 @@ import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { LayoutToggle } from './LayoutToggle'
+import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
 type Props = {
@@ -68,16 +69,16 @@ export function SearchResults({ query, onPick }: Props) {
                 <button key={a.id} type="button" className="artist-row" onClick={() => open({ name: 'artist', id: a.id })}>
                   <CoverArt coverArt={a.coverArt} alt="" size={120} className="avatar" />
                   <span>
-                    <strong>{a.name}</strong>
-                    <em>
+                    <MarqueeText className="artist-name">{a.name}</MarqueeText>
+                    <MarqueeText className="artist-count">
                       {a.albumCount ?? 0} {(a.albumCount ?? 0) === 1 ? 'Album' : 'Alben'}
-                    </em>
+                    </MarqueeText>
                   </span>
                 </button>
               ) : (
                 <button key={a.id} type="button" className="artist-head" onClick={() => open({ name: 'artist', id: a.id })}>
                   <CoverArt coverArt={a.coverArt} alt="" size={160} className="avatar" />
-                  <span>{a.name}</span>
+                  <MarqueeText>{a.name}</MarqueeText>
                 </button>
               ),
             )}
@@ -92,8 +93,8 @@ export function SearchResults({ query, onPick }: Props) {
               <article key={album.id} className="album-card">
                 <button type="button" className="album-hit" onClick={() => open({ name: 'album', id: album.id })}>
                   <CoverArt coverArt={album.coverArt} alt="" size={300} />
-                  <span className="album-name">{album.name}</span>
-                  <span className="album-artist">{album.artist}</span>
+                  <MarqueeText className="album-name">{album.name}</MarqueeText>
+                  <MarqueeText className="album-artist">{album.artist}</MarqueeText>
                 </button>
               </article>
             ))}

@@ -59,7 +59,7 @@ export function TrackRow({ tracks, song, index, showCover = false }: Props) {
           <MarqueeText className="track-title" delay={1.2 + (index % 5) * 0.5}>
             {song.title}
           </MarqueeText>
-          <span className="track-sub">{[song.artist, song.album].filter(Boolean).join(' · ')}</span>
+          <MarqueeText className="track-sub">{[song.artist, song.album].filter(Boolean).join(' · ')}</MarqueeText>
         </span>
       </button>
       <span className="track-time">{formatTime(song.duration)}</span>

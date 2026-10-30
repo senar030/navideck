@@ -4,6 +4,7 @@ import { useAccount, type SourceHealth } from '../state/AccountContext'
 import { useNav, type View } from '../state/NavContext'
 import { DashboardBoard } from './DashboardBoard'
 import { IconAlbums, IconArrowRight, IconBook, IconPodcast } from './Icons'
+import { MarqueeText } from './MarqueeText'
 
 /** v2: the instant mix became a widget of its own. */
 const START_KEY = 'navideck.dashboard.start.v2'
@@ -111,8 +112,8 @@ export function StartHub() {
               {space.icon}
             </span>
             <span className="start-space-text">
-              <strong>{space.label}</strong>
-              <span className="muted">{space.hint}</span>
+              <MarqueeText className="start-space-name">{space.label}</MarqueeText>
+              <MarqueeText className="start-space-hint muted">{space.hint}</MarqueeText>
             </span>
             <IconArrowRight size={18} />
           </button>
