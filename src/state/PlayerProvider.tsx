@@ -311,7 +311,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const cleanup = () => {
       element.removeEventListener('loadedmetadata', seek)
       element.removeEventListener('seeked', ready)
-      element.removeEventListener('canplay', ready)
       window.clearTimeout(timer)
     }
     const finish = () => {
@@ -332,18 +331,37 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return
       }
       /*
-       * Wait for the seek to land before pressing play; `canplay` covers the
-       * browsers that do not emit `seeked` for a position already buffered.
+       * Wait for the seek to land before pressing play. `seeked` is the honest
+       * signal; `canplay` was firing while the seek was still in flight (with
+       * the old buffer at zero), which played a second at the wrong place and
+       * then left the element stalled against the incoming range request.
        */
       element.addEventListener('seeked', ready, { once: true })
-      element.addEventListener('canplay', ready, { once: true })
       try {
         element.currentTime = at
       } catch {
         finish()
         return
       }
-      timer = window.setTimeout(finish, 5000)
+      /*
+       * A few browsers never emit `seeked` for a position that is already
+       * buffered, and a slow link can keep `seeking` true far longer than the
+       * load itself. Poll for the position, then play whatever we have.
+       */
+      const deadline = Date.now() + 10_000
+      const poll = () => {
+        if (done) return
+        if (!element.seeking && Math.abs(element.currentTime - at) <= 1) {
+          finish()
+          return
+        }
+        if (Date.now() >= deadline) {
+          finish()
+          return
+        }
+        timer = window.setTimeout(poll, 250)
+      }
+      timer = window.setTimeout(poll, 250)
     }
 
     if (element.readyState >= 1) seek()
@@ -371,8 +389,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // the audio is right here, so start it over instead of fetching it.
         // A live stream has no beginning to jump back to, so it reconnects.
         if (song.radio) active.load()
-        else active.currentTime = 0
-        setCurrentTime(0)
+        else if (!(song.startAt && song.startAt > 0)) {
+          // Start over, but a resume must not jump to zero first: it would
+          // spend a second at the beginning and then seek again.
+          active.currentTime = 0
+          setCurrentTime(0)
+        }
         start(active, song)
       } else if (holds(idle())) {
         // The other element buffered this track while the last one played:
