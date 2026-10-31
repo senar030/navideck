@@ -6284,3 +6284,105 @@ html.standalone {
   flex-wrap: wrap;
   gap: 0.6rem;
 }
+
+/* --------------------------------------------------------------------------
+   Book hero
+   -------------------------------------------------------------------------- */
+
+/* The main listen action carries the resume position on its bottom edge. */
+.abs-listen {
+  position: relative;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.5rem 1rem;
+  overflow: hidden;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.abs-listen.has-progress {
+  padding-bottom: 0.72rem;
+}
+
+.abs-listen-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.abs-listen-title {
+  font-weight: 600;
+}
+
+.abs-listen-meta {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  opacity: 0.86;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abs-listen-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: color-mix(in srgb, var(--play-ink) 18%, transparent);
+}
+
+.abs-listen-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: var(--play-ink);
+}
+
+.abs-restart {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+
+/* On phones the cover gets a little smaller and the copy keeps a left edge. */
+@media (max-width: 900px) {
+  .hero.abs-book-hero {
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .abs-book-hero .hero-cover {
+    align-self: center;
+    width: min(44vw, 12rem);
+    height: min(44vw, 12rem);
+  }
+
+  .abs-book-hero .hero-copy {
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding-bottom: 0;
+    text-align: left;
+  }
+
+  .abs-book-hero .hero-facts {
+    align-self: flex-start;
+    text-align: left;
+  }
+
+  .abs-book-hero .hero-actions {
+    width: 100%;
+    gap: 0.5rem;
+    justify-content: flex-start;
+  }
+
+  .abs-book-hero .abs-listen {
+    flex: 1 1 auto;
+  }
+
+  .abs-book-hero .abs-listen-meta {
+    font-size: 0.78rem;
+  }
+}

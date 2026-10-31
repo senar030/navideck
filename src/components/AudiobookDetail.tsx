@@ -17,9 +17,10 @@ import { stripHtml } from '../lib/format'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
-import { AbsCover, BookCard, MissingAbs, Notice, ProgressBar } from './AbsParts'
+import { AbsCover, BookCard, MissingAbs, Notice } from './AbsParts'
 import { LayoutToggle } from './LayoutToggle'
 import { MarqueeText } from './MarqueeText'
+import { IconRefresh } from './Icons'
 import { PlayGlyph } from './PlayGlyph'
 import { SortMenu } from './SortMenu'
 
@@ -63,6 +64,7 @@ export function BookDetail({ id }: { id: string }) {
   const resumeAt = entry && !entry.isFinished ? (entry.currentTime ?? 0) : 0
   const left = Math.max(0, (entry?.duration ?? book.duration ?? 0) - resumeAt)
   const canResume = Boolean(entry && !entry.isFinished && resumeAt > 0)
+  const percent = Math.min(100, Math.max(0, Math.round(share * 100)))
 
   async function start(at?: number) {
     setBusy(true)
@@ -78,7 +80,7 @@ export function BookDetail({ id }: { id: string }) {
       <div className="hero-banner">
         <img className="hero-bg" src={cover} alt="" />
         <div className="hero-veil" />
-        <div className="hero">
+        <div className="hero abs-book-hero">
           <AbsCover src={cover} className="hero-cover" />
           <div className="hero-copy">
             <p className="eyebrow">{series ? `Serie · ${series.name}` : 'Hörbuch'}</p>
@@ -116,22 +118,40 @@ export function BookDetail({ id }: { id: string }) {
                 .join(' · ')}
             </p>
             <div className="hero-actions">
-              <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
+              <button
+                type="button"
+                className={`primary-btn abs-listen ${canResume ? 'has-progress' : ''}`}
+                disabled={busy}
+                onClick={() => void start()}
+              >
                 <PlayGlyph size={22} match={(song) => song.abs?.itemId === id} />
-                {canResume ? 'Weiterhören' : 'Abspielen'}
+                <span className="abs-listen-copy">
+                  <span className="abs-listen-title">{canResume ? 'Weiterhören' : 'Abspielen'}</span>
+                  {canResume ? (
+                    <span className="abs-listen-meta">
+                      {percent} % · noch {formatHours(left)}
+                    </span>
+                  ) : null}
+                </span>
+                {canResume ? (
+                  <span className="abs-listen-bar" aria-hidden>
+                    <span style={{ width: `${percent}%` }} />
+                  </span>
+                ) : null}
               </button>
               {canResume ? (
-                <button type="button" className="text-btn" disabled={busy} onClick={() => void start(0)}>
-                  Von vorn
+                <button
+                  type="button"
+                  className="icon-btn abs-restart"
+                  aria-label="Von vorn abspielen"
+                  data-tip="Von vorn"
+                  disabled={busy}
+                  onClick={() => void start(0)}
+                >
+                  <IconRefresh size={20} />
                 </button>
               ) : null}
-              {canResume ? (
-                <span className="muted abs-left">
-                  {Math.round(share * 100)} % · noch {formatHours(left)}
-                </span>
-              ) : null}
             </div>
-            <ProgressBar value={share} className="abs-hero-bar" />
           </div>
         </div>
       </div>
