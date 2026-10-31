@@ -4,7 +4,7 @@ import type { SearchResult } from '../api/types'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAccount } from '../state/AccountContext'
 import { useAuth } from '../state/AuthContext'
-import { useNav } from '../state/NavContext'
+import { episodeView, useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { AuthorCard, BookCard, EpisodeCard, PodcastCard } from './AbsParts'
 import { CoverArt } from './CoverArt'
@@ -252,7 +252,7 @@ export function SearchResults({ query, onPick }: Props) {
                 key={`${ref.item.id}:${ref.episode.id}`}
                 item={ref.item}
                 episode={ref.episode}
-                onOpen={() => open({ name: 'podcast', id: ref.item.id })}
+                onOpen={() => open(episodeView(ref.item.id, ref.episode.id))}
                 onPlay={() => void playEpisode(ref.item, ref.episode)}
               />
             ))}

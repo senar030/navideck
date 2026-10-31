@@ -41,6 +41,7 @@ const DETAILS = new Set([
   'abs-collection',
   'abs-series',
   'podcast',
+  'pod-episode',
 ])
 
 /**

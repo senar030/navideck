@@ -12,7 +12,7 @@ import {
   type EpisodeRef,
 } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
-import { useNav } from '../state/NavContext'
+import { episodeView, useNav } from '../state/NavContext'
 import { AuthorCard, BookCard, CollectionCard, EpisodeCard, PodcastCard } from './AbsParts'
 import { DashBlock, Empty, ReshuffleButton, TileRow, type SectionProps } from './DashboardParts'
 
@@ -74,7 +74,7 @@ function ContinuePodcastsSection(props: SectionProps) {
           key={`${ref.item.id}:${ref.episode.id}`}
           item={ref.item}
           episode={ref.episode}
-          onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+          onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
           onPlay={() => void playEpisode(ref.item, ref.episode)}
         />
       )),
@@ -126,7 +126,7 @@ function ContinueAllSection(props: SectionProps) {
             key={`${ref.item.id}:${ref.episode.id}`}
             item={ref.item}
             episode={ref.episode}
-            onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+            onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
             onPlay={() => void playEpisode(ref.item, ref.episode)}
           />,
         )
@@ -265,7 +265,7 @@ function LatestEpisodesSection(props: SectionProps) {
               key={`${ref.item.id}:${ref.episode.id}`}
               item={ref.item}
               episode={ref.episode}
-              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+              onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
               onPlay={() => void playEpisode(ref.item, ref.episode)}
             />
           ))}

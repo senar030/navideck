@@ -4942,6 +4942,19 @@ html[data-ui='deck'] .pw-row input {
   border-radius: 0.45rem;
 }
 
+.episode-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
 .episode-text {
   display: flex;
   flex-direction: column;
@@ -6346,4 +6359,9 @@ html.standalone {
 .abs-restart {
   width: 2.9rem;
   height: 2.9rem;
+}
+
+.abs-queued {
+  margin: 0.35rem 0 0;
+  font-size: var(--fs-xs);
 }

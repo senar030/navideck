@@ -36,7 +36,7 @@ import {
 import { NowPlaying } from './NowPlaying'
 import { PlayerBar } from './PlayerBar'
 import { PodcastAdd, PodcastHome, PodcastsView, EpisodesView } from './PodcastViews'
-import { PodcastDetail } from './PodcastDetail'
+import { PodcastDetail, PodcastEpisodeDetail } from './PodcastDetail'
 import { SectionPage } from './SectionPage'
 import { PlaylistDetail, PlaylistList } from './PlaylistViews'
 import { QueuePanel } from './QueuePanel'
@@ -147,7 +147,7 @@ export function Shell() {
         {navSpace === 'podcasts' ? (
           <>
             <NavBtn active={view.name === 'pod-home'} onClick={() => go({ name: 'pod-home' })} icon={<IconHome />} label="Podcasts" />
-            <NavBtn active={view.name === 'podcasts' || view.name === 'podcast'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Sendungen" />
+            <NavBtn active={view.name === 'podcasts' || view.name === 'podcast' || view.name === 'pod-episode'} onClick={() => go({ name: 'podcasts' })} icon={<IconPodcast />} label="Sendungen" />
             <NavBtn active={view.name === 'pod-episodes'} onClick={() => go({ name: 'pod-episodes' })} icon={<IconLists />} label="Episoden" />
             {podcasts?.kind === 'audiobookshelf' ? (
               <NavBtn active={view.name === 'pod-add'} onClick={() => go({ name: 'pod-add' })} icon={<IconPlus />} label="Hinzufügen" />
@@ -217,6 +217,7 @@ export function Shell() {
             {view.name === 'pod-episodes' ? <EpisodesView /> : null}
             {view.name === 'pod-add' ? <PodcastAdd /> : null}
             {view.name === 'podcast' ? <PodcastDetail id={view.id} /> : null}
+            {view.name === 'pod-episode' ? <PodcastEpisodeDetail id={view.id} /> : null}
           </ViewBoundary>
         </div>
       </main>

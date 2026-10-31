@@ -15,7 +15,7 @@ import { stripHtml } from '../lib/format'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { CoverArt } from './CoverArt'
-import { IconPodcast, IconRefresh } from './Icons'
+import { IconRefresh } from './Icons'
 import { MarqueeText } from './MarqueeText'
 import { PlayGlyph } from './PlayGlyph'
 
@@ -200,21 +200,26 @@ export function EpisodeRow({
     .join(' · ')
   return (
     <article className="episode-row">
-      <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" size={120} className="episode-art" />
-      <button type="button" className="episode-text" onClick={onPlay}>
-        <MarqueeText className="episode-title">{episode.title}</MarqueeText>
-        <MarqueeText className="episode-facts muted">{facts}</MarqueeText>
-        <MarqueeText className="episode-pod">{title}</MarqueeText>
-        {episode.description ? (
-          <span className="episode-desc">{stripHtml(episode.description)}</span>
-        ) : null}
-        <ProgressBar value={share} />
+      <button type="button" className="episode-main" onClick={onOpen}>
+        <AbsCover src={podcasts?.client.coverUrl(item.id)} alt="" size={120} className="episode-art" />
+        <span className="episode-text">
+          <MarqueeText className="episode-title">{episode.title}</MarqueeText>
+          <MarqueeText className="episode-facts muted">{facts}</MarqueeText>
+          <MarqueeText className="episode-pod">{title}</MarqueeText>
+          {episode.description ? (
+            <span className="episode-desc">{stripHtml(episode.description)}</span>
+          ) : null}
+          <ProgressBar value={share} />
+        </span>
       </button>
       <div className="episode-tools">
-        <button type="button" className="icon-btn" aria-label={`${title} öffnen`} data-tip="Podcast" onClick={onOpen}>
-          <IconPodcast size={18} />
-        </button>
-        <button type="button" className="icon-btn" aria-label={`${episode.title} abspielen`} data-tip="Abspielen" onClick={onPlay}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={`${episode.title} abspielen`}
+          data-tip="Abspielen"
+          onClick={onPlay}
+        >
           <PlayGlyph size={20} match={(song) => song.abs?.episodeId === episode.id} />
         </button>
       </div>

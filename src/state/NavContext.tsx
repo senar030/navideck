@@ -40,6 +40,12 @@ export type View =
   | { name: 'pod-episodes' }
   | { name: 'pod-add' }
   | { name: 'podcast'; id: string }
+  | { name: 'pod-episode'; id: string }
+
+/** One episode page: the id carries the show and the episode. */
+export function episodeView(itemId: string, episodeId: string): View {
+  return { name: 'pod-episode', id: `${itemId}:${episodeId}` }
+}
 
 /** The four big areas the space switcher offers. */
 export type Space = 'start' | 'music' | 'audiobooks' | 'podcasts'
@@ -55,7 +61,7 @@ const AUDIOBOOK_VIEWS = new Set([
   'abs-series',
 ])
 
-const PODCAST_VIEWS = new Set(['pod-home', 'podcasts', 'pod-episodes', 'pod-add', 'podcast'])
+const PODCAST_VIEWS = new Set(['pod-home', 'podcasts', 'pod-episodes', 'pod-add', 'podcast', 'pod-episode'])
 
 export function spaceOf(view: View): Space {
   if (view.name === 'start' || view.name === 'settings') return 'start'

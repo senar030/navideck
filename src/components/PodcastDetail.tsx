@@ -1,14 +1,26 @@
 import { useMemo, useState } from 'react'
 import type { AbsEpisode, AbsFeedPodcast } from '../api/abs'
-import { episodeDuration, formatHours, heardShare, podcastOf, progressOf, sortEpisodes } from '../lib/absHelpers'
+import { episodeSong } from '../lib/absPlay'
+import {
+  episodeDuration,
+  episodeNumber,
+  episodeTime,
+  formatDate,
+  formatHours,
+  heardShare,
+  podcastOf,
+  progressOf,
+  sortEpisodes,
+} from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAsync } from '../lib/useAsync'
 import { stripHtml } from '../lib/format'
 import { episodeKey, sortFeed } from '../lib/podcastFeed'
 import { useAccount } from '../state/AccountContext'
-import { useNav } from '../state/NavContext'
-import { AbsCover, EpisodeRow, MissingAbs } from './AbsParts'
-import { IconPlus, IconRefresh, IconSettings } from './Icons'
+import { episodeView, useNav } from '../state/NavContext'
+import { usePlayer } from '../state/PlayerContext'
+import { AbsCover, EpisodeRow, MissingAbs, Notice } from './AbsParts'
+import { IconPlus, IconQueue, IconRefresh, IconSettings } from './Icons'
 import { PlayGlyph } from './PlayGlyph'
 import { PodcastOptions } from './PodcastOptions'
 import { PodcastSetup } from './PodcastSetup'
@@ -311,7 +323,7 @@ export function PodcastDetail({ id }: { id: string }) {
               item={item}
               episode={episode}
               progress={progress}
-              onOpen={() => undefined}
+              onOpen={() => go(episodeView(item.id, episode.id))}
               onPlay={() => void playEpisode(item, episode)}
             />
           ))}
@@ -369,6 +381,131 @@ export function PodcastDetail({ id }: { id: string }) {
           onDeleted={() => go({ name: 'podcasts' })}
         />
       ) : null}
+    </div>
+  )
+}
+
+/* --------------------------------------------------------------- one episode */
+
+export function PodcastEpisodeDetail({ id }: { id: string }) {
+  const [itemId, episodeId] = id.split(':', 2)
+  const { podcasts, progress } = useAccount()
+  const { playEpisode } = useAbsPlayer()
+  const { addToQueue } = usePlayer()
+  const { go } = useNav()
+  const [queued, setQueued] = useState(false)
+  const client = podcasts?.client ?? null
+  const result = useAsync(client && itemId ? () => client.getItem(itemId) : null, [client, itemId])
+
+  const item = result.data
+  const podcast = item ? podcastOf(item) : null
+
+  if (!podcasts || !client) return <MissingAbs noun="Podcast" />
+  if (result.error) return <p className="error">{result.error}</p>
+  if (!item || !podcast) return <p className="muted">Folge wird geladen …</p>
+
+  const episode = podcast.episodes?.find((candidate) => candidate.id === episodeId) ?? null
+  if (!episode) {
+    return (
+      <Notice
+        title="Folge nicht gefunden"
+        action={
+          <button type="button" className="primary-btn ghost" onClick={() => go({ name: 'podcast', id: itemId })}>
+            Zur Sendung
+          </button>
+        }
+      />
+    )
+  }
+
+  const cover = client.coverUrl(item.id)
+  const title = podcast.metadata.title
+  const entry = progressOf(progress, item.id, episode.id)
+  const share = heardShare(entry)
+  const canResume = Boolean(entry && !entry.isFinished && (entry.currentTime ?? 0) > 0)
+  const percent = Math.min(100, Math.max(0, Math.round(share * 100)))
+  const total = episodeDuration(episode) || entry?.duration || 0
+  const left = Math.max(0, (entry?.duration ?? total) - (entry?.currentTime ?? 0))
+  const facts = [episodeNumber(episode), formatDate(episodeTime(episode)), formatHours(total)]
+    .filter(Boolean)
+    .join(' · ')
+  const description = episode.description ? stripHtml(episode.description) : ''
+  const song = episodeSong(client, item, episode, 0)
+
+  function queueEpisode() {
+    if (!song) return
+    addToQueue([song])
+    setQueued(true)
+  }
+
+  return (
+    <div className="view detail abs-detail">
+      <div className="hero-banner">
+        <img className="hero-bg" src={cover} alt="" />
+        <div className="hero-veil" />
+        <div className="hero">
+          <AbsCover src={cover} className="hero-cover" />
+          <div className="hero-copy">
+            <p className="eyebrow">{title}</p>
+            <h2>{episode.title}</h2>
+            {episode.subtitle ? <p className="hero-sub">{episode.subtitle}</p> : null}
+            {facts ? <p className="hero-facts muted">{facts}</p> : null}
+            {podcast.metadata.author ? <p className="hero-meta muted">{podcast.metadata.author}</p> : null}
+            <div className="hero-actions">
+              <button
+                type="button"
+                className={`primary-btn abs-listen ${canResume ? 'has-progress' : ''}`}
+                onClick={() => void playEpisode(item, episode)}
+              >
+                <PlayGlyph size={22} match={(current) => current.abs?.episodeId === episode.id} />
+                <span className="abs-listen-copy">
+                  <span className="abs-listen-title">{canResume ? 'Weiterhören' : 'Abspielen'}</span>
+                  {canResume ? (
+                    <span className="abs-listen-meta">
+                      {percent} % · noch {formatHours(left)}
+                    </span>
+                  ) : null}
+                </span>
+                {canResume ? (
+                  <span className="abs-listen-bar" aria-hidden>
+                    <span style={{ width: `${percent}%` }} />
+                  </span>
+                ) : null}
+              </button>
+              {canResume ? (
+                <button
+                  type="button"
+                  className="icon-btn abs-restart"
+                  aria-label="Von vorn abspielen"
+                  data-tip="Von vorn"
+                  onClick={() => void playEpisode(item, episode, 0)}
+                >
+                  <IconRefresh size={20} />
+                </button>
+              ) : null}
+              <button type="button" className="chip" onClick={queueEpisode} disabled={!song}>
+                <IconQueue size={16} /> In Warteschlange
+              </button>
+            </div>
+            {queued ? <p className="muted abs-queued">Zur Warteschlange hinzugefügt.</p> : null}
+          </div>
+        </div>
+      </div>
+
+      <section className="abs-section">
+        <h3>Show notes</h3>
+        {description ? (
+          <p className="abs-description">{description}</p>
+        ) : (
+          <p className="muted">Diese Folge hat keine Show notes.</p>
+        )}
+      </section>
+
+      <section className="abs-section">
+        <button type="button" className="text-btn" onClick={() => go({ name: 'podcast', id: item.id })}>
+          Alle Folgen von „{title}“
+        </button>
+      </section>
     </div>
   )
 }

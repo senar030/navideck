@@ -9,7 +9,7 @@ import {
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAllEpisodes, usePodcastItems } from '../lib/useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
-import { useNav } from '../state/NavContext'
+import { episodeView, useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { EpisodeCard, EpisodeRow, MissingAbs, PodcastCard } from './AbsParts'
 import { CoverArt } from './CoverArt'
@@ -161,7 +161,7 @@ export function EpisodesView() {
               key={`${ref.item.id}:${ref.episode.id}`}
               item={ref.item}
               episode={ref.episode}
-              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+              onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
               onPlay={() => void playEpisode(ref.item, ref.episode)}
             />
           ))}
@@ -174,7 +174,7 @@ export function EpisodesView() {
               item={ref.item}
               episode={ref.episode}
               progress={progress}
-              onOpen={() => go({ name: 'podcast', id: ref.item.id })}
+              onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
               onPlay={() => void playEpisode(ref.item, ref.episode)}
             />
           ))}
