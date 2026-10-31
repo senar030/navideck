@@ -5,7 +5,8 @@ import { useAuth } from '../state/AuthContext'
 import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
-import { IconPlay, IconQueue, IconStar } from './Icons'
+import { IconQueue, IconStar } from './Icons'
+import { PlayGlyph } from './PlayGlyph'
 import { TrackList } from './TrackList'
 
 export function AlbumDetail({ id }: { id: string }) {
@@ -77,7 +78,7 @@ export function AlbumDetail({ id }: { id: string }) {
               <IconStar filled={starred} />
             </button>
             <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-              <IconPlay size={22} /> Abspielen
+              <PlayGlyph size={22} /> Abspielen
             </button>
             <button
               type="button"

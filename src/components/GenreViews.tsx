@@ -7,8 +7,9 @@ import { usePlayer } from '../state/PlayerContext'
 import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { LayoutToggle } from './LayoutToggle'
-import { IconPlay, IconRadio } from './Icons'
+import { IconRadio } from './Icons'
 import { MarqueeText } from './MarqueeText'
+import { PlayGlyph } from './PlayGlyph'
 
 export function GenreList() {
   const { client, selectedFolderIds } = useAuth()
@@ -249,7 +250,7 @@ export function GenreDetail({ name }: { name: string }) {
                   aria-label={`${album.name} abspielen`}
                   onClick={() => void playAlbum(album)}
                 >
-                  <IconPlay size={22} />
+                  <PlayGlyph size={22} />
                 </button>
               </article>
             ))}

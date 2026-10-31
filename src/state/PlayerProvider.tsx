@@ -163,6 +163,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<Song[]>(() => boot?.queue ?? [])
   const [index, setIndex] = useState(() => boot?.index ?? 0)
   const [playing, setPlaying] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [shuffle, setShuffle] = useState(() => boot?.shuffle ?? false)
   const [repeat, setRepeat] = useState<RepeatMode>(() => boot?.repeat ?? 'off')
   const [volume, setVolumeState] = useState(readVolume)
@@ -285,10 +286,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (token !== startSequence) return
       void element.play().then(
         () => {
-          if (token === startSequence) setPlaying(true)
+          if (token === startSequence) {
+            setPlaying(true)
+            setLoading(false)
+          }
         },
         () => {
-          if (token === startSequence) setPlaying(false)
+          if (token === startSequence) {
+            setPlaying(false)
+            setLoading(false)
+          }
         },
       )
     }
@@ -372,6 +379,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (song: Song) => {
       // Music needs Navidrome; a book or a station carries its own stream.
       if (!client && !song.radio && !song.abs) return
+      setLoading(true)
       /*
        * A radio entry and an Audiobookshelf entry carry their own stream URL;
        * anything else is a file that Navidrome hands out. Neither is scrobbled
@@ -406,7 +414,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setCurrentTime(active.currentTime || 0)
         setDuration(finiteDuration(active, song.duration ?? 0))
         void active.play().then(
-          () => setPlaying(true),
+          () => {
+            setPlaying(true)
+            setLoading(false)
+          },
           () => {
             /*
              * WebKit sometimes refuses a programmatic play() on an element that
@@ -657,6 +668,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     release(idle())
     scrobbled.current = false
     setPlaying(false)
+    setLoading(false)
     setQueue([])
     setIndex(0)
     setCurrentTime(0)
@@ -803,6 +815,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const onPause = (event: Event) => {
       if (!mine(event)) return
       setPlaying(false)
+      setLoading(false)
       const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
       if (song?.abs) reportAbs(song, song.abs.startOffset + active.currentTime)
     }
@@ -959,6 +972,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       index,
       current,
       playing,
+      loading,
       radioNow,
       shuffle,
       repeat,
@@ -993,6 +1007,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       index,
       current,
       playing,
+      loading,
       radioNow,
       shuffle,
       repeat,

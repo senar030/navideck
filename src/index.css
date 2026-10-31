@@ -1114,6 +1114,13 @@ em {
   }
 }
 
+/* The loading spinner used in play buttons. */
+.is-spinning {
+  animation: spin 0.9s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 .icon-btn abbr {
   position: absolute;
   right: 0.35rem;

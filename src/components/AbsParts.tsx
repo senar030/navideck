@@ -15,8 +15,9 @@ import { stripHtml } from '../lib/format'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { CoverArt } from './CoverArt'
-import { IconPlay, IconPodcast, IconRefresh } from './Icons'
+import { IconPodcast, IconRefresh } from './Icons'
 import { MarqueeText } from './MarqueeText'
+import { PlayGlyph } from './PlayGlyph'
 
 /* --------------------------------------------------------------- building blocks */
 
@@ -112,7 +113,7 @@ export function BookCard({
           data-tip="Abspielen"
           onClick={onPlay}
         >
-          <IconPlay size={24} />
+          <PlayGlyph size={24} match={(song) => song.abs?.itemId === item.id} />
         </button>
       ) : null}
     </article>
@@ -214,7 +215,7 @@ export function EpisodeRow({
           <IconPodcast size={18} />
         </button>
         <button type="button" className="icon-btn" aria-label={`${episode.title} abspielen`} data-tip="Abspielen" onClick={onPlay}>
-          <IconPlay size={20} />
+          <PlayGlyph size={20} match={(song) => song.abs?.episodeId === episode.id} />
         </button>
       </div>
     </article>
@@ -299,7 +300,7 @@ export function EpisodeCard({
         data-tip="Abspielen"
         onClick={onPlay}
       >
-        <IconPlay size={24} />
+        <PlayGlyph size={24} match={(song) => song.abs?.episodeId === episode.id} />
       </button>
     </article>
   )

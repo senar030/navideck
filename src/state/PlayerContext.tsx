@@ -9,6 +9,8 @@ type PlayerContextValue = {
   index: number
   current: Song | undefined
   playing: boolean
+  /** True from the moment a track is asked to start until it actually plays. */
+  loading: boolean
   /**
    * The track a radio stream reports as on air. Only ever set for a live
    * stream, and only while it is playing: it is polled, not stored.

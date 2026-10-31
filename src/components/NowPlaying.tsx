@@ -21,6 +21,7 @@ import {
   IconVolume,
 } from './Icons'
 import { LiveBadge } from './LiveBadge'
+import { PlayGlyph } from './PlayGlyph'
 import { MarqueeText } from './MarqueeText'
 
 export function NowPlaying() {
@@ -247,7 +248,7 @@ export function NowPlaying() {
             <IconPrev size={28} />
           </button>
           <button type="button" className="play-xl" aria-label={playing ? 'Pause' : 'Wiedergeben'} data-tip={playing ? 'Pause' : 'Wiedergeben'} onClick={togglePlay}>
-            {playing ? <IconPause size={32} /> : <IconPlay size={32} />}
+            {playing ? <IconPause size={32} /> : <PlayGlyph size={32} />}
           </button>
           <button type="button" className="icon-btn lg" aria-label="Nächster Titel" data-tip="Nächster Titel" onClick={next}>
             <IconNext size={28} />

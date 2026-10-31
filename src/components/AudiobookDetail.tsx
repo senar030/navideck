@@ -16,8 +16,8 @@ import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { AbsCover, BookCard, MissingAbs, Notice, ProgressBar } from './AbsParts'
-import { IconPlay } from './Icons'
 import { MarqueeText } from './MarqueeText'
+import { PlayGlyph } from './PlayGlyph'
 
 /* -------------------------------------------------------------------- books */
 
@@ -105,8 +105,8 @@ export function BookDetail({ id }: { id: string }) {
             </p>
             <div className="hero-actions">
               <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
-                <IconPlay size={22} />
-                {busy ? 'Lädt …' : canResume ? 'Weiterhören' : 'Abspielen'}
+                <PlayGlyph size={22} match={(song) => song.abs?.itemId === id} />
+                {canResume ? 'Weiterhören' : 'Abspielen'}
               </button>
               {canResume ? (
                 <button type="button" className="text-btn" disabled={busy} onClick={() => void start(0)}>
@@ -238,8 +238,8 @@ export function AuthorDetail({ id }: { id: string }) {
             {startBook ? (
               <div className="hero-actions">
                 <button type="button" className="primary-btn" disabled={busy} onClick={() => void start()}>
-                  <IconPlay size={22} />
-                  {busy ? 'Lädt …' : resume ? 'Weiterhören' : 'Hören'}
+                  <PlayGlyph size={22} match={(song) => song.abs?.itemId === startBook?.id} />
+                  {resume ? 'Weiterhören' : 'Hören'}
                 </button>
               </div>
             ) : null}

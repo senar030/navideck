@@ -8,7 +8,8 @@ import { episodeKey, sortFeed } from '../lib/podcastFeed'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { AbsCover, EpisodeRow, MissingAbs } from './AbsParts'
-import { IconPlay, IconPlus, IconSettings } from './Icons'
+import { IconPlus, IconSettings } from './Icons'
+import { PlayGlyph } from './PlayGlyph'
 import { PodcastOptions } from './PodcastOptions'
 import { PodcastSetup } from './PodcastSetup'
 
@@ -217,7 +218,7 @@ export function PodcastDetail({ id }: { id: string }) {
                   className="primary-btn"
                   onClick={() => void playEpisode(item, latest)}
                 >
-                  <IconPlay size={22} /> Neueste Folge
+                  <PlayGlyph size={22} /> Neueste Folge
                 </button>
               ) : null}
               {admin ? (

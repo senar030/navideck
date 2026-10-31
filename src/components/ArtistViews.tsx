@@ -6,8 +6,9 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { usePrefs } from '../state/PrefsContext'
-import { IconPlay, IconStar } from './Icons'
+import { IconStar } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { PlayGlyph } from './PlayGlyph'
 import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
@@ -140,7 +141,7 @@ export function ArtistDetail({ id }: { id: string }) {
           </p>
           <div className="hero-actions">
             <button type="button" className="primary-btn" onClick={playAll} disabled={!songs.length}>
-              <IconPlay size={22} /> Alles spielen
+              <PlayGlyph size={22} /> Alles spielen
             </button>
             <button
               type="button"

@@ -77,6 +77,14 @@ export function IconPause({ size = 28 }: IconProps) {
     </svg>
   )
 }
+export function IconSpinner({ size = 22 }: IconProps) {
+  return (
+    <svg className="is-spinning" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
 export function IconPrev({ size = 26 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>

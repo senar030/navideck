@@ -7,13 +7,13 @@ import { MarqueeText } from './MarqueeText'
 import {
   IconNext,
   IconPause,
-  IconPlay,
   IconPrev,
   IconQueue,
   IconRepeat,
   IconShuffle,
   IconStar,
 } from './Icons'
+import { PlayGlyph } from './PlayGlyph'
 
 export function PlayerBar() {
   const {
@@ -69,7 +69,7 @@ export function PlayerBar() {
           }}
           disabled={!current}
         >
-          {playing ? <IconPause size={22} /> : <IconPlay size={22} />}
+          {playing ? <IconPause size={22} /> : <PlayGlyph size={22} />}
         </button>
         <button
           type="button"
@@ -119,7 +119,7 @@ export function PlayerBar() {
             onClick={togglePlay}
             disabled={!current}
           >
-            {playing ? <IconPause size={26} /> : <IconPlay size={26} />}
+            {playing ? <IconPause size={26} /> : <PlayGlyph size={26} />}
           </button>
           <button type="button" className="icon-btn lg" aria-label="Nächster Titel" data-tip="Nächster Titel" onClick={next} disabled={!current}>
             <IconNext />

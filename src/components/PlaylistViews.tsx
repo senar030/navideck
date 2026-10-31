@@ -6,8 +6,8 @@ import { useNav } from '../state/NavContext'
 import { usePlayer } from '../state/PlayerContext'
 import { CoverArt } from './CoverArt'
 import { usePrefs } from '../state/PrefsContext'
-import { IconPlay } from './Icons'
 import { LayoutToggle } from './LayoutToggle'
+import { PlayGlyph } from './PlayGlyph'
 import { MarqueeText } from './MarqueeText'
 import { TrackList } from './TrackList'
 
@@ -93,7 +93,7 @@ export function PlaylistDetail({ id }: { id: string }) {
             </p>
             <div className="hero-actions">
               <button type="button" className="primary-btn" onClick={() => playTracks(songs, 0)}>
-                <IconPlay size={22} /> Abspielen
+                <PlayGlyph size={22} /> Abspielen
               </button>
               <button type="button" className="primary-btn ghost" onClick={() => addToQueue(songs)}>
                 Alle einreihen
