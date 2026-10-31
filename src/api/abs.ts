@@ -154,6 +154,8 @@ export type AbsLibraryItem = {
   updatedAt: number
   media: AbsBook | AbsPodcast
   userMediaProgress?: AbsProgress | null
+  /** Attached by the podcast library search to the episode that matched. */
+  recentEpisode?: AbsEpisode | null
   collapsedSeries?: { id: string; name: string; numBooks?: number } | null
 }
 
@@ -166,6 +168,9 @@ export type AbsAuthor = {
   addedAt?: number
   updatedAt?: number
 }
+
+/** A podcast episode that matched a library search, with its show. */
+export type AbsSearchEpisode = { item: AbsLibraryItem; episode: AbsEpisode }
 
 export type AbsSeries = {
   id: string
@@ -554,6 +559,40 @@ export class AbsClient {
       })
     this.itemCache.set(itemId, { at: Date.now(), data })
     return data
+  }
+
+  /** Full-text search inside one library: books or podcasts, plus authors. */
+  async searchLibrary(
+    libraryId: string,
+    term: string,
+    limit = 20,
+  ): Promise<{ items: AbsLibraryItem[]; authors: AbsAuthor[]; episodes: AbsSearchEpisode[] }> {
+    const query = new URLSearchParams({ q: term, limit: String(limit) })
+    const data = await this.request<{
+      book?: { libraryItem?: AbsLibraryItem }[]
+      podcast?: { libraryItem?: AbsLibraryItem }[]
+      episodes?: { libraryItem?: AbsLibraryItem }[]
+      authors?: AbsAuthor[]
+    }>(`/api/libraries/${encodeURIComponent(libraryId)}/search?${query.toString()}`)
+    const matches = [...(data.book ?? []), ...(data.podcast ?? [])]
+    const items = matches.flatMap((match) => (match.libraryItem ? [expandItem(match.libraryItem)] : []))
+    const episodes = (data.episodes ?? []).flatMap((match) => {
+      const item = match.libraryItem
+      const episode = item?.recentEpisode
+      if (!item || !episode) return []
+      return [
+        {
+          item: expandItem(item),
+          episode: { ...episode, libraryItemId: episode.libraryItemId || item.id },
+        },
+      ]
+    })
+    return { items, authors: data.authors ?? [], episodes }
+  }
+
+  /** The PodcastClient shape used by the podcast area. */
+  async searchItems(libraryId: string, term: string, limit = 20): Promise<AbsLibraryItem[]> {
+    return (await this.searchLibrary(libraryId, term, limit)).items
   }
 
   async getAuthors(libraryId: string): Promise<AbsAuthor[]> {

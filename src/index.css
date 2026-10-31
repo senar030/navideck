@@ -801,11 +801,22 @@ html[data-nav='bar'] .nav-brand {
   grid-row: 1;
   grid-column: 1;
   z-index: 14;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--main-top) var(--main-pad-x) 1.4rem;
   background: var(--bg);
   animation: search-overlay-in 0.28s ease;
+}
+
+.search-results {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @keyframes search-overlay-in {

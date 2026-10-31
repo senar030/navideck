@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { useTheme } from '../state/ThemeContext'
@@ -24,8 +25,10 @@ type Props = {
 export function AppChrome({ scrolled = false }: Props) {
   const { view, go, back, canBack } = useNav()
   const { client } = useAuth()
+  const { abs, podcasts } = useAccount()
   const { theme, toggleTheme } = useTheme()
   const { uiMode, toggleUiMode } = usePrefs()
+  const canSearch = Boolean(client || abs?.books || podcasts)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
@@ -86,14 +89,14 @@ export function AppChrome({ scrolled = false }: Props) {
             </button>
           ) : null}
         </div>
-        {client ? (
+        {canSearch ? (
           <label className="chrome-search">
             <IconSearch />
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Alben, Künstler, Titel"
+              placeholder="Alben, Hörbücher, Podcasts"
               autoComplete="off"
               spellCheck={false}
               tabIndex={searchOpen ? 0 : -1}
@@ -104,8 +107,8 @@ export function AppChrome({ scrolled = false }: Props) {
           </label>
         ) : null}
         <div className="chrome-end">
-          {/* Search speaks Subsonic; without a music server there is nothing to ask. */}
-          {client ? (
+          {/* Search reaches every connected source, so any of them is enough. */}
+          {canSearch ? (
             <button
               type="button"
               className="icon-btn"
@@ -170,7 +173,7 @@ export function AppChrome({ scrolled = false }: Props) {
           </div>
         </div>
       </header>
-      {searchOpen && client ? (
+      {searchOpen && canSearch ? (
         <div className="search-overlay">
           <SearchResults query={query} onPick={closeSearch} />
         </div>

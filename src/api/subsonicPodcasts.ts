@@ -114,6 +114,21 @@ export class SubsonicPodcastClient {
     return channels.map((channel) => this.show(channel, !opts.minified))
   }
 
+  async searchItems(_libraryId: string, term: string, limit = 20): Promise<AbsLibraryItem[]> {
+    const needle = term.toLocaleLowerCase('de')
+    const channels = await this.channels()
+    return channels
+      .filter((channel) => {
+        const haystack = [channel.title, channel.description, channel.episode?.[0]?.artist]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase('de')
+        return haystack.includes(needle)
+      })
+      .slice(0, limit)
+      .map((channel) => this.show(channel, false))
+  }
+
   async getRecentEpisodes(
     _libraryId: string,
     opts: { limit?: number } = {},

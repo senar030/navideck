@@ -62,6 +62,7 @@ export type PodcastClient = {
   readonly kind: 'audiobookshelf' | 'subsonic'
   readonly baseUrl: string
   getItems(libraryId: string, opts?: { minified?: boolean }): Promise<AbsLibraryItem[]>
+  searchItems(libraryId: string, term: string, limit?: number): Promise<AbsLibraryItem[]>
   getRecentEpisodes(libraryId: string, opts?: { limit?: number }): Promise<AbsEpisode[]>
   getItem(id: string): Promise<AbsLibraryItem>
   coverUrl(id: string): string
