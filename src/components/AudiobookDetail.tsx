@@ -8,6 +8,8 @@ import {
   heardShare,
   progressOf,
   seriesOf,
+  sortBooks,
+  type BookSort,
 } from '../lib/absHelpers'
 import { useAsync } from '../lib/useAsync'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
@@ -16,13 +18,23 @@ import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { usePrefs } from '../state/PrefsContext'
 import { AbsCover, BookCard, MissingAbs, Notice, ProgressBar } from './AbsParts'
+import { LayoutToggle } from './LayoutToggle'
 import { MarqueeText } from './MarqueeText'
 import { PlayGlyph } from './PlayGlyph'
+import { SortMenu } from './SortMenu'
 
 /* -------------------------------------------------------------------- books */
 
 /* Huge books can carry hundreds of chapters; render the first page only. */
 const CHAPTER_PAGE = 80
+
+/* The author page starts at the earliest book, not at the alphabet. */
+const AUTHOR_BOOK_SORTS: { id: BookSort; label: string; defaultDesc?: boolean }[] = [
+  { id: 'year', label: 'Chronologisch' },
+  { id: 'title', label: 'Titel' },
+  { id: 'added', label: 'Hinzugefügt', defaultDesc: true },
+  { id: 'duration', label: 'Länge' },
+]
 
 export function BookDetail({ id }: { id: string }) {
   const { abs, progress } = useAccount()
@@ -183,10 +195,13 @@ export function AuthorDetail({ id }: { id: string }) {
   const { layout } = usePrefs()
   const { playBook } = useAbsPlayer()
   const [busy, setBusy] = useState(false)
+  const [sort, setSort] = useState<BookSort>('year')
+  const [desc, setDesc] = useState(false)
   const client = abs?.client ?? null
   const result = useAsync(client ? () => client.getAuthor(id) : null, [client, id])
   const author = result.data?.author
-  const books = result.data?.libraryItems ?? []
+  const books = useMemo(() => result.data?.libraryItems ?? [], [result.data])
+  const ordered = useMemo(() => sortBooks(books, sort, desc), [books, sort, desc])
 
   if (!abs) return <MissingAbs noun="Hörbuch" />
   if (result.error) return <p className="error">{result.error}</p>
@@ -250,10 +265,24 @@ export function AuthorDetail({ id }: { id: string }) {
       {author.description ? <p className="artist-bio">{stripHtml(author.description)}</p> : null}
 
       <section className="block">
-        <h3>Bücher</h3>
+        <div className="block-head">
+          <h3>Bücher</h3>
+          <div className="view-head-tools">
+            <SortMenu
+              options={AUTHOR_BOOK_SORTS}
+              value={sort}
+              desc={desc}
+              onChange={(next, nextDesc) => {
+                setSort(next)
+                setDesc(nextDesc)
+              }}
+            />
+            <LayoutToggle section="books" />
+          </div>
+        </div>
         {!books.length ? <Notice title="Noch keine Bücher" /> : null}
         <div className={`album-grid ${layout.books === 'list' ? 'is-list' : ''}`}>
-          {books.map((item) => (
+          {ordered.map((item) => (
             <BookCard
               key={item.id}
               item={item}

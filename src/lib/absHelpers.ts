@@ -116,7 +116,13 @@ export function sortBooks(list: AbsLibraryItem[], sort: BookSort, desc: boolean)
     if (sort === 'added') return order(a.addedAt - b.addedAt, desc)
     if (sort === 'duration') return order((bookOf(a).duration ?? 0) - (bookOf(b).duration ?? 0), desc)
     if (sort === 'year') {
-      return order(Number(left.publishedYear ?? 0) - Number(right.publishedYear ?? 0), desc)
+      const leftYear = Number(left.publishedYear ?? 0) || 0
+      const rightYear = Number(right.publishedYear ?? 0) || 0
+      if (!leftYear && !rightYear) return byText(left.title, right.title)
+      /* Books without a year go to the end, whichever direction is chosen. */
+      if (!leftYear) return 1
+      if (!rightYear) return -1
+      return order(leftYear - rightYear, desc) || byText(left.title, right.title)
     }
     return order(byText(left.title, right.title), desc)
   })
