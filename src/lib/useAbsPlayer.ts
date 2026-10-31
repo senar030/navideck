@@ -38,12 +38,12 @@ export function useAbsPlayer() {
   )
 
   const playEpisode = useCallback(
-    async (item: AbsLibraryItem, episode: AbsEpisode) => {
+    async (item: AbsLibraryItem, episode: AbsEpisode, at?: number) => {
       const client = podcasts?.client
       if (!client) return
       const saved = progressOf(progress, item.id, episode.id)
-      const at = saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0
-      const song = episodeSong(client, item, episode, at)
+      const start = at ?? (saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0)
+      const song = episodeSong(client, item, episode, start)
       if (song) playTracks([song], 0)
     },
     [podcasts, playTracks, progress],

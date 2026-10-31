@@ -80,7 +80,7 @@ export function BookDetail({ id }: { id: string }) {
       <div className="hero-banner">
         <img className="hero-bg" src={cover} alt="" />
         <div className="hero-veil" />
-        <div className="hero abs-book-hero">
+        <div className="hero">
           <AbsCover src={cover} className="hero-cover" />
           <div className="hero-copy">
             <p className="eyebrow">{series ? `Serie · ${series.name}` : 'Hörbuch'}</p>

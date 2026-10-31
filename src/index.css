@@ -1849,6 +1849,7 @@ html[data-theme='light'] .hero-banner {
   justify-content: flex-start;
   margin-top: 0.55rem;
   gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .artist-bio {
@@ -6345,44 +6346,4 @@ html.standalone {
 .abs-restart {
   width: 2.9rem;
   height: 2.9rem;
-}
-
-/* On phones the cover gets a little smaller and the copy keeps a left edge. */
-@media (max-width: 900px) {
-  .hero.abs-book-hero {
-    align-items: stretch;
-    gap: 1rem;
-  }
-
-  .abs-book-hero .hero-cover {
-    align-self: center;
-    width: min(44vw, 12rem);
-    height: min(44vw, 12rem);
-  }
-
-  .abs-book-hero .hero-copy {
-    align-items: flex-start;
-    gap: 0.55rem;
-    padding-bottom: 0;
-    text-align: left;
-  }
-
-  .abs-book-hero .hero-facts {
-    align-self: flex-start;
-    text-align: left;
-  }
-
-  .abs-book-hero .hero-actions {
-    width: 100%;
-    gap: 0.5rem;
-    justify-content: flex-start;
-  }
-
-  .abs-book-hero .abs-listen {
-    flex: 1 1 auto;
-  }
-
-  .abs-book-hero .abs-listen-meta {
-    font-size: 0.78rem;
-  }
 }

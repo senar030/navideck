@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AbsEpisode, AbsFeedPodcast } from '../api/abs'
-import { podcastOf, sortEpisodes } from '../lib/absHelpers'
+import { episodeDuration, formatHours, heardShare, podcastOf, progressOf, sortEpisodes } from '../lib/absHelpers'
 import { useAbsPlayer } from '../lib/useAbsPlayer'
 import { useAsync } from '../lib/useAsync'
 import { stripHtml } from '../lib/format'
@@ -8,7 +8,7 @@ import { episodeKey, sortFeed } from '../lib/podcastFeed'
 import { useAccount } from '../state/AccountContext'
 import { useNav } from '../state/NavContext'
 import { AbsCover, EpisodeRow, MissingAbs } from './AbsParts'
-import { IconPlus, IconSettings } from './Icons'
+import { IconPlus, IconRefresh, IconSettings } from './Icons'
 import { PlayGlyph } from './PlayGlyph'
 import { PodcastOptions } from './PodcastOptions'
 import { PodcastSetup } from './PodcastSetup'
@@ -60,6 +60,31 @@ export function PodcastDetail({ id }: { id: string }) {
   const cover = client.coverUrl(id)
   const shown = episodes.slice(0, limit)
   const latest = episodes[0]
+
+  /* The hero continues the episode this listener left unfinished. */
+  let resumeEpisode: AbsEpisode | null = null
+  let latestProgress = 0
+  for (const episode of episodes) {
+    const entry = progressOf(progress, id, episode.id)
+    if (!entry || entry.isFinished) continue
+    const at = entry.currentTime ?? 0
+    if (at <= 0) continue
+    if ((entry.lastUpdate ?? 0) >= latestProgress) {
+      latestProgress = entry.lastUpdate ?? 0
+      resumeEpisode = episode
+    }
+  }
+  const listenEpisode = resumeEpisode ?? latest
+  const listenEntry = listenEpisode ? progressOf(progress, id, listenEpisode.id) : undefined
+  const canResume = Boolean(
+    resumeEpisode && listenEntry && !listenEntry.isFinished && (listenEntry.currentTime ?? 0) > 0,
+  )
+  const listenShare = heardShare(listenEntry)
+  const percent = Math.min(100, Math.max(0, Math.round(listenShare * 100)))
+  const listenLeft =
+    listenEpisode && listenEntry
+      ? Math.max(0, (listenEntry.duration ?? episodeDuration(listenEpisode)) - (listenEntry.currentTime ?? 0))
+      : 0
 
   async function openDownloads() {
     if (!admin || !podcast) return
@@ -212,13 +237,37 @@ export function PodcastDetail({ id }: { id: string }) {
               </div>
             ) : null}
             <div className="hero-actions">
-              {latest ? (
+              {listenEpisode ? (
                 <button
                   type="button"
-                  className="primary-btn"
-                  onClick={() => void playEpisode(item, latest)}
+                  className={`primary-btn abs-listen ${canResume ? 'has-progress' : ''}`}
+                  onClick={() => void playEpisode(item, listenEpisode)}
                 >
-                  <PlayGlyph size={22} /> Neueste Folge
+                  <PlayGlyph size={22} />
+                  <span className="abs-listen-copy">
+                    <span className="abs-listen-title">{canResume ? 'Weiterhören' : 'Neueste Folge'}</span>
+                    {canResume ? (
+                      <span className="abs-listen-meta">
+                        {percent} % · noch {formatHours(listenLeft)}
+                      </span>
+                    ) : null}
+                  </span>
+                  {canResume ? (
+                    <span className="abs-listen-bar" aria-hidden>
+                      <span style={{ width: `${percent}%` }} />
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              {canResume && listenEpisode ? (
+                <button
+                  type="button"
+                  className="icon-btn abs-restart"
+                  aria-label="Von vorn abspielen"
+                  data-tip="Von vorn"
+                  onClick={() => void playEpisode(item, listenEpisode, 0)}
+                >
+                  <IconRefresh size={20} />
                 </button>
               ) : null}
               {admin ? (
