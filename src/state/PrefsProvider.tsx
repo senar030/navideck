@@ -22,6 +22,7 @@ const LAYOUT_DEFAULTS: Record<LayoutKey, LayoutMode> = {
   absCollections: 'grid',
   podcasts: 'grid',
   episodes: 'list',
+  radio: 'grid',
 }
 
 const KEY = 'navideck.mixSize'

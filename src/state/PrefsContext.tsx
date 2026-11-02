@@ -16,6 +16,7 @@ export type LayoutKey =
   | 'absCollections'
   | 'podcasts'
   | 'episodes'
+  | 'radio'
 export type UiMode = 'deck' | 'desktop'
 export type CornerMode = 'round' | 'sharp'
 

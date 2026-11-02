@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SubsonicError } from '../api/client'
 import type { RadioStation } from '../api/types'
 import { followedSource, hostOf, radioSong, radioSubtitle, type RadioSource } from '../lib/radio'
@@ -12,12 +12,57 @@ import {
 import { readRadioLogos, rememberRadioLogo } from '../lib/radioLogos'
 import { useAuth } from '../state/AuthContext'
 import { usePlayer } from '../state/PlayerContext'
+import { usePrefs } from '../state/PrefsContext'
 import { CoverArt } from './CoverArt'
 import { IconCheck, IconClose, IconExternal, IconPlay, IconPlus, IconSearch } from './Icons'
+import { LayoutToggle } from './LayoutToggle'
 import { MarqueeText } from './MarqueeText'
+import { SortMenu } from './SortMenu'
 
 /** How long the search waits for the next keystroke before asking the server. */
 const SEARCH_DELAY_MS = 400
+
+type RadioSort = 'popular' | 'name' | 'bitrate' | 'country'
+
+const RADIO_SORTS: { id: RadioSort; label: string; defaultDesc?: boolean }[] = [
+  { id: 'popular', label: 'Beliebt', defaultDesc: true },
+  { id: 'name', label: 'Name' },
+  { id: 'bitrate', label: 'Bitrate', defaultDesc: true },
+  { id: 'country', label: 'Land' },
+]
+
+function textCompare(a: string, b: string): number {
+  return a.localeCompare(b, 'de', { sensitivity: 'base', numeric: true })
+}
+
+function ordered(value: number, desc: boolean): number {
+  return desc ? -value : value
+}
+
+function sortRadio<T>(
+  list: T[],
+  sort: RadioSort,
+  desc: boolean,
+  info: (item: T) => { name: string; country?: string; bitrate?: number; votes?: number },
+): T[] {
+  const copy = [...list]
+  copy.sort((a, b) => {
+    const left = info(a)
+    const right = info(b)
+    if (sort === 'popular') {
+      return ordered((left.votes ?? 0) - (right.votes ?? 0), desc) || textCompare(left.name, right.name)
+    }
+    if (sort === 'bitrate') {
+      return ordered((left.bitrate ?? 0) - (right.bitrate ?? 0), desc) || textCompare(left.name, right.name)
+    }
+    if (sort === 'country') {
+      return ordered(textCompare(left.country ?? '', right.country ?? ''), desc) ||
+        textCompare(left.name, right.name)
+    }
+    return ordered(textCompare(left.name, right.name), desc)
+  })
+  return copy
+}
 
 export function RadioView() {
   const { client } = useAuth()
@@ -51,6 +96,31 @@ export function RadioView() {
   const [confirmId, setConfirmId] = useState('')
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
+  const { layout } = usePrefs()
+  const [sort, setSort] = useState<RadioSort>('popular')
+  const [desc, setDesc] = useState(true)
+  const grid = layout.radio === 'grid'
+
+  const sortedStations = useMemo(
+    () =>
+      sortRadio(stations, sort, desc, (station) => ({
+        name: station.name,
+        country: hostOf(station.streamUrl),
+        votes: 0,
+        bitrate: 0,
+      })),
+    [desc, sort, stations],
+  )
+  const sortedHits = useMemo(
+    () =>
+      sortRadio(hits, sort, desc, (hit) => ({
+        name: hit.name,
+        country: hit.country,
+        votes: hit.votes,
+        bitrate: hit.bitrate,
+      })),
+    [desc, hits, sort],
+  )
 
   const loadStations = useCallback(() => {
     if (!client) return
@@ -222,6 +292,18 @@ export function RadioView() {
     <div className="view radio-view">
       <header className="view-head">
         <h2>Radio</h2>
+        <div className="view-head-tools">
+          <SortMenu
+            options={RADIO_SORTS}
+            value={sort}
+            desc={desc}
+            onChange={(next, nextDesc) => {
+              setSort(next)
+              setDesc(nextDesc)
+            }}
+          />
+          <LayoutToggle section="radio" />
+        </div>
       </header>
       <p className="muted radio-lead">
         Internetradio läuft direkt aus dem Netz, nicht aus deiner Bibliothek. Gefolgte Sender werden auf dem
@@ -233,10 +315,11 @@ export function RadioView() {
       <section className="block">
         <h3>Gefolgt</h3>
         {stationsError ? <p className="error">{stationsError}</p> : null}
-        <div className="radio-list">
-          {stations.map((station) => (
-            <StationRow
+        <div className={grid ? 'album-grid radio-tiles' : 'radio-list'}>
+          {sortedStations.map((station) => (
+            <StationCard
               key={station.id}
+              grid={grid}
               coverArt={station.coverArt}
               logo={logos[station.streamUrl]}
               name={station.name}
@@ -312,10 +395,11 @@ export function RadioView() {
           ) : null}
         </label>
         {hitsError ? <p className="error">{hitsError}</p> : null}
-        <div className="radio-list">
-          {hits.map((hit) => (
-            <StationRow
+        <div className={grid ? 'album-grid radio-tiles' : 'radio-list'}>
+          {sortedHits.map((hit) => (
+            <StationCard
               key={hit.uuid}
+              grid={grid}
               logo={hit.logo}
               name={hit.name}
               subtitle={radioSubtitle([hit.country, bitrateLabel(hit), hit.tags.slice(0, 2).join(', ')])}
@@ -359,7 +443,8 @@ export function RadioView() {
   )
 }
 
-function StationRow({
+function StationCard({
+  grid = false,
   coverArt,
   logo,
   name,
@@ -367,6 +452,7 @@ function StationRow({
   onPlay,
   actions,
 }: {
+  grid?: boolean
   coverArt?: string
   logo?: string
   name: string
@@ -374,6 +460,22 @@ function StationRow({
   onPlay: () => void
   actions?: ReactNode
 }) {
+  if (grid) {
+    return (
+      <article className="album-card radio-tile">
+        <button type="button" className="album-hit" onClick={onPlay} aria-label={`${name} abspielen`}>
+          <CoverArt coverArt={coverArt} src={coverArt ? undefined : logo} alt="" size={400} />
+          <MarqueeText className="album-name">{name}</MarqueeText>
+          {subtitle ? <MarqueeText className="album-artist">{subtitle}</MarqueeText> : null}
+        </button>
+        <button type="button" className="play-fab" aria-label={`${name} abspielen`} data-tip="Abspielen" onClick={onPlay}>
+          <IconPlay size={22} />
+        </button>
+        {actions ? <div className="radio-tile-actions">{actions}</div> : null}
+      </article>
+    )
+  }
+
   return (
     <article className="radio-card">
       <button type="button" className="radio-hit" onClick={onPlay} aria-label={`${name} abspielen`}>
