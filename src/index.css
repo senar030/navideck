@@ -2571,6 +2571,51 @@ html[data-theme='light'] .hero-banner {
   white-space: nowrap;
 }
 
+/*
+ * Deck mode: the two-column tile grid turned radio stations into thin strips on
+ * a TV. Use the same full-width list shape as the other detail pages instead,
+ * with a readable cover and a play button that is always visible on touch.
+ */
+html[data-ui='deck'] .radio-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+html[data-ui='deck'] .radio-card {
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+}
+
+html[data-ui='deck'] .radio-hit {
+  gap: 1rem;
+  padding: 0.2rem;
+}
+
+html[data-ui='deck'] .radio-hit .radio-art {
+  width: 5.2rem;
+  height: 5.2rem;
+  border-radius: var(--radius);
+}
+
+html[data-ui='deck'] .radio-text {
+  gap: 0.18rem;
+}
+
+html[data-ui='deck'] .radio-text .radio-name {
+  font-size: 1.2rem;
+}
+
+html[data-ui='deck'] .radio-text .radio-sub {
+  font-size: 0.9rem;
+}
+
+html[data-ui='deck'] .radio-start {
+  width: 3rem;
+  height: 3rem;
+  opacity: 1;
+  transform: none;
+}
+
 .radio-search {
   display: flex;
   align-items: center;
