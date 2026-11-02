@@ -1,7 +1,7 @@
 {
   "name": "navideck-desktop",
   "productName": "Navideck",
-  "version": "1.17.1",
+  "version": "1.17.2",
   "description": "Navideck als Desktop-App für Windows und Linux",
   "author": {
     "name": "senar030",
@@ -71,6 +71,7 @@
         "--no-sandbox"
       ]
     },
+    "afterPack": "scripts/after-pack.cjs",
     "nsis": {
       "oneClick": false,
       "perMachine": false,
