@@ -72,6 +72,8 @@ export function PodcastDetail({ id }: { id: string }) {
   const cover = client.coverUrl(id)
   const shown = episodes.slice(0, limit)
   const latest = episodes[0]
+  /* The queue follows this page: every episode of the show, newest first. */
+  const queue = episodes.map((episode) => ({ item, episode }))
 
   /* The hero continues the episode this listener left unfinished. */
   let resumeEpisode: AbsEpisode | null = null
@@ -253,7 +255,7 @@ export function PodcastDetail({ id }: { id: string }) {
                 <button
                   type="button"
                   className={`primary-btn abs-listen ${canResume ? 'has-progress' : ''}`}
-                  onClick={() => void playEpisode(item, listenEpisode)}
+                  onClick={() => void playEpisode(item, listenEpisode, undefined, queue)}
                 >
                   <PlayGlyph size={22} />
                   <span className="abs-listen-copy">
@@ -277,7 +279,7 @@ export function PodcastDetail({ id }: { id: string }) {
                   className="icon-btn abs-restart"
                   aria-label="Von vorn abspielen"
                   data-tip="Von vorn"
-                  onClick={() => void playEpisode(item, listenEpisode, 0)}
+                  onClick={() => void playEpisode(item, listenEpisode, 0, queue)}
                 >
                   <IconRefresh size={20} />
                 </button>
@@ -324,7 +326,7 @@ export function PodcastDetail({ id }: { id: string }) {
               episode={episode}
               progress={progress}
               onOpen={() => go(episodeView(item.id, episode.id))}
-              onPlay={() => void playEpisode(item, episode)}
+              onPlay={() => void playEpisode(item, episode, undefined, queue)}
             />
           ))}
         </div>
@@ -399,6 +401,10 @@ export function PodcastEpisodeDetail({ id }: { id: string }) {
 
   const item = result.data
   const podcast = item ? podcastOf(item) : null
+  const episodes = useMemo(
+    () => sortEpisodes(podcast?.episodes ?? [], 'newest', false),
+    [podcast],
+  )
 
   if (!podcasts || !client) return <MissingAbs noun="Podcast" />
   if (result.error) return <p className="error">{result.error}</p>
@@ -420,6 +426,8 @@ export function PodcastEpisodeDetail({ id }: { id: string }) {
 
   const cover = client.coverUrl(item.id)
   const title = podcast.metadata.title
+  /* Same order as the show page, so playing here continues the show. */
+  const queue = episodes.map((entry) => ({ item, episode: entry }))
   const entry = progressOf(progress, item.id, episode.id)
   const share = heardShare(entry)
   const canResume = Boolean(entry && !entry.isFinished && (entry.currentTime ?? 0) > 0)
@@ -455,7 +463,7 @@ export function PodcastEpisodeDetail({ id }: { id: string }) {
               <button
                 type="button"
                 className={`primary-btn abs-listen ${canResume ? 'has-progress' : ''}`}
-                onClick={() => void playEpisode(item, episode)}
+                onClick={() => void playEpisode(item, episode, undefined, queue)}
               >
                 <PlayGlyph size={22} match={(current) => current.abs?.episodeId === episode.id} />
                 <span className="abs-listen-copy">
@@ -478,7 +486,7 @@ export function PodcastEpisodeDetail({ id }: { id: string }) {
                   className="icon-btn abs-restart"
                   aria-label="Von vorn abspielen"
                   data-tip="Von vorn"
-                  onClick={() => void playEpisode(item, episode, 0)}
+                  onClick={() => void playEpisode(item, episode, 0, queue)}
                 >
                   <IconRefresh size={20} />
                 </button>

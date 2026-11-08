@@ -162,7 +162,7 @@ export function EpisodesView() {
               item={ref.item}
               episode={ref.episode}
               onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
-              onPlay={() => void playEpisode(ref.item, ref.episode)}
+              onPlay={() => void playEpisode(ref.item, ref.episode, undefined, list)}
             />
           ))}
         </div>
@@ -175,7 +175,7 @@ export function EpisodesView() {
               episode={ref.episode}
               progress={progress}
               onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
-              onPlay={() => void playEpisode(ref.item, ref.episode)}
+              onPlay={() => void playEpisode(ref.item, ref.episode, undefined, list)}
             />
           ))}
         </div>

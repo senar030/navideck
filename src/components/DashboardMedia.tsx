@@ -75,7 +75,7 @@ function ContinuePodcastsSection(props: SectionProps) {
           item={ref.item}
           episode={ref.episode}
           onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
-          onPlay={() => void playEpisode(ref.item, ref.episode)}
+          onPlay={() => void playEpisode(ref.item, ref.episode, undefined, episodes.data ?? [])}
         />
       )),
     [episodes.data, go, playEpisode],
@@ -127,7 +127,7 @@ function ContinueAllSection(props: SectionProps) {
             item={ref.item}
             episode={ref.episode}
             onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
-            onPlay={() => void playEpisode(ref.item, ref.episode)}
+            onPlay={() => void playEpisode(ref.item, ref.episode, undefined, episodes.data ?? [])}
           />,
         )
         continue
@@ -144,7 +144,7 @@ function ContinueAllSection(props: SectionProps) {
       )
     }
     return list
-  }, [progress, episodeByKey, bookById, go, playBook, playEpisode])
+  }, [progress, episodeByKey, episodes.data, bookById, go, playBook, playEpisode])
 
   const loading = books.loading || episodes.loading
 
@@ -266,7 +266,7 @@ function LatestEpisodesSection(props: SectionProps) {
               item={ref.item}
               episode={ref.episode}
               onOpen={() => go(episodeView(ref.item.id, ref.episode.id))}
-              onPlay={() => void playEpisode(ref.item, ref.episode)}
+              onPlay={() => void playEpisode(ref.item, ref.episode, undefined, refs)}
             />
           ))}
         </TileRow>

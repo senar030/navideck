@@ -1,7 +1,9 @@
 import { useCallback } from 'react'
 import type { AbsEpisode, AbsLibraryItem } from '../api/abs'
+import type { Song } from '../api/types'
 import { bookOf, progressOf } from './absHelpers'
 import { bookQueue, episodeSong } from './absPlay'
+import type { EpisodeRef } from './useAbsLibrary'
 import { useAccount } from '../state/AccountContext'
 import { usePlayer } from '../state/PlayerContext'
 
@@ -38,13 +40,33 @@ export function useAbsPlayer() {
   )
 
   const playEpisode = useCallback(
-    async (item: AbsLibraryItem, episode: AbsEpisode, at?: number) => {
+    async (
+      item: AbsLibraryItem,
+      episode: AbsEpisode,
+      at?: number,
+      list?: EpisodeRef[],
+    ) => {
       const client = podcasts?.client
       if (!client) return
-      const saved = progressOf(progress, item.id, episode.id)
-      const start = at ?? (saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0)
-      const song = episodeSong(client, item, episode, start)
-      if (song) playTracks([song], 0)
+      /*
+       * An episode is always the start of a list, not a queue of its own: the
+       * place it was picked from decides what plays afterwards. Every entry
+       * resumes where the listener left it; only the chosen one may be
+       * overridden (the "from the beginning" button).
+       */
+      const refs = list?.length ? list : [{ item, episode }]
+      const songs: Song[] = []
+      let startIndex = 0
+      for (const ref of refs) {
+        const chosen = ref.item.id === item.id && ref.episode.id === episode.id
+        const saved = progressOf(progress, ref.item.id, ref.episode.id)
+        const resume = saved && !saved.isFinished ? (saved.currentTime ?? 0) : 0
+        const song = episodeSong(client, ref.item, ref.episode, chosen ? (at ?? resume) : resume)
+        if (!song) continue
+        if (chosen) startIndex = songs.length
+        songs.push(song)
+      }
+      if (songs.length) playTracks(songs, startIndex)
     },
     [podcasts, playTracks, progress],
   )

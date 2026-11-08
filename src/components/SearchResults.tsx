@@ -253,7 +253,7 @@ export function SearchResults({ query, onPick }: Props) {
                 item={ref.item}
                 episode={ref.episode}
                 onOpen={() => open(episodeView(ref.item.id, ref.episode.id))}
-                onPlay={() => void playEpisode(ref.item, ref.episode)}
+                onPlay={() => void playEpisode(ref.item, ref.episode, undefined, episodes)}
               />
             ))}
           </div>
