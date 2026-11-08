@@ -179,6 +179,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const scrobbled = useRef(false)
   const lastTick = useRef(0)
   const lastAbs = useRef(0)
+  const endTimer = useRef(0)
   const absRef = useRef<{ client: AbsClient; note: typeof noteProgress } | null>(null)
   const podcastRef = useRef<{ client: PodcastClient; note: typeof noteProgress } | null>(null)
   const queueRef = useRef(queue)
@@ -379,6 +380,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (song: Song) => {
       // Music needs Navidrome; a book or a station carries its own stream.
       if (!client && !song.radio && !song.abs) return
+      window.clearTimeout(endTimer.current)
+      endTimer.current = 0
       setLoading(true)
       /*
        * A radio entry and an Audiobookshelf entry carry their own stream URL;
@@ -408,31 +411,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // The other element buffered this track while the last one played:
         // hand the sound over, there is nothing to download.
         const previous = active
-        active = idle()
+        const nextElement = idle()
+        active = nextElement
         active.volume = previous.volume
         active.muted = previous.muted
         setCurrentTime(active.currentTime || 0)
         setDuration(finiteDuration(active, song.duration ?? 0))
+        let settled = false
+        const fallback = () => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(handover)
+          if (active === nextElement) release(nextElement)
+          active = previous
+          previous.src = url
+          previous.load()
+          start(previous, song)
+        }
+        const handover = window.setTimeout(fallback, 3000)
         void active.play().then(
           () => {
+            if (settled) return
+            settled = true
+            window.clearTimeout(handover)
             setPlaying(true)
             setLoading(false)
+            // Only after the sound is on its way: emptying the other element is
+            // heavy enough to be heard as a gap when it runs first.
+            release(previous)
           },
           () => {
-            /*
-             * WebKit sometimes refuses a programmatic play() on an element that
-             * was never started by hand. Fall back to a plain load, which is
-             * what the app did for every track before.
-             */
-            active = previous
-            previous.src = url
-            previous.load()
-            start(previous, song)
+            fallback()
           },
         )
-        // Only after the sound is on its way: emptying the other element is
-        // heavy enough to be heard as a gap when it runs first.
-        release(previous)
       } else if (sameSource(active)) {
         /*
          * The same file is already on its way — the session started loading it,
@@ -536,10 +547,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [loadAndPlay],
   )
 
-  const next = useCallback(() => {
+  const next = useCallback((fromIndex?: number) => {
     const q = queueRef.current
     if (!q.length) return
-    const i = indexRef.current
+    const i = typeof fromIndex === 'number' ? fromIndex : indexRef.current
     const mode = repeatRef.current
     if (mode === 'one') {
       playIndex(i)
@@ -793,12 +804,42 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         scrobbled.current = true
         void client?.scrobble(song.id, true)
       }
+
+      /*
+       * Some mobile browsers stop at the last sample without firing `ended`.
+       * Keep a short watchdog near the end; the normal `ended` handler clears
+       * it first, and the song id check makes an old timer harmless.
+       */
+      if (
+        song &&
+        !song.radio &&
+        Number.isFinite(active.duration) &&
+        active.duration > 0 &&
+        active.duration - active.currentTime <= 0.5 &&
+        !endTimer.current
+      ) {
+        const id = song.id
+        endTimer.current = window.setTimeout(() => {
+          endTimer.current = 0
+          if (songByElement.get(active)?.id !== id) return
+          if (active.ended || active.currentTime >= active.duration - 0.1) {
+            const currentSong = queueRef.current[indexRef.current]
+            const endedIndex =
+              currentSong?.id === id
+                ? indexRef.current
+                : queueRef.current.findIndex((entry) => entry.id === id)
+            next(endedIndex >= 0 ? endedIndex : undefined)
+          }
+        }, 1500)
+      }
     }
     const onMeta = (event: Event) => {
       if (mine(event)) setDuration(finiteDuration(active))
     }
     const onEnded = (event: Event) => {
       if (!mine(event)) return
+      window.clearTimeout(endTimer.current)
+      endTimer.current = 0
       const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
       if (song?.abs) {
         const entry = song.abs
@@ -807,7 +848,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         reportAbs(song, entry.total, last)
         lastAbs.current = 0
       }
-      next()
+      const currentSong = queueRef.current[indexRef.current]
+      const endedIndex = song
+        ? currentSong?.id === song.id
+          ? indexRef.current
+          : queueRef.current.findIndex((entry) => entry.id === song.id)
+        : -1
+      next(endedIndex >= 0 ? endedIndex : undefined)
     }
     const onPlay = (event: Event) => {
       if (mine(event)) setPlaying(true)
