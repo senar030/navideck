@@ -191,7 +191,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const scrobbled = useRef(false)
   const lastTick = useRef(0)
+  const lastPlayed = useRef(0)
   const lastAbs = useRef(0)
+  const sessionHandlers = useRef<Array<[MediaSessionAction, MediaSessionActionHandler]>>([])
   const endTimer = useRef(0)
   const absRef = useRef<{ client: AbsClient; note: typeof noteProgress } | null>(null)
   const podcastRef = useRef<{ client: PodcastClient; note: typeof noteProgress } | null>(null)
@@ -308,6 +310,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const start = useCallback((element: HTMLAudioElement, song: Song) => {
     element.dataset.songId = song.id
     songByElement.set(element, song)
+    /*
+     * WebKit ends the app's audio session when a file reaches its natural end
+     * in the background, and the next track then stays paused until the app is
+     * opened again. While hidden the element therefore loops, and `onTime`
+     * notices the jump back to the start (see there). In the foreground the
+     * normal `ended` path stays seamless.
+     */
+    element.loop = singleElement && document.hidden && !song.radio
+    lastPlayed.current = 0
     const token = ++startSequence
 
     const begin = () => {
@@ -805,8 +816,49 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       first.volume = volume
       second.volume = volume
     }
+    /*
+     * The file that was playing is over: report a book's progress, then move on
+     * (or stop at the end of the queue). Used by `ended` and, on iOS, by the
+     * wrap detection in `onTime`.
+     */
+    const finishTrack = () => {
+      window.clearTimeout(endTimer.current)
+      endTimer.current = 0
+      lastPlayed.current = 0
+      const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
+      if (song?.abs) {
+        const entry = song.abs
+        // The last file of a book, or the only file of an episode, is the end.
+        const last = !entry.tracks || entry.track === entry.tracks
+        reportAbs(song, entry.total, last)
+        lastAbs.current = 0
+      }
+      const currentSong = queueRef.current[indexRef.current]
+      const endedIndex = song
+        ? currentSong?.id === song.id
+          ? indexRef.current
+          : queueRef.current.findIndex((entry) => entry.id === song.id)
+        : -1
+      next(endedIndex >= 0 ? endedIndex : undefined)
+    }
     const onTime = (event: Event) => {
       if (!mine(event)) return
+      /*
+       * iOS: the element loops (see `start`), so a natural end shows up as the
+       * playhead jumping from the end back to the start. Treat that as the end
+       * signal. Only a jump away from the end counts, so seeking backwards
+       * stays a seek.
+       */
+      if (singleElement && active.loop) {
+        const position = active.currentTime
+        const previous = lastPlayed.current
+        lastPlayed.current = position
+        const total = finiteDuration(active)
+        if (previous > 1 && position + 1 < previous && total > 0 && previous >= total - 2) {
+          finishTrack()
+          return
+        }
+      }
       const now = performance.now()
       if (now - lastTick.current < 200) return
       lastTick.current = now
@@ -864,24 +916,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (mine(event)) setDuration(finiteDuration(active))
     }
     const onEnded = (event: Event) => {
-      if (!mine(event)) return
-      window.clearTimeout(endTimer.current)
-      endTimer.current = 0
-      const song = songByElement.get(active) ?? queueRef.current[indexRef.current]
-      if (song?.abs) {
-        const entry = song.abs
-        // The last file of a book, or the only file of an episode, is the end.
-        const last = !entry.tracks || entry.track === entry.tracks
-        reportAbs(song, entry.total, last)
-        lastAbs.current = 0
-      }
-      const currentSong = queueRef.current[indexRef.current]
-      const endedIndex = song
-        ? currentSong?.id === song.id
-          ? indexRef.current
-          : queueRef.current.findIndex((entry) => entry.id === song.id)
-        : -1
-      next(endedIndex >= 0 ? endedIndex : undefined)
+      if (mine(event)) finishTrack()
     }
     const onPlay = (event: Event) => {
       if (mine(event)) setPlaying(true)
@@ -970,6 +1005,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       element.removeEventListener('progress', check)
     }
   }, [client, queue, index, repeat, playing])
+
+  /*
+   * On iOS the loop flag is only needed while the app is in the background;
+   * that is where WebKit drops `ended` and closes the audio session. Keeping it
+   * off in the foreground leaves the normal, gapless track change in place.
+   */
+  useEffect(() => {
+    if (!singleElement) return
+    const apply = () => {
+      first.loop = document.hidden && !current?.radio
+      // The playhead did not necessarily restart where it was before hiding.
+      lastPlayed.current = 0
+    }
+    apply()
+    document.addEventListener('visibilitychange', apply)
+    return () => document.removeEventListener('visibilitychange', apply)
+  }, [current])
 
   useEffect(() => {
     const song = current
@@ -1084,16 +1136,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         /* unsupported on this platform */
       }
     }
+    sessionHandlers.current = handlers
   }, [current, client, next, prev, radioNow, seek])
 
   // Keeps the lock screen / control centre in sync, and lets the service worker
   // know not to reload the app in the middle of a track.
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
+    const session = navigator.mediaSession
     try {
-      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+      session.playbackState = playing ? 'playing' : 'paused'
     } catch {
       /* WebKit can expose the property without accepting a write */
+    }
+    /*
+     * iOS ignores handlers that were registered before the element became the
+     * Now Playing item, which leaves the lock screen with default 10-second
+     * skip buttons. Registering them again once the sound runs fixes that.
+     */
+    if (!playing) return
+    for (const [action, handler] of sessionHandlers.current) {
+      try {
+        session.setActionHandler(action, handler)
+      } catch {
+        /* unsupported on this platform */
+      }
     }
   }, [playing])
 
