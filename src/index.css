@@ -1205,15 +1205,13 @@ em {
 }
 
 .play-md:hover,
-.play-xl:hover,
-.play-fab:hover {
+.play-xl:hover {
   filter: brightness(1.06);
   transform: scale(1.05);
 }
 
 .play-md:active,
-.play-xl:active,
-.play-fab:active {
+.play-xl:active {
   transform: scale(0.97);
 }
 
@@ -1228,6 +1226,13 @@ em {
 }
 
 .play-fab {
+  /*
+   * The lift anchors the button on the cover's lower edge. Hover and press
+   * keep it in the transform: dropping it here moved the button out from under
+   * the pointer between mousedown and mouseup, so the click landed on the card
+   * underneath and opened the detail page instead of playing.
+   */
+  --fab-lift: -100%;
   position: absolute;
   right: 0.5rem;
   top: calc(100cqi - 0.5rem);
@@ -1235,7 +1240,16 @@ em {
   z-index: 1;
   width: 2.6rem;
   height: 2.6rem;
-  transform: translateY(-100%);
+  transform: translateY(var(--fab-lift));
+}
+
+.play-fab:hover {
+  filter: brightness(1.06);
+  transform: translateY(var(--fab-lift)) scale(1.05);
+}
+
+.play-fab:active {
+  transform: translateY(var(--fab-lift)) scale(0.97);
 }
 
 .play-fab:disabled {
@@ -1246,19 +1260,19 @@ em {
 @media (hover: hover) and (pointer: fine) {
   .album-card .play-fab {
     opacity: 0;
-    transform: translateY(calc(-100% + 0.5rem)) scale(0.9);
+    transform: translateY(calc(var(--fab-lift) + 0.5rem)) scale(0.9);
     pointer-events: none;
   }
 
   .album-card:hover .play-fab,
   .album-card:focus-within .play-fab {
     opacity: 1;
-    transform: translateY(-100%) scale(1);
+    transform: translateY(var(--fab-lift)) scale(1);
     pointer-events: auto;
   }
 
   .album-card:hover .play-fab:hover {
-    transform: translateY(-100%) scale(1.05);
+    transform: translateY(var(--fab-lift)) scale(1.05);
   }
 
   .album-grid.is-list .album-card .play-fab {
@@ -2020,13 +2034,14 @@ html[data-theme='light'] .hero-banner {
 }
 
 .album-grid.is-list .play-fab {
+  --fab-lift: 0%;
   position: relative;
   inset: auto;
   top: auto;
   width: 2.2rem;
   height: 2.2rem;
   flex-shrink: 0;
-  transform: none;
+  transform: translateY(var(--fab-lift));
 }
 
 /* Genres */
@@ -2152,13 +2167,13 @@ html[data-theme='light'] .hero-banner {
 }
 
 .genre-card .play-fab {
+  --fab-lift: 0%;
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
   bottom: auto;
   width: 2.4rem;
   height: 2.4rem;
-  transform: none;
 }
 
 .genre-grid.is-list .genre-card {
