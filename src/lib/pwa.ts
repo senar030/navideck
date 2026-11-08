@@ -188,3 +188,70 @@ export function registerServiceWorker(): void {
       .catch(() => undefined)
   })
 }
+
+/* --------------------------------------------------------------------------
+   New build
+   -------------------------------------------------------------------------- */
+
+/** The bundle this document really runs, as the browser resolved it. */
+function runningBundle(): string | null {
+  for (const script of document.querySelectorAll<HTMLScriptElement>('script[src]')) {
+    if (script.src.includes('/assets/')) return script.src
+  }
+  return null
+}
+
+/**
+ * An installed web app can keep an old document for days: iOS resumes it from
+ * memory and never asks the server again, even though navigations are
+ * network-first. Comparing the running bundle with the one the server names is
+ * the only reliable way to notice a redeploy from inside the app.
+ */
+export function watchForNewBuild(onUpdate: () => void): () => void {
+  if (!import.meta.env.PROD) return () => {}
+  const running = runningBundle()
+  if (!running) return () => {}
+
+  let stopped = false
+  let checking = false
+  const check = async () => {
+    if (stopped || checking) return
+    checking = true
+    try {
+      const response = await fetch('/index.html', { cache: 'no-store' })
+      if (!response.ok) return
+      const html = await response.text()
+      const match = html.match(/<script[^>]+src="([^"]*\/assets\/[^"]+\.js)"/)
+      if (!match) return
+      if (new URL(match[1], window.location.origin).href !== running) onUpdate()
+    } catch {
+      /* offline or the proxy is down: nothing to compare */
+    } finally {
+      checking = false
+    }
+  }
+
+  const timer = window.setInterval(() => void check(), 5 * 60_000)
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') void check()
+  }
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('focus', onVisible)
+  // Let the first screen settle before asking; the answer is not urgent.
+  const firstCheck = window.setTimeout(() => void check(), 8_000)
+
+  return () => {
+    stopped = true
+    window.clearInterval(timer)
+    window.clearTimeout(firstCheck)
+    document.removeEventListener('visibilitychange', onVisible)
+    window.removeEventListener('focus', onVisible)
+  }
+}
+
+/** True once the server serves a newer bundle than this page runs. */
+export function useUpdateAvailable(): boolean {
+  const [available, setAvailable] = useState(false)
+  useEffect(() => watchForNewBuild(() => setAvailable(true)), [])
+  return available
+}

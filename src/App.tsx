@@ -1,6 +1,7 @@
 import { Onboarding } from './components/Onboarding'
 import { Shell } from './components/Shell'
 import { IconLogo } from './components/Icons'
+import { useUpdateAvailable } from './lib/pwa'
 import { AccountProvider } from './state/AccountProvider'
 import { useAccount } from './state/AccountContext'
 import { AuthProvider } from './state/AuthProvider'
@@ -16,10 +17,30 @@ export default function App() {
         <AccountProvider>
           <AuthProvider>
             <Gate />
+            <UpdateBanner />
           </AuthProvider>
         </AccountProvider>
       </PrefsProvider>
     </ThemeProvider>
+  )
+}
+
+/*
+ * A redeploy does not always reach an installed web app: iOS resumes the old
+ * document from memory and never asks again. This is the one place that
+ * notices a newer bundle and offers the reload, so it also works before a
+ * server is set up.
+ */
+function UpdateBanner() {
+  const available = useUpdateAvailable()
+  if (!available) return null
+  return (
+    <div className="update-banner" role="status">
+      <span>Neue Version verfügbar</span>
+      <button type="button" className="text-btn" onClick={() => window.location.reload()}>
+        Neu laden
+      </button>
+    </div>
   )
 }
 

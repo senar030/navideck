@@ -58,7 +58,20 @@ function supportsVolume(audio: HTMLAudioElement): boolean {
  */
 const first = createAudio()
 const second = createAudio()
-second.preload = 'auto'
+
+/*
+ * WebKit ties an audio session to one element. Switching between two elements
+ * (the preloaded one and the one that just played) can leave the new element
+ * playing silently after a pause, especially from the lock screen. iOS keeps
+ * the same element for the whole queue and loses only the preload gap.
+ */
+const isIOS =
+  typeof navigator !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+const singleElement = isIOS
+// Without hand-overs the second element has nothing to do on iOS.
+second.preload = singleElement ? 'none' : 'auto'
 
 /** The element that owns the sound right now; `idle()` is the buffering one. */
 let active: HTMLAudioElement = first
@@ -199,6 +212,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     repeatRef.current = repeat
     shuffleRef.current = shuffle
   }, [index, queue, repeat, shuffle])
+
+  /*
+   * A detached media element can play, but WebKit's lock-screen session and
+   * audio route are much happier with the element in the document. Both stay
+   * hidden; the second one is only a buffer, and on iOS there is no second one.
+   */
+  useEffect(() => {
+    for (const element of singleElement ? [first] : [first, second]) {
+      if (element.isConnected) continue
+      element.style.display = 'none'
+      element.setAttribute('aria-hidden', 'true')
+      document.body.appendChild(element)
+    }
+  }, [])
 
   const current = queue[index]
 
@@ -407,7 +434,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           setCurrentTime(0)
         }
         start(active, song)
-      } else if (holds(idle())) {
+      } else if (!singleElement && holds(idle())) {
         // The other element buffered this track while the last one played:
         // hand the sound over, there is nothing to download.
         const previous = active
@@ -454,7 +481,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
          */
         setCurrentTime(song.startAt ?? active.currentTime)
         start(active, song)
-      } else if (sameSource(idle())) {
+      } else if (!singleElement && sameSource(idle())) {
         // The other element is still loading this file; take it over as it is.
         const previous = active
         active = idle()
@@ -892,6 +919,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    * that a playlist being opened right now depends on.
    */
   useEffect(() => {
+    /*
+     * iOS plays the whole queue through the same element (`singleElement`), so
+     * there is no second element to buffer into. Preloading would only pull a
+     * track nobody is going to hand over.
+     */
+    if (singleElement) return
     const song = queue[index]
     const upcoming = queue[index + 1] ?? (repeat === 'all' ? queue[0] : undefined)
     // A station is never preloaded: there is no beginning to buffer ahead of the
@@ -940,8 +973,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const song = current
-    if (!song || !('mediaSession' in navigator)) return
+    if (!('mediaSession' in navigator)) return
     const session = navigator.mediaSession
+    /*
+     * An emptied queue must also leave the lock screen: otherwise iOS keeps
+     * showing the last track with controls that no longer do anything.
+     */
+    if (!song) {
+      try {
+        session.metadata = null
+        session.playbackState = 'none'
+      } catch {
+        /* unsupported on this platform */
+      }
+      return
+    }
     /*
      * For a live stream the app's own title is the station, but a lock screen is
      * more useful with the track that is on air right now; the station moves into
@@ -967,12 +1013,60 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     // Not every action exists on every platform, and an unsupported one would
     // otherwise abort the whole effect.
+    const setSessionState = (state: 'playing' | 'paused') => {
+      try {
+        session.playbackState = state
+      } catch {
+        /* WebKit can expose the property without accepting a write */
+      }
+    }
     const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
-      ['play', () => void active.play()],
-      ['pause', () => active.pause()],
+      [
+        'play',
+        () => {
+          setSessionState('playing')
+          if (!active.paused) return
+          void active.play().then(
+            () => setPlaying(true),
+            () => {
+              setPlaying(false)
+              setSessionState('paused')
+            },
+          )
+        },
+      ],
+      [
+        'pause',
+        () => {
+          active.pause()
+          setPlaying(false)
+          setSessionState('paused')
+        },
+      ],
       ['previoustrack', () => prev()],
       ['nexttrack', () => next()],
-      ['stop', () => active.pause()],
+      [
+        'stop',
+        () => {
+          active.pause()
+          setPlaying(false)
+          setSessionState('paused')
+        },
+      ],
+      [
+        'seekbackward',
+        (details) => {
+          const offset = typeof details.seekOffset === 'number' ? details.seekOffset : 10
+          seek(Math.max(0, active.currentTime - offset))
+        },
+      ],
+      [
+        'seekforward',
+        (details) => {
+          const offset = typeof details.seekOffset === 'number' ? details.seekOffset : 10
+          seek(Math.min(active.duration || active.currentTime + offset, active.currentTime + offset))
+        },
+      ],
     ]
     // A live stream has no timeline to jump around in.
     if (!song.radio) {
@@ -996,8 +1090,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // know not to reload the app in the middle of a track.
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
-    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+    try {
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+    } catch {
+      /* WebKit can expose the property without accepting a write */
+    }
   }, [playing])
+
+  /*
+   * The lock screen scrubber reads its position from here. Without it iOS keeps
+   * a stale or empty timeline next to a track that is clearly running.
+   */
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    const session = navigator.mediaSession
+    if (typeof session.setPositionState !== 'function') return
+    // A live stream has no length, and a track still loading has none either.
+    const total = Number.isFinite(duration) && duration > 0 ? duration : 0
+    if (!total) return
+    try {
+      session.setPositionState({
+        duration: total,
+        playbackRate: active.playbackRate > 0 ? active.playbackRate : 1,
+        position: Math.min(Math.max(currentTime, 0), total),
+      })
+    } catch {
+      /* WebKit rejects a stale duration; the next timeupdate tries again */
+    }
+  }, [currentTime, duration])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

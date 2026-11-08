@@ -629,6 +629,36 @@ html[data-nav='bar'] .nav-brand {
   overscroll-behavior: contain;
 }
 
+/*
+ * A redeploy can leave an installed app on the old bundle for days. This hangs
+ * above everything until the page is reloaded into the new one.
+ */
+.update-banner {
+  position: fixed;
+  z-index: 70;
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2rem);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.update-banner .text-btn {
+  min-height: 0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+}
+
 .chrome {
   position: absolute;
   top: 0;
