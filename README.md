@@ -115,6 +115,26 @@ npm run icons
 
 That rewrites `public/icons/*` (192/512, maskable variants, 180px iOS icon).
 
+## Native iOS app
+
+`ios/` holds a native SwiftUI client for iPhone and iPad (iOS 17+). It talks to
+the same Subsonic servers directly — no web view — with its own player, queue,
+lock-screen controls and background audio.
+
+```bash
+cd ios
+open Navideck.xcodeproj
+```
+
+Pick your team under *Signing & Capabilities* and run it on a device. After any
+change under `ios/`, the **iOS build** workflow produces an unsigned IPA as the
+`Navideck-unsigned-ipa` artifact; sign it with Sideloadly or AltStore to install
+it. Pushing a tag `ios-v<version>` publishes it as a GitHub release.
+
+Version 1.0 covers the library (albums, artists, playlists, genres, favorites),
+search and playback. Podcasts, audiobooks (Audiobookshelf) and radio follow in a
+second step. Details: [`ios/README.md`](ios/README.md).
+
 ## Radio
 
 The **Radio** nav point looks up internet radio stations through
