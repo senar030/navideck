@@ -22,7 +22,48 @@ final class AppModel {
             self.client = client
             player.configure(client: client, profileID: profile.id)
         }
+
+        #if DEBUG
+        // Simulator-only convenience: point the app at a local test server
+        // without typing credentials, e.g.
+        // SIMCTL_CHILD_NAVIDECK_DEMO_URL=http://127.0.0.1:4533
+        if let demo = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_URL"],
+           let url = URL(string: demo) {
+            let profile = servers.save(
+                baseURL: url,
+                username: "demo",
+                password: "demo",
+                auth: .token
+            )
+            if let client = servers.makeClient(for: profile) {
+                self.client = client
+                player.configure(client: client, profileID: profile.id)
+            }
+        }
+
+        let demoPlay = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAY"]
+        if demoPlay == "1" || demoPlay == "2" {
+            startDemoPlayback(openPlayer: demoPlay == "1")
+        }
+        #endif
     }
+
+    #if DEBUG
+    /// Starts the first album, optionally opening Now Playing, so the player can
+    /// be checked in the simulator without tapping through the UI.
+    private func startDemoPlayback(openPlayer: Bool) {
+        Task { @MainActor in
+            guard let client else { return }
+            guard let albums = try? await client.albumList(.newest, size: 2),
+                  let first = albums.first else { return }
+            guard let full = try? await client.album(id: first.id), !full.songs.isEmpty else { return }
+            player.play(full.songs)
+            if openPlayer {
+                player.showNowPlaying = true
+            }
+        }
+    }
+    #endif
 
     // MARK: - Connecting
 

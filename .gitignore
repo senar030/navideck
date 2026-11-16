@@ -25,6 +25,8 @@ release
 *.sw?
 
 # iOS / Xcode
+# Das Projekt wird von XcodeGen aus ios/project.yml erzeugt.
+ios/*.xcodeproj
 ios/build
 ios/DerivedData
 ios/*.xcworkspace/xcuserdata

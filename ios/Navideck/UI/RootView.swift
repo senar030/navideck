@@ -25,7 +25,15 @@ struct RootView: View {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var app
-    @State private var selection = 0
+    @State private var selection: Int = {
+        #if DEBUG
+        if let raw = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_TAB"],
+           let tab = Int(raw), (0...4).contains(tab) {
+            return tab
+        }
+        #endif
+        return 0
+    }()
 
     var body: some View {
         @Bindable var player = app.player

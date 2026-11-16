@@ -27,11 +27,9 @@ extension Color {
 }
 
 extension View {
-    /// Puts every screen on the app's own dark background.
+    /// Puts every screen on the app's own dark background. The navigation bar
+    /// stays transparent: painting it made iOS 26/27 hide the large title.
     func navideckScreen() -> some View {
-        self
-            .background(Theme.background.ignoresSafeArea())
-            .toolbarBackground(Theme.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+        background(Theme.background.ignoresSafeArea())
     }
 }

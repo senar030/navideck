@@ -10,45 +10,53 @@ struct NowPlayingView: View {
     var body: some View {
         @Bindable var player = app.player
 
-        if let song = app.player.current {
-            ZStack {
-                background(for: song)
-
+        Group {
+            if let song = app.player.current {
                 VStack(spacing: 0) {
                     topBar
-                    Spacer(minLength: 12)
-                    artwork(for: song)
-                    Spacer(minLength: 12)
+                    Spacer(minLength: 8)
+
+                    CoverArtView(url: app.coverURL(song.coverArt, size: 900), radius: 20)
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(maxWidth: 380, maxHeight: 380)
+                        .shadow(color: .black.opacity(0.5), radius: 32, y: 18)
+                        .scaleEffect(app.player.isPlaying ? 1 : 0.94)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: app.player.isPlaying)
+
+                    Spacer(minLength: 14)
                     metadata(for: song)
                     progress
                     controls
                     bottomBar(for: song)
                 }
                 .padding(.horizontal, 26)
-                .padding(.bottom, 14)
-            }
-            .offset(y: dragOffset)
-            .sheet(isPresented: $player.showQueue) {
-                QueueView()
-            }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragOffset = max(0, value.translation.height)
-                    }
-                    .onEnded { value in
-                        if value.translation.height > 120 {
-                            dismiss()
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                dragOffset = 0
+                .padding(.bottom, 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(background(for: song))
+                .offset(y: dragOffset)
+                .sheet(isPresented: $player.showQueue) {
+                    QueueView()
+                }
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = max(0, value.translation.height)
+                        }
+                        .onEnded { value in
+                            if value.translation.height > 120 {
+                                dismiss()
+                            } else {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    dragOffset = 0
+                                }
                             }
                         }
-                    }
-            )
-        } else {
-            EmptyStateView(icon: "music.note", title: "Nichts in der Warteschlange")
-                .background(Theme.background.ignoresSafeArea())
+                )
+            } else {
+                EmptyStateView(icon: "music.note", title: "Nichts in der Warteschlange")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.background.ignoresSafeArea())
+            }
         }
     }
 
@@ -114,16 +122,7 @@ struct NowPlayingView: View {
         .padding(.top, 4)
     }
 
-    // MARK: - Artwork and metadata
-
-    private func artwork(for song: Song) -> some View {
-        CoverArtView(url: app.coverURL(song.coverArt, size: 900), radius: 20)
-            .aspectRatio(1, contentMode: .fit)
-            .frame(maxWidth: 380)
-            .shadow(color: .black.opacity(0.5), radius: 32, y: 18)
-            .scaleEffect(app.player.isPlaying ? 1 : 0.94)
-            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: app.player.isPlaying)
-    }
+    // MARK: - Metadata
 
     private func metadata(for song: Song) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -147,10 +146,10 @@ struct NowPlayingView: View {
 
                 Spacer(minLength: 12)
 
-                if let error = app.player.errorMessage {
+                if app.player.errorMessage != nil {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Theme.danger)
-                        .help(error)
+                        .accessibilityLabel("Wiedergabefehler")
                 }
             }
         }
@@ -176,15 +175,18 @@ struct NowPlayingView: View {
                 }
             )
             .tint(Theme.accent)
+            .frame(maxWidth: .infinity)
 
             HStack {
                 Text(Format.duration(scrubTime ?? app.player.currentTime))
-                Spacer()
+                Spacer(minLength: 8)
                 Text(Format.duration(app.player.duration))
+                    .multilineTextAlignment(.trailing)
             }
             .font(.caption2.monospacedDigit())
             .foregroundStyle(Theme.muted)
         }
+        .frame(maxWidth: .infinity)
         .padding(.top, 14)
     }
 

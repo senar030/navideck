@@ -23,8 +23,12 @@ Noch nicht enthalten (zweite Ausbaustufe): Podcasts, Hörbücher
 
 Voraussetzungen: macOS mit Xcode 16 oder neuer, iOS 17 als Ziel.
 
+Das Xcode-Projekt wird aus `project.yml` erzeugt und liegt bewusst nicht im
+Repository (sonst entstehen beim Cloud-Sync Duplikate):
+
 ```bash
-cd ios
+brew install xcodegen
+cd ios && xcodegen generate
 open Navideck.xcodeproj
 ```
 
@@ -33,10 +37,10 @@ Team eintragen und die Bundle-ID (`de.navideck.app`) auf etwas Eigenes ändern,
 falls sie schon vergeben ist. Dann auf ein angeschlossenes iPhone oder den
 Simulator starten.
 
-Nur nach Änderungen an `project.yml` muss das Projekt neu erzeugt werden:
+Nach jeder Änderung an `project.yml` (z. B. Versionsnummer) das Projekt neu
+erzeugen:
 
 ```bash
-brew install xcodegen
 cd ios && xcodegen generate
 ```
 
@@ -44,6 +48,7 @@ Kommandozeilen-Build für den Simulator:
 
 ```bash
 cd ios
+xcodegen generate
 xcodebuild -project Navideck.xcodeproj -scheme Navideck \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
@@ -68,7 +73,7 @@ signiert werden. Mit einem bezahlten Developer-Programm entfällt das.
 ```
 ios/
   project.yml              XcodeGen-Projektdefinition
-  Navideck.xcodeproj       generiert, direkt in Xcode zu öffnen
+  Navideck.xcodeproj       generiert (nicht im Repo), direkt in Xcode zu öffnen
   Navideck/
     App/                   Einstiegspunkt und AppModel
     Core/                  Modelle, Subsonic-Client, Serververwaltung, Keychain
