@@ -225,12 +225,14 @@ struct MainTabs: View {
         }
         .padding(.horizontal, 16)
         .background {
-            // Soft scrim so lists fade out instead of showing through the glass.
+            // Soft scrim so lists fade out under the glass instead of showing
+            // through too harshly.
             LinearGradient(
-                colors: [
-                    Theme.background.opacity(navExpanded ? 0.78 : 0),
-                    Theme.background.opacity(0.92),
-                    Theme.background,
+                stops: [
+                    .init(color: Theme.background.opacity(navExpanded ? 0.6 : 0), location: 0),
+                    .init(color: Theme.background.opacity(0.45), location: 0.22),
+                    .init(color: Theme.background.opacity(0.9), location: 0.62),
+                    .init(color: Theme.background, location: 1),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -259,8 +261,7 @@ struct MainTabs: View {
                 .frame(width: 48, height: 48)
                 .navideckGlass(
                     Circle(),
-                    tint: active ? Theme.accent.opacity(0.3) : nil,
-                    interactive: true
+                    tint: active ? Theme.accent.opacity(0.3) : nil
                 )
                 .contentShape(Circle())
         }

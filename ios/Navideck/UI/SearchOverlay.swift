@@ -114,7 +114,7 @@ struct SearchOverlay: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.text)
                     .frame(width: 44, height: 44)
-                    .navideckGlass(Circle(), interactive: true)
+                    .navideckGlass(Circle())
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -185,7 +185,7 @@ struct SearchOverlay: View {
                             .foregroundStyle(Theme.text)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .navideckGlass(Capsule(), interactive: true)
+                            .navideckGlass(Capsule())
                         }
                         .buttonStyle(.plain)
                     }

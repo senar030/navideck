@@ -1,25 +1,42 @@
 import SwiftUI
 
-/// Navideck's glass surface. On iOS 26 and newer this is real Liquid Glass,
-/// on older systems a thin material with a hairline edge.
+/// Navideck's own glass surface. It is deliberately not `glassEffect`:
+/// the system glass refracts whatever sits behind it, which over cover art
+/// drew a second rim and a shadow around the mini player. This is a thin
+/// material, very slightly tinted, with a gradient edge — see-through, but
+/// without those artefacts.
 extension View {
-    @ViewBuilder
-    func navideckGlass<S: Shape>(
-        _ shape: S,
-        tint: Color? = nil,
-        interactive: Bool = false
-    ) -> some View {
-        if #available(iOS 26.0, *) {
-            let glass = Glass.clear
-                .tint(tint)
-                .interactive(interactive)
-            self.glassEffect(glass, in: shape)
-        } else {
-            self
-                .background(.ultraThinMaterial, in: shape)
-                .overlay {
-                    shape.stroke(Color.white.opacity(0.14), lineWidth: 0.5)
-                }
+    func navideckGlass<S: Shape>(_ shape: S, tint: Color? = nil) -> some View {
+        background {
+            GlassBackdrop(shape: shape, tint: tint)
+        }
+    }
+}
+
+struct GlassBackdrop<S: Shape>: View {
+    let shape: S
+    var tint: Color?
+
+    var body: some View {
+        ZStack {
+            shape
+                .fill(.ultraThinMaterial)
+                .opacity(0.85)
+
+            shape.fill(Theme.background.opacity(0.22))
+
+            if let tint {
+                shape.fill(tint)
+            }
+
+            shape.stroke(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.32), Color.white.opacity(0.06)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ),
+                lineWidth: 0.7
+            )
         }
     }
 }
