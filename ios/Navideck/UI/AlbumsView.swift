@@ -38,6 +38,7 @@ struct AlbumsView: View {
     @State private var loading = false
     @State private var canLoadMore = true
     @State private var errorMessage: String?
+    @AppStorage("navideck.albums-layout") private var layout = "grid"
 
     private let columns = [
         GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)
@@ -45,18 +46,39 @@ struct AlbumsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(albums) { album in
-                    AlbumCard(album: album)
-                        .onAppear {
-                            if album.id == albums.last?.id {
-                                Task { await loadNextPage() }
+            if layout == "grid" {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(albums) { album in
+                        AlbumCard(album: album)
+                            .onAppear {
+                                if album.id == albums.last?.id {
+                                    Task { await loadNextPage() }
+                                }
                             }
-                        }
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(albums.enumerated()), id: \.element.id) { offset, album in
+                        AlbumRow(album: album)
+                            .padding(.horizontal, 20)
+                            .onAppear {
+                                if offset == albums.count - 1 {
+                                    Task { await loadNextPage() }
+                                }
+                            }
+
+                        if offset < albums.count - 1 {
+                            Divider()
+                                .overlay(Theme.hairline)
+                                .padding(.leading, 84)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
 
             if let errorMessage {
                 ErrorBanner(message: errorMessage)
@@ -80,7 +102,16 @@ struct AlbumsView: View {
         .navigationTitle("Alben")
         .navideckScreen()
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        layout = layout == "grid" ? "list" : "grid"
+                    }
+                } label: {
+                    Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
+                }
+                .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+
                 Menu {
                     Picker("Sortierung", selection: $sort) {
                         ForEach(AlbumSort.allCases) { option in

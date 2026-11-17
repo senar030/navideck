@@ -315,9 +315,9 @@ struct SubsonicClient: Sendable {
     func search(_ query: String) async throws -> SearchResult {
         let response = try await request("search3", [
             "query": query,
-            "artistCount": "12",
-            "albumCount": "24",
-            "songCount": "40",
+            "artistCount": "20",
+            "albumCount": "40",
+            "songCount": "100",
         ])
         let block = response.searchResult3
         return SearchResult(

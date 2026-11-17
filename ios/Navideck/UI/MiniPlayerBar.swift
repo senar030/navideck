@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Slim player strip that floats above the tab bar. Swiping it left or right
+/// Round glass pill in the middle of the bottom row. Swiping it left or right
 /// clears the queue, tapping opens Now Playing.
 struct MiniPlayerBar: View {
     @Environment(AppModel.self) private var app
@@ -10,76 +10,69 @@ struct MiniPlayerBar: View {
 
     var body: some View {
         if let song = app.player.current {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 CoverArtView(url: app.artworkURL(song.coverArt, size: 160))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(song.title)
-                        .font(.footnote.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                     Text(song.artist ?? song.album ?? " ")
-                        .font(.caption2)
+                        .font(.system(size: 9))
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }
-
-                Spacer(minLength: 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
                     app.player.toggle()
                 } label: {
                     Image(systemName: app.player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.text)
                         .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(app.player.isPlaying ? "Pause" : "Abspielen")
-
-                Button {
-                    app.player.next()
-                } label: {
-                    Image(systemName: "forward.end.fill")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 30, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Nächster Titel")
             }
-            .padding(.leading, 8)
-            .padding(.trailing, 6)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial)
+            .padding(.leading, 7)
+            .padding(.trailing, 5)
+            .padding(.vertical, 7)
+            .background(.ultraThinMaterial, in: Capsule())
             .overlay(alignment: .bottom) {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        Rectangle().fill(Color.white.opacity(0.05))
-                        Rectangle()
+                        Capsule().fill(Color.white.opacity(0.08))
+                        Capsule()
                             .fill(Theme.accent.opacity(0.9))
                             .frame(width: geometry.size.width * fraction)
                     }
                 }
                 .frame(height: 1.5)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 1)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 2)
             }
             .overlay {
-                Rectangle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5)
             }
-            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-            .contentShape(Rectangle())
+            .shadow(color: .black.opacity(0.3), radius: 12, y: 5)
+            .contentShape(Capsule())
             .offset(x: dragOffset)
             .opacity(1 - min(0.85, abs(dragOffset) / 280))
             .onTapGesture {
                 app.player.showNowPlaying = true
             }
             .gesture(swipeToClear)
+            .contextMenu {
+                Button(role: .destructive) {
+                    app.player.clearQueue()
+                } label: {
+                    Label("Warteschlange leeren", systemImage: "trash")
+                }
+            }
             .accessibilityElement(children: .contain)
             .accessibilityAction(named: "Warteschlange leeren") {
                 app.player.clearQueue()
@@ -88,7 +81,7 @@ struct MiniPlayerBar: View {
     }
 
     /// Horizontal swipe in either direction empties the queue. A short drag
-    /// springs back, a long one throws the bar off screen.
+    /// springs back, a long one throws the pill off screen.
     private var swipeToClear: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
@@ -99,7 +92,7 @@ struct MiniPlayerBar: View {
             }
             .onEnded { value in
                 guard !clearing else { return }
-                guard abs(value.translation.width) > 90 else {
+                guard abs(value.translation.width) > 80 else {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
                         dragOffset = 0
                     }
@@ -110,7 +103,6 @@ struct MiniPlayerBar: View {
                     dragOffset = value.translation.width > 0 ? 420 : -420
                 }
                 Task {
-                    // Let the strip slide out before the queue disappears.
                     try? await Task.sleep(nanoseconds: 160_000_000)
                     app.player.clearQueue()
                     dragOffset = 0

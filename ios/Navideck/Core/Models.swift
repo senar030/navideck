@@ -366,6 +366,49 @@ struct SearchResult: Sendable {
     var isEmpty: Bool { artists.isEmpty && albums.isEmpty && songs.isEmpty }
 }
 
+// MARK: - Album collections
+
+/// The three library views the music tab exposes as separate entries.
+enum AlbumCollection: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case newest
+    case recent
+    case frequent
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .newest: return "Kürzlich hinzugefügt"
+        case .recent: return "Kürzlich gespielt"
+        case .frequent: return "Häufig gespielt"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .newest: return "Frisch im Regal"
+        case .recent: return "Zuletzt gehört"
+        case .frequent: return "Deine Dauerbrenner"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .newest: return "sparkles"
+        case .recent: return "clock.arrow.circlepath"
+        case .frequent: return "flame"
+        }
+    }
+
+    var listType: AlbumListType {
+        switch self {
+        case .newest: return .newest
+        case .recent: return .recent
+        case .frequent: return .frequent
+        }
+    }
+}
+
 // MARK: - Response envelope
 
 struct SubsonicResponse: Decodable, Sendable {

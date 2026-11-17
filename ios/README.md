@@ -4,11 +4,21 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.1.0)
+## Funktionsumfang (1.1.1)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
-- Fünf Tabs: Start, Musik, Podcast, Suche, Optionen
-- „Musik“ bündelt Alben, Interpreten, Playlists, Genres, Favoriten, Radio und Downloads
+- Vier Tabs (Start, Musik, Podcast, Optionen) plus feste Buttons „Start“ und
+  „Suche“ unten: „Start“ fährt die runde Glas-Navigation mit allen Zielen aus,
+  „Suche“ öffnet die Live-Suche
+- Live-Suche als Overlay: Treffer erscheinen schon beim Tippen (Titel, Alben,
+  Interpreten), gruppiert mit Covern, „Alle/Weniger“, letzte Suchanfragen und
+  direkter Sprung in Album oder Interpret
+- „Musik“ bündelt Kürzlich hinzugefügt, Kürzlich gespielt, Häufig gespielt,
+  Alben, Interpreten, Playlists, Genres, Favoriten, Radio und Downloads;
+  Umschalter zwischen Kacheln und Liste, bearbeitbare Reihenfolge (Ziehen) und
+  ein-/ausblendbare Bereiche inklusive Zurücksetzen
+- Die drei Alben-Sammlungen (Kürzlich hinzugefügt/gespielt, Häufig gespielt)
+  zeigen ihre Alben als Kacheln oder Liste
 - Startseite mit Sofortmix, zuletzt gespielt, neu im Regal, meistgespielt und Zufall
 - Sofortmix: zufällige Titel, Anzahl und ausgeschlossene Genres in den Einstellungen
 - Alben mit Sortierung und Nachladen, Album-Detail mit Titelliste
@@ -18,7 +28,6 @@ Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
   fortsetzen („Weiterhören“) und einzeln herunterladen; lange Sender werden
   seitenweise geladen und zwischen Tab-Wechseln zwischengespeichert
 - Internet-Radio aus der Serverliste
-- Suche über Titel, Alben und Interpreten
 - Downloads: Alben, Playlists, Interpreten und einzelne Titel offline verfügbar,
   eigene Offline-Ansicht mit Speicherverwaltung
 - Eigener Player: Warteschlange, Shuffle, Repeat, Spulen
@@ -27,9 +36,9 @@ Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 - Streaming-Qualität (Original bis 128 kbit/s) in den Einstellungen
 - Cover-Cache (Speicher + Platte, eine Auflösung pro Cover) mit Vorladen und
   sofortiger Anzeige aus dem Speicher
-- Schwebende, eckige Tab-Leiste und schlanker Mini-Player; Wischen nach links
-  oder rechts auf dem Mini-Player leert die Warteschlange; eckige Cover und
-  Buttons, quadratischer Play-Button im Now Playing
+- Runde Glas-Navigation (Kapsel) mit Mini-Player-Pill zwischen „Start“ und
+  „Suche“; Wischen nach links oder rechts auf der Pill leert die Warteschlange;
+  eckige Cover und Buttons, quadratischer Play-Button im Now Playing
 - Mehrere Server speichern und wechseln (Passwörter im Keychain)
 
 Noch nicht enthalten: Hörbücher (Audiobookshelf). Offline-Downloads gibt es

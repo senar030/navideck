@@ -202,6 +202,66 @@ struct AlbumCard: View {
     }
 }
 
+struct AlbumRow: View {
+    let album: Album
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        NavigationLink(value: LibraryRoute.album(album)) {
+            AlbumRowContent(album: album)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The visual part of an album row, for places without a navigation stack
+/// (search overlay) that open the album themselves.
+struct AlbumRowContent: View {
+    let album: Album
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CoverArtView(url: app.artworkURL(album.coverArt, size: 160))
+                .frame(width: 52, height: 52)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(album.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+
+                Text(albumSubtitle)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if app.downloads.item(kind: .album, sourceID: album.id) != nil {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.muted.opacity(0.7))
+        }
+        .padding(.vertical, 5)
+        .contentShape(Rectangle())
+    }
+
+    private var albumSubtitle: String {
+        var parts: [String] = []
+        if let artist = album.artist, !artist.isEmpty { parts.append(artist) }
+        if let year = album.year { parts.append(String(year)) }
+        if let count = album.songCount { parts.append("\(count) Titel") }
+        return parts.joined(separator: " · ")
+    }
+}
+
 struct ArtistRow: View {
     let artist: Artist
     @Environment(AppModel.self) private var app

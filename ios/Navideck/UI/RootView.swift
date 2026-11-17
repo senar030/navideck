@@ -32,6 +32,7 @@ enum LibraryRoute: Hashable {
     case genre(Genre)
     case albums
     case artists
+    case albumCollection(AlbumCollection)
     case playlists
     case genres
     case favorites
@@ -42,19 +43,21 @@ enum LibraryRoute: Hashable {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var app
+
     @State private var selection: Int = {
         #if DEBUG
         if let raw = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_TAB"],
-           let tab = Int(raw), (0...4).contains(tab) {
+           let tab = Int(raw), (0...3).contains(tab) {
             return tab
         }
         #endif
         return 0
     }()
-    @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 5)
-    /// Measured height of the floating bar; every stack reserves this much so
-    /// the last row of a list never disappears underneath it.
-    @State private var barHeight: CGFloat = 66
+    @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 4)
+    /// Measured height of the Start/pill/Suche row; every stack reserves it.
+    @State private var barHeight: CGFloat = 64
+    @State private var navExpanded = false
+    @State private var showSearch = false
 
     var body: some View {
         @Bindable var player = app.player
@@ -69,17 +72,30 @@ struct MainTabs: View {
             stack(2) { PodcastsView() }
                 .tag(2)
 
-            stack(3) { SearchView() }
+            stack(3) { SettingsView() }
                 .tag(3)
-
-            stack(4) { SettingsView() }
-                .tag(4)
         }
         .tint(Theme.accent)
-        // The system bar is replaced by the floating bar below.
+        // The system bar is replaced by the Start/pill/Suche row below.
         .toolbar(.hidden, for: .tabBar)
+        .overlay {
+            if navExpanded {
+                Color.black.opacity(0.32)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture { closeNavigation() }
+            }
+        }
         .overlay(alignment: .bottom) {
             bottomBar
+        }
+        .overlay {
+            if showSearch {
+                SearchOverlay {
+                    withAnimation(.easeOut(duration: 0.18)) { showSearch = false }
+                }
+                .transition(.opacity)
+            }
         }
         .fullScreenCover(isPresented: $player.showNowPlaying) {
             NowPlayingView()
@@ -88,6 +104,9 @@ struct MainTabs: View {
             guard let route else { return }
             app.pendingRoute = nil
             paths[selection].append(route)
+        }
+        .onChange(of: player.showNowPlaying) { _, open in
+            if open { closeNavigation() }
         }
         .task {
             #if DEBUG
@@ -100,7 +119,16 @@ struct MainTabs: View {
     /// Opens a screen in the simulator without tapping through the UI, e.g.
     /// SIMCTL_CHILD_NAVIDECK_DEMO_ROUTE=downloads
     private func pushDemoRoute() {
-        guard let raw = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ROUTE"] else { return }
+        let env = ProcessInfo.processInfo.environment
+        if env["NAVIDECK_DEMO_SEARCH"] == "1" {
+            showSearch = true
+            return
+        }
+        if env["NAVIDECK_DEMO_NAV"] == "1" {
+            withAnimation(.easeOut(duration: 0.2)) { navExpanded = true }
+            return
+        }
+        guard let raw = env["NAVIDECK_DEMO_ROUTE"] else { return }
         if raw == "album" {
             Task {
                 guard let client = app.client,
@@ -144,12 +172,15 @@ struct MainTabs: View {
         switch raw {
         case "musik": selection = 1
         case "podcasts": selection = 2
+        case "settings": selection = 3
         case "albums": paths[selection].append(LibraryRoute.albums)
         case "artists": paths[selection].append(LibraryRoute.artists)
+        case "newest": paths[selection].append(LibraryRoute.albumCollection(.newest))
+        case "recent": paths[selection].append(LibraryRoute.albumCollection(.recent))
+        case "frequent": paths[selection].append(LibraryRoute.albumCollection(.frequent))
         case "playlists": paths[selection].append(LibraryRoute.playlists)
         case "genres": paths[selection].append(LibraryRoute.genres)
         case "favorites": paths[selection].append(LibraryRoute.favorites)
-        case "settings": paths[selection].append(LibraryRoute.settings)
         case "radio": paths[selection].append(LibraryRoute.radio)
         case "downloads": paths[selection].append(LibraryRoute.downloads)
         default: break
@@ -157,28 +188,53 @@ struct MainTabs: View {
     }
     #endif
 
+    // MARK: - Bottom bar
+
     private var bottomBar: some View {
-        VStack(spacing: 8) {
-            MiniPlayerBar()
-            FloatingTabBar(selection: $selection)
+        VStack(spacing: 10) {
+            if navExpanded {
+                FloatingTabBar(selection: $selection) {
+                    openSearch()
+                } onSelect: {
+                    closeNavigation()
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            HStack(spacing: 10) {
+                glassButton("Start", icon: "house", active: navExpanded) {
+                    toggleNavigation()
+                }
+
+                if app.player.current != nil {
+                    MiniPlayerBar()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Spacer(minLength: 0)
+                }
+
+                glassButton("Suche", icon: "magnifyingglass") {
+                    openSearch()
+                }
+            }
+            .padding(.top, 12)
+            .padding(.bottom, 6)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(key: BottomBarHeightKey.self, value: proxy.size.height)
+                }
+            }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 6)
         .background {
-            // Soft scrim so lists fade out instead of showing through the bar.
+            // Soft scrim so lists fade out instead of showing through the glass.
             LinearGradient(
-                colors: [Theme.background.opacity(0), Theme.background.opacity(0.92), Theme.background],
+                colors: [Theme.background.opacity(0), Theme.background.opacity(0.9), Theme.background],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea(edges: .bottom)
             .allowsHitTesting(false)
-        }
-        .background {
-            GeometryReader { proxy in
-                Color.clear.preference(key: BottomBarHeightKey.self, value: proxy.size.height)
-            }
         }
         .onPreferenceChange(BottomBarHeightKey.self) { height in
             if abs(height - barHeight) > 0.5 {
@@ -186,6 +242,55 @@ struct MainTabs: View {
             }
         }
     }
+
+    private func glassButton(
+        _ title: String,
+        icon: String,
+        active: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(active ? Theme.accent : Theme.text)
+            .padding(.horizontal, 12)
+            .frame(height: 46)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(active ? Theme.accent.opacity(0.55) : Color.white.opacity(0.12), lineWidth: 0.5)
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+
+    private func toggleNavigation() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            navExpanded.toggle()
+        }
+    }
+
+    private func closeNavigation() {
+        guard navExpanded else { return }
+        withAnimation(.easeOut(duration: 0.2)) {
+            navExpanded = false
+        }
+    }
+
+    private func openSearch() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            navExpanded = false
+            showSearch = true
+        }
+    }
+
+    // MARK: - Tabs
 
     private func stack<Content: View>(
         _ index: Int,
@@ -217,6 +322,8 @@ struct MainTabs: View {
             AlbumsView()
         case .artists:
             ArtistsView()
+        case .albumCollection(let collection):
+            AlbumCollectionView(collection: collection)
         case .playlists:
             PlaylistsView()
         case .genres:
