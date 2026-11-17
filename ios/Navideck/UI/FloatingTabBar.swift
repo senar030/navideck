@@ -1,18 +1,17 @@
 import SwiftUI
 
-/// Expanding navigation: five entries in a round glass capsule. It slides out
+/// Expanding navigation: four entries in a round glass capsule. It slides out
 /// above the Start button and collapses as soon as a destination is chosen.
+/// Search is not listed here — it has its own round button next to the pill.
 struct FloatingTabBar: View {
     @Binding var selection: Int
-    var onSearch: () -> Void
     /// Called after a tab was picked so the bar can slide back in.
     var onSelect: () -> Void
 
-    private let items: [(title: String, icon: String, tab: Int?)] = [
+    private let items: [(title: String, icon: String, tab: Int)] = [
         ("Start", "house", 0),
         ("Musik", "music.note", 1),
         ("Podcast", "waveform", 2),
-        ("Suche", "magnifyingglass", nil),
         ("Optionen", "slider.horizontal.3", 3),
     ]
 
@@ -20,12 +19,8 @@ struct FloatingTabBar: View {
         HStack(spacing: 0) {
             ForEach(items.indices, id: \.self) { index in
                 Button {
-                    if let tab = items[index].tab {
-                        selection = tab
-                        onSelect()
-                    } else {
-                        onSearch()
-                    }
+                    selection = items[index].tab
+                    onSelect()
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: items[index].icon)

@@ -194,8 +194,6 @@ struct MainTabs: View {
         VStack(spacing: 10) {
             if navExpanded {
                 FloatingTabBar(selection: $selection) {
-                    openSearch()
-                } onSelect: {
                     closeNavigation()
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
