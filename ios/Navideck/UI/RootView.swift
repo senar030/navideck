@@ -30,11 +30,12 @@ enum LibraryRoute: Hashable {
     case artist(Artist)
     case playlist(Playlist)
     case genre(Genre)
+    case albums
+    case artists
     case playlists
     case genres
     case favorites
     case settings
-    case podcasts
     case radio
     case downloads
 }
@@ -51,6 +52,9 @@ struct MainTabs: View {
         return 0
     }()
     @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 5)
+    /// Measured height of the floating bar; every stack reserves this much so
+    /// the last row of a list never disappears underneath it.
+    @State private var barHeight: CGFloat = 66
 
     var body: some View {
         @Bindable var player = app.player
@@ -59,10 +63,10 @@ struct MainTabs: View {
             stack(0) { HomeView() }
                 .tag(0)
 
-            stack(1) { AlbumsView() }
+            stack(1) { MusikView() }
                 .tag(1)
 
-            stack(2) { ArtistsView() }
+            stack(2) { PodcastsView() }
                 .tag(2)
 
             stack(3) { SearchView() }
@@ -72,9 +76,9 @@ struct MainTabs: View {
                 .tag(4)
         }
         .tint(Theme.accent)
-        // The system bar is replaced by the floating pill below.
+        // The system bar is replaced by the floating bar below.
         .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .overlay(alignment: .bottom) {
             bottomBar
         }
         .fullScreenCover(isPresented: $player.showNowPlaying) {
@@ -138,11 +142,14 @@ struct MainTabs: View {
             return
         }
         switch raw {
+        case "musik": selection = 1
+        case "podcasts": selection = 2
+        case "albums": paths[selection].append(LibraryRoute.albums)
+        case "artists": paths[selection].append(LibraryRoute.artists)
         case "playlists": paths[selection].append(LibraryRoute.playlists)
         case "genres": paths[selection].append(LibraryRoute.genres)
         case "favorites": paths[selection].append(LibraryRoute.favorites)
         case "settings": paths[selection].append(LibraryRoute.settings)
-        case "podcasts": paths[selection].append(LibraryRoute.podcasts)
         case "radio": paths[selection].append(LibraryRoute.radio)
         case "downloads": paths[selection].append(LibraryRoute.downloads)
         default: break
@@ -159,7 +166,7 @@ struct MainTabs: View {
         .padding(.top, 12)
         .padding(.bottom, 6)
         .background {
-            // Soft scrim so lists fade out instead of showing through the pill.
+            // Soft scrim so lists fade out instead of showing through the bar.
             LinearGradient(
                 colors: [Theme.background.opacity(0), Theme.background.opacity(0.92), Theme.background],
                 startPoint: .top,
@@ -167,6 +174,16 @@ struct MainTabs: View {
             )
             .ignoresSafeArea(edges: .bottom)
             .allowsHitTesting(false)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(key: BottomBarHeightKey.self, value: proxy.size.height)
+            }
+        }
+        .onPreferenceChange(BottomBarHeightKey.self) { height in
+            if abs(height - barHeight) > 0.5 {
+                barHeight = height
+            }
         }
     }
 
@@ -179,6 +196,9 @@ struct MainTabs: View {
                 .navigationDestination(for: LibraryRoute.self) { route in
                     destination(for: route)
                 }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear.frame(height: barHeight)
         }
     }
 
@@ -193,6 +213,10 @@ struct MainTabs: View {
             PlaylistDetailView(playlist: playlist)
         case .genre(let genre):
             GenreDetailView(genre: genre)
+        case .albums:
+            AlbumsView()
+        case .artists:
+            ArtistsView()
         case .playlists:
             PlaylistsView()
         case .genres:
@@ -201,12 +225,17 @@ struct MainTabs: View {
             FavoritesView()
         case .settings:
             SettingsView()
-        case .podcasts:
-            PodcastsView()
         case .radio:
             RadioView()
         case .downloads:
             DownloadsView()
         }
+    }
+}
+
+private struct BottomBarHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

@@ -38,6 +38,9 @@ final class PlayerService {
     @ObservationIgnored var localURL: ((String) -> URL?)?
     /// Obergrenze fürs Streaming in kbit/s (0 = Originaldatei).
     @ObservationIgnored var streamBitRate: () -> Int = { 0 }
+    /// Reports playback position so podcast episodes can be continued later.
+    @ObservationIgnored var progressSink: ((Song, Double, Double) -> Void)?
+    @ObservationIgnored private var lastProgressReport = Date.distantPast
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
     @ObservationIgnored private var itemStatusObserver: NSKeyValueObservation?
@@ -154,7 +157,7 @@ final class PlayerService {
 
     // MARK: - Playback
 
-    func play(_ songs: [Song], startingAt startIndex: Int = 0) {
+    func play(_ songs: [Song], startingAt startIndex: Int = 0, resumeAt resume: Double = 0) {
         guard !songs.isEmpty else { return }
         var list = songs
         var start = min(max(0, startIndex), list.count - 1)
@@ -169,7 +172,8 @@ final class PlayerService {
         index = start
         scrobbled = false
         pendingResume = 0
-        loadCurrent(autoplay: true, resume: 0)
+        lastProgressReport = .distantPast
+        loadCurrent(autoplay: true, resume: resume)
     }
 
     func play(song: Song, within songs: [Song]) {
@@ -206,6 +210,7 @@ final class PlayerService {
         player.pause()
         isPlaying = false
         updateNowPlaying()
+        reportProgress(force: true)
         saveState()
     }
 
@@ -457,10 +462,16 @@ final class PlayerService {
     }
 
     private func handleTrackEnd() {
+        // Mark the episode as finished before moving on.
+        if let song = current {
+            progressSink?(song, duration, duration)
+        }
         advance(automatic: true)
     }
 
     private func stopPlaybackKeepingClient() {
+        // Remember where the episode stopped before the queue disappears.
+        reportProgress(force: true)
         player.pause()
         player.replaceCurrentItem(with: nil)
         queue = []
@@ -500,6 +511,16 @@ final class PlayerService {
         maybeSubmitScrobble()
         refreshNowPlayingProgress()
         saveStateIfNeeded()
+        if playing { reportProgress(force: false) }
+    }
+
+    /// Hands the current position to the app, throttled while playing.
+    private func reportProgress(force: Bool) {
+        guard let song = current, let sink = progressSink else { return }
+        guard force || isPlaying else { return }
+        guard force || Date().timeIntervalSince(lastProgressReport) > 4 else { return }
+        lastProgressReport = Date()
+        sink(song, currentTime, duration)
     }
 
     private func maybeSubmitScrobble() {

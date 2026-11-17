@@ -222,7 +222,7 @@ struct NowPlayingView: View {
                             .offset(x: app.player.isPlaying ? 0 : 2)
                     }
                 }
-                .frame(width: 64, height: 54)
+                .frame(width: 64, height: 64)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(app.player.isPlaying ? "Pause" : "Abspielen")

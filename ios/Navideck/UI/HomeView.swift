@@ -57,18 +57,19 @@ struct HomeView: View {
         }
         .navigationTitle("Start")
         .navideckScreen()
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: LibraryRoute.settings) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(Theme.text)
-                }
-                .accessibilityLabel("Einstellungen")
-            }
-        }
+        .defaultScrollAnchor(demoBottom ? .bottom : .top)
         .task { await load() }
         .refreshable { await load(force: true) }
+    }
+
+    /// Simulator helper: start a screen already scrolled to the bottom so the
+    /// floating bar can be checked for covering content.
+    private var demoBottom: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["NAVIDECK_DEMO_BOTTOM"] == "1"
+        #else
+        false
+        #endif
     }
 
     // MARK: - Instant mix
@@ -131,7 +132,7 @@ struct HomeView: View {
                 shortcut("Genres", icon: "guitars", route: .genres)
             }
             HStack(spacing: 10) {
-                shortcut("Podcasts", icon: "waveform", route: .podcasts)
+                shortcut("Alben", icon: "square.stack", route: .albums)
                 shortcut("Radio", icon: "dot.radiowaves.left.and.right", route: .radio)
                 shortcut("Downloads", icon: "arrow.down", route: .downloads)
             }

@@ -4,13 +4,20 @@ import UIKit
 
 /// Cover art loader with a memory and a disk cache.
 ///
-/// `AsyncImage` reloads on every screen and flashes a spinner, which is what
-/// made swiping through albums feel slow. One shared store keeps the decoded
-/// images around and downloads each artwork only once.
+/// Subsonic cover URLs only differ in their `size` parameter, so the store
+/// normalises them: every screen shares one download per cover instead of
+/// fetching the same artwork again for the list, the mini player and the
+/// full-screen player.
 actor ImageStore {
     static let shared = ImageStore()
 
-    private let memory = NSCache<NSString, UIImage>()
+    private static let memory: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 400
+        cache.totalCostLimit = 160 * 1024 * 1024
+        return cache
+    }()
+
     private let directory: URL
     private let session: URLSession
     private var inFlight: [String: Task<UIImage?, Never>] = [:]
@@ -20,11 +27,10 @@ actor ImageStore {
         directory = caches.appendingPathComponent("navideck-covers", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        memory.countLimit = 300
-        memory.totalCostLimit = 140 * 1024 * 1024
-
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 25
+        configuration.timeoutIntervalForRequest = 20
+        configuration.httpMaximumConnectionsPerHost = 6
+        configuration.requestCachePolicy = .returnCacheDataElseLoad
         configuration.urlCache = URLCache(
             memoryCapacity: 32 * 1024 * 1024,
             diskCapacity: 256 * 1024 * 1024
@@ -32,49 +38,89 @@ actor ImageStore {
         session = URLSession(configuration: configuration)
     }
 
+    // MARK: - Cache keys
+
+    /// Requests one resolution for every cover; views scale it down.
+    nonisolated static func canonical(_ url: URL) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.queryItems?.contains(where: { $0.name == "size" }) == true else {
+            return url
+        }
+        let items = components.queryItems ?? []
+        components.queryItems = items.map { item in
+            item.name == "size" ? URLQueryItem(name: "size", value: "900") : item
+        }
+        return components.url ?? url
+    }
+
+    /// Identity of a cover, independent of the requested size.
+    nonisolated static func key(for url: URL?) -> String {
+        guard let url else { return "" }
+        var components = URLComponents(url: canonical(url), resolvingAgainstBaseURL: false)
+        let items = components?.queryItems ?? []
+        components?.queryItems = items.filter { $0.name != "size" }
+        return components?.url?.absoluteString ?? url.absoluteString
+    }
+
+    /// Synchronous memory hit, so lists render without a blank frame.
+    nonisolated static func cached(for url: URL?) -> UIImage? {
+        guard let url else { return nil }
+        return memory.object(forKey: key(for: url) as NSString)
+    }
+
+    // MARK: - Loading
+
     func image(for url: URL) async -> UIImage? {
-        let key = url.absoluteString
-        if let cached = memory.object(forKey: key as NSString) { return cached }
-        if let running = inFlight[key] { return await running.value }
+        let canonicalURL = Self.canonical(url)
+        let cacheKey = Self.key(for: url)
+        if let cached = Self.memory.object(forKey: cacheKey as NSString) { return cached }
+        if let running = inFlight[cacheKey] { return await running.value }
 
         let task = Task<UIImage?, Never> { [session, directory] in
-            if let data = try? Data(contentsOf: Self.diskURL(in: directory, key: key)),
+            if let data = try? Data(contentsOf: Self.diskURL(in: directory, key: cacheKey)),
                let cached = Self.decode(data) {
                 return cached
             }
             do {
-                let (data, response) = try await session.data(from: url)
+                let (data, response) = try await session.data(from: canonicalURL)
                 if let http = response as? HTTPURLResponse, !(200...399).contains(http.statusCode) {
                     return nil
                 }
                 guard let image = Self.decode(data) else { return nil }
-                try? data.write(to: Self.diskURL(in: directory, key: key), options: .atomic)
+                try? data.write(to: Self.diskURL(in: directory, key: cacheKey), options: .atomic)
                 return image
             } catch {
                 return nil
             }
         }
 
-        inFlight[key] = task
+        inFlight[cacheKey] = task
         let image = await task.value
-        inFlight[key] = nil
+        inFlight[cacheKey] = nil
         if let image {
             let cost = Int(image.size.width * image.size.height * 4)
-            memory.setObject(image, forKey: key as NSString, cost: cost)
+            Self.memory.setObject(image, forKey: cacheKey as NSString, cost: cost)
         }
         return image
     }
 
-    /// Warms the cache for covers that are about to scroll into view.
-    func prefetch(_ urls: [URL], limit: Int = 8) async {
-        for url in urls.prefix(limit) where memory.object(forKey: url.absoluteString as NSString) == nil {
-            _ = await image(for: url)
-        }
-    }
+    /// Warms the cache for covers that are about to scroll into view. Runs a
+    /// few downloads in parallel instead of one after the other.
+    func prefetch(_ urls: [URL], limit: Int = 10) async {
+        let pending = Array(urls.prefix(limit)).filter { Self.cached(for: $0) == nil }
+        guard !pending.isEmpty else { return }
 
-    func cachedImage(for url: URL?) -> UIImage? {
-        guard let url else { return nil }
-        return memory.object(forKey: url.absoluteString as NSString)
+        await withTaskGroup(of: Void.self) { group in
+            var iterator = pending.makeIterator()
+            for _ in 0..<min(4, pending.count) {
+                guard let url = iterator.next() else { break }
+                group.addTask { _ = await ImageStore.shared.image(for: url) }
+            }
+            while await group.next() != nil {
+                guard let url = iterator.next() else { continue }
+                group.addTask { _ = await ImageStore.shared.image(for: url) }
+            }
+        }
     }
 
     // MARK: - Files
@@ -101,8 +147,8 @@ actor ImageStore {
     }
 }
 
-/// Drop-in replacement for `AsyncImage` that keeps the last frame while a new
-/// image loads and never shows a spinner per cell.
+/// Drop-in replacement for `AsyncImage` that shows the cached cover
+/// immediately and keeps the previous frame while a new one loads.
 struct CachedImage: View {
     let url: URL?
     var contentMode: ContentMode = .fill
@@ -110,31 +156,36 @@ struct CachedImage: View {
     @State private var image: UIImage?
     @State private var loadedKey: String?
 
+    private var cacheKey: String { ImageStore.key(for: url) }
+
+    private var shown: UIImage? {
+        if let image, loadedKey == cacheKey { return image }
+        return ImageStore.cached(for: url)
+    }
+
     var body: some View {
         Group {
-            if let image {
-                Image(uiImage: image)
+            if let shown {
+                Image(uiImage: shown)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
             } else {
                 Color.clear
             }
         }
-        .task(id: url?.absoluteString) {
+        .task(id: cacheKey) {
             guard let url else {
                 image = nil
                 loadedKey = nil
                 return
             }
-            if loadedKey != url.absoluteString {
+            if loadedKey != cacheKey {
                 image = nil
-                loadedKey = url.absoluteString
+                loadedKey = cacheKey
             }
             let loaded = await ImageStore.shared.image(for: url)
-            guard !Task.isCancelled else { return }
-            if loadedKey == url.absoluteString {
-                image = loaded
-            }
+            guard !Task.isCancelled, loadedKey == cacheKey else { return }
+            image = loaded
         }
     }
 }

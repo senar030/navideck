@@ -11,6 +11,8 @@ final class AppModel {
     let player: PlayerService
     let prefs: Preferences
     let downloads: DownloadStore
+    /// Shared resume positions for podcast episodes.
+    let episodeProgress = EpisodeProgressStore()
 
     private(set) var client: SubsonicClient?
 
@@ -18,6 +20,12 @@ final class AppModel {
     var pendingRoute: LibraryRoute?
     /// Cached home rows keep the start screen instant between visits.
     var homeSnapshot: HomeSnapshot?
+    /// Podcast channels survive tab switches; without this every visit waited
+    /// for the whole feed list again.
+    private(set) var podcastSnapshot: PodcastSnapshot?
+    private var podcastTask: Task<PodcastSnapshot, Error>?
+    /// Only songs that belong to a podcast are written to the resume store.
+    private var episodeIDs: Set<String> = []
 
     var mixLoading = false
     var mixError: String?
@@ -40,6 +48,10 @@ final class AppModel {
         }
         player.streamBitRate = { [weak prefs] in
             prefs?.maxBitRate ?? 0
+        }
+        player.progressSink = { [weak self] song, position, duration in
+            guard let self, self.episodeIDs.contains(song.id) else { return }
+            self.episodeProgress.record(id: song.id, position: position, duration: duration)
         }
 
         if let profile = servers.active, let client = servers.makeClient(for: profile) {
@@ -125,6 +137,8 @@ final class AppModel {
         player.stop()
         self.client = client
         homeSnapshot = nil
+        podcastSnapshot = nil
+        episodeIDs = []
         pendingRoute = nil
         player.configure(client: client, profileID: profile.id)
     }
@@ -134,6 +148,8 @@ final class AppModel {
         servers.deactivate()
         client = nil
         homeSnapshot = nil
+        podcastSnapshot = nil
+        episodeIDs = []
     }
 
     func remove(profile: ServerProfile) {
@@ -211,10 +227,115 @@ final class AppModel {
         }
     }
 
+    // MARK: - Podcasts
+
+    /// Channels plus the newest episodes, kept for a few minutes so switching
+    /// tabs does not refetch every feed.
+    func podcasts(force: Bool = false) async throws -> PodcastSnapshot {
+        guard let client else {
+            throw SubsonicFailure(code: -1, message: "Kein Server verbunden.")
+        }
+        if !force, let snapshot = podcastSnapshot, snapshot.isFresh {
+            return snapshot
+        }
+        if let running = podcastTask {
+            return try await running.value
+        }
+
+        let task = Task<PodcastSnapshot, Error> {
+            async let channelsTask = client.podcasts()
+            async let newestTask = client.newestPodcasts(count: 12)
+
+            let channels: [PodcastChannel]
+            do {
+                channels = try await channelsTask
+            } catch let failure as SubsonicFailure where failure.code == 30 || failure.code == 0 {
+                channels = []
+            }
+            let newest = (try? await newestTask) ?? []
+            return PodcastSnapshot(channels: channels, newest: newest)
+        }
+        podcastTask = task
+
+        do {
+            let snapshot = try await task.value
+            podcastTask = nil
+            podcastSnapshot = snapshot
+            registerEpisodes(in: snapshot)
+            return snapshot
+        } catch {
+            podcastTask = nil
+            throw error
+        }
+    }
+
+    /// Drops the cached feeds, e.g. after the server added a channel.
+    func invalidatePodcasts() {
+        podcastSnapshot = nil
+    }
+
+    private func registerEpisodes(in snapshot: PodcastSnapshot) {
+        for channel in snapshot.channels {
+            for episode in channel.episodes {
+                episodeIDs.insert(episode.playableID)
+            }
+        }
+        for episode in snapshot.newest {
+            episodeIDs.insert(episode.playableID)
+        }
+    }
+
     /// Plays a podcast episode (Nextcloud Music keeps the audio in the library).
     func playEpisodes(_ episodes: [PodcastEpisode], startingAt index: Int = 0) {
-        let songs = episodes.map(\.song)
-        player.play(songs, startingAt: index)
+        guard !episodes.isEmpty, episodes.indices.contains(index) else { return }
+        for episode in episodes {
+            episodeIDs.insert(episode.playableID)
+        }
+        let start = episodes[index]
+        let resume = episodeProgress.progress(for: start.playableID)?.position ?? 0
+        player.play(episodes.map(\.song), startingAt: index, resumeAt: resume)
+    }
+
+    /// Continues the episode of a channel that was heard most recently.
+    func resumeLatestEpisode(in channel: PodcastChannel) {
+        guard let id = episodeProgress.latestEpisodeID(in: channel),
+              let index = channel.episodes.firstIndex(where: { $0.playableID == id }) else {
+            playEpisodes(channel.episodes)
+            return
+        }
+        playEpisodes(channel.episodes, startingAt: index)
+    }
+
+    func download(_ episode: PodcastEpisode, from channel: PodcastChannel) {
+        guard let client else { return }
+        downloads.download(
+            kind: .song,
+            sourceID: episode.playableID,
+            title: episode.title,
+            subtitle: channel.title,
+            coverArt: episode.coverArt ?? channel.coverArt,
+            songs: [episode.song],
+            client: client,
+            maxBitRate: prefs.maxBitRate
+        )
+    }
+
+    func isDownloaded(_ episode: PodcastEpisode) -> Bool {
+        downloads.contains(songID: episode.playableID)
+    }
+
+    func isDownloading(_ episode: PodcastEpisode) -> Bool {
+        downloads.isDownloading(kind: .song, sourceID: episode.playableID)
+    }
+
+    func cancelDownload(_ episode: PodcastEpisode) {
+        downloads.cancel(kind: .song, sourceID: episode.playableID)
+    }
+
+    func removeDownload(_ episode: PodcastEpisode) {
+        if let item = downloads.items.first(where: { $0.songs.contains { $0.id == episode.playableID } }) {
+            downloads.delete(item)
+        }
     }
 
     func playRadio(_ station: RadioStation) {
@@ -348,4 +469,13 @@ struct HomeSnapshot {
     var loadedAt: Date = Date()
 
     var isFresh: Bool { Date().timeIntervalSince(loadedAt) < 60 }
+}
+
+/// Podcast channels and the newest episodes, cached between tab switches.
+struct PodcastSnapshot {
+    var channels: [PodcastChannel]
+    var newest: [PodcastEpisode]
+    var loadedAt: Date = Date()
+
+    var isFresh: Bool { Date().timeIntervalSince(loadedAt) < 15 * 60 }
 }

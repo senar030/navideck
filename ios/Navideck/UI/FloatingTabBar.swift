@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Floating, translucent pill above the home indicator. It overlays the content
-/// visually but a matching safe-area inset keeps lists from disappearing
+/// Floating, translucent bar above the home indicator. It overlays the content
+/// visually but every stack reserves a matching inset so lists never disappear
 /// underneath it.
 struct FloatingTabBar: View {
     @Binding var selection: Int
 
     private let items: [(title: String, icon: String)] = [
         ("Start", "house"),
-        ("Alben", "square.stack"),
-        ("Interpreten", "music.mic"),
+        ("Musik", "music.note"),
+        ("Podcast", "waveform"),
         ("Suche", "magnifyingglass"),
         ("Optionen", "slider.horizontal.3"),
     ]
@@ -42,9 +42,10 @@ struct FloatingTabBar: View {
             }
         }
         .padding(.horizontal, 8)
-        .background(.ultraThinMaterial, in: Capsule())
+        // Square edges by request: the bar lines up with the artwork geometry.
+        .background(.ultraThinMaterial)
         .overlay {
-            Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+            Rectangle().stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(0.45), radius: 18, y: 8)
     }

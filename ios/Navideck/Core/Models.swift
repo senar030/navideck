@@ -539,10 +539,25 @@ struct PodcastEpisode: Codable, Identifiable, Hashable, Sendable {
         )
     }
 
+    /// Parsing happens for every visible row, so the formatter is shared
+    /// instead of being built (and thrown away) hundreds of times.
+    nonisolated(unsafe) private static let dateParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    nonisolated(unsafe) private static let fractionalDateParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
     var publishedText: String? {
         guard let publishDate else { return nil }
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: publishDate) else { return nil }
+        let date = Self.dateParser.date(from: publishDate)
+            ?? Self.fractionalDateParser.date(from: publishDate)
+        guard let date else { return nil }
         return date.formatted(date: .abbreviated, time: .omitted)
     }
 }

@@ -59,6 +59,8 @@ struct ArtistsView: View {
         errorMessage = nil
         do {
             indexes = try await client.artistIndexes()
+            let artists = indexes.flatMap(\.artists).prefix(20)
+            await ImageStore.shared.prefetch(artists.compactMap { app.artworkURL($0.coverArt) }, limit: 20)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

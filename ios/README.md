@@ -4,15 +4,19 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.0.3)
+## Funktionsumfang (1.1.0)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
+- Fünf Tabs: Start, Musik, Podcast, Suche, Optionen
+- „Musik“ bündelt Alben, Interpreten, Playlists, Genres, Favoriten, Radio und Downloads
 - Startseite mit Sofortmix, zuletzt gespielt, neu im Regal, meistgespielt und Zufall
 - Sofortmix: zufällige Titel, Anzahl und ausgeschlossene Genres in den Einstellungen
 - Alben mit Sortierung und Nachladen, Album-Detail mit Titelliste
 - Interpreten mit Biografie, Alben und beliebten Titeln
 - Playlists, Genres, Favoriten; Playlists und Titellisten auf- und absteigend sortierbar
-- Podcasts mit Sendern, neuesten Folgen und Folgenlisten
+- Podcasts mit Sendern, neuesten Folgen und Folgenlisten; Folgen lassen sich
+  fortsetzen („Weiterhören“) und einzeln herunterladen; lange Sender werden
+  seitenweise geladen und zwischen Tab-Wechseln zwischengespeichert
 - Internet-Radio aus der Serverliste
 - Suche über Titel, Alben und Interpreten
 - Downloads: Alben, Playlists, Interpreten und einzelne Titel offline verfügbar,
@@ -21,8 +25,11 @@ Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 - Sperrbildschirm-Steuerung und Now-Playing-Infos, Hintergrundwiedergabe
 - Menü im Now Playing: „Zum Album“, „Zum Interpreten“, Warteschlange, Download
 - Streaming-Qualität (Original bis 128 kbit/s) in den Einstellungen
-- Cover-Cache (Speicher + Platte) und kürzere Umschaltzeiten zwischen Titeln
-- Schwebende Tab-Pille und schlanker Mini-Player; eckige Cover und Buttons
+- Cover-Cache (Speicher + Platte, eine Auflösung pro Cover) mit Vorladen und
+  sofortiger Anzeige aus dem Speicher
+- Schwebende, eckige Tab-Leiste und schlanker Mini-Player; Wischen nach links
+  oder rechts auf dem Mini-Player leert die Warteschlange; eckige Cover und
+  Buttons, quadratischer Play-Button im Now Playing
 - Mehrere Server speichern und wechseln (Passwörter im Keychain)
 
 Noch nicht enthalten: Hörbücher (Audiobookshelf). Offline-Downloads gibt es
