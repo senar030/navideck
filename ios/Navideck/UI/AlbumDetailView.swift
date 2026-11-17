@@ -176,10 +176,14 @@ struct AlbumDetailView: View {
     // MARK: - Tracks
 
     private var trackList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(sortedSongs.enumerated()), id: \.element.id) { offset, song in
+        // Sort once per body; with a few hundred tracks the old per-row call
+        // to `sortedSongs` was noticeably slow.
+        let songs = sortedSongs
+
+        return LazyVStack(spacing: 0) {
+            ForEach(Array(songs.enumerated()), id: \.element.id) { offset, song in
                 Button {
-                    app.player.play(sortedSongs, startingAt: offset)
+                    app.player.play(songs, startingAt: offset)
                 } label: {
                     TrackRow(
                         song: song,
@@ -223,7 +227,7 @@ struct AlbumDetailView: View {
                     }
                 }
 
-                if song.id != sortedSongs.last?.id {
+                if offset < songs.count - 1 {
                     Divider()
                         .overlay(Theme.hairline)
                         .padding(.leading, 56)

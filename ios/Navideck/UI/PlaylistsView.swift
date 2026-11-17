@@ -28,16 +28,18 @@ struct PlaylistsView: View {
     @State private var descending = false
 
     var body: some View {
-        ScrollView {
+        let visible = sorted
+
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 sortBar
 
-                ForEach(Array(sorted.enumerated()), id: \.element.id) { offset, playlist in
+                ForEach(Array(visible.enumerated()), id: \.element.id) { offset, playlist in
                     PlaylistRow(playlist: playlist)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 6)
 
-                    if offset < sorted.count - 1 {
+                    if offset < visible.count - 1 {
                         Divider().overlay(Theme.hairline).padding(.leading, 84)
                     }
                 }
@@ -80,7 +82,7 @@ struct PlaylistsView: View {
             Spacer()
 
             Button {
-                withAnimation(.easeOut(duration: 0.15)) { descending.toggle() }
+                descending.toggle()
             } label: {
                 Label(
                     descending ? "Absteigend" : "Aufsteigend",
@@ -88,6 +90,7 @@ struct PlaylistsView: View {
                 )
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.accent)
+                .animation(.easeOut(duration: 0.15), value: descending)
             }
             .buttonStyle(.plain)
         }
@@ -205,7 +208,21 @@ struct PlaylistDetailView: View {
         .navigationTitle(playlist.name)
         .navigationBarTitleDisplayMode(.inline)
         .navideckScreen()
-        .task { await load() }
+        .task {
+            await load()
+            #if DEBUG
+            // SIMCTL_CHILD_NAVIDECK_DEMO_SORT=1 walks through every sort order,
+            // which is how duplicate-heavy playlists are checked for crashes.
+            if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SORT"] == "1",
+               !playlist.entries.isEmpty {
+                for option in PlaylistTrackSort.allCases {
+                    sort = option
+                    descending.toggle()
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                }
+            }
+            #endif
+        }
     }
 
     private var header: some View {
@@ -335,11 +352,12 @@ struct PlaylistDetailView: View {
             }
 
             Button {
-                withAnimation(.easeOut(duration: 0.15)) { descending.toggle() }
+                descending.toggle()
             } label: {
                 Image(systemName: descending ? "arrow.down" : "arrow.up")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.accent)
+                    .animation(.easeOut(duration: 0.15), value: descending)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(descending ? "Absteigend" : "Aufsteigend")
@@ -350,10 +368,14 @@ struct PlaylistDetailView: View {
     }
 
     private var trackList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(orderedEntries.enumerated()), id: \.element.id) { offset, song in
+        // Sort once per body, not once per row.
+        let entries = orderedEntries
+
+        return LazyVStack(spacing: 0) {
+            // Song ids repeat inside playlists, so the position is the identity.
+            ForEach(Array(entries.enumerated()), id: \.offset) { offset, song in
                 Button {
-                    app.player.play(orderedEntries, startingAt: offset)
+                    app.player.play(entries, startingAt: offset)
                 } label: {
                     TrackRow(
                         song: song,
@@ -384,7 +406,7 @@ struct PlaylistDetailView: View {
                     }
                 }
 
-                if offset < orderedEntries.count - 1 {
+                if offset < entries.count - 1 {
                     Divider()
                         .overlay(Theme.hairline)
                         .padding(.leading, 56)

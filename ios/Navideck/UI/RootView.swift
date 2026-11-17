@@ -106,6 +106,15 @@ struct MainTabs: View {
             }
             return
         }
+        if raw == "playlist" {
+            Task {
+                guard let client = app.client,
+                      let playlists = try? await client.playlists(),
+                      let first = playlists.first else { return }
+                paths[selection].append(LibraryRoute.playlist(first))
+            }
+            return
+        }
         if raw == "mix" {
             Task {
                 await app.startInstantMix()
