@@ -26,10 +26,36 @@ extension Color {
     }
 }
 
+/// Height of the floating Start/pill/Suche row, published by `MainTabs`.
+/// Screens reserve it at their bottom edge so nothing is hidden behind it.
+private struct BottomBarInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var bottomBarInset: CGFloat {
+        get { self[BottomBarInsetKey.self] }
+        set { self[BottomBarInsetKey.self] = newValue }
+    }
+}
+
 extension View {
-    /// Puts every screen on the app's own dark background. The navigation bar
-    /// stays transparent: painting it made iOS 26/27 hide the large title.
+    /// Puts every screen on the app's own dark background and keeps the last
+    /// rows clear of the floating bottom bar. The navigation bar stays
+    /// transparent: painting it made iOS 26/27 hide the large title.
     func navideckScreen() -> some View {
-        background(Theme.background.ignoresSafeArea())
+        modifier(NavideckScreenChrome())
+    }
+}
+
+private struct NavideckScreenChrome: ViewModifier {
+    @Environment(\.bottomBarInset) private var inset
+
+    func body(content: Content) -> some View {
+        content
+            .background(Theme.background.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Color.clear.frame(height: inset)
+            }
     }
 }

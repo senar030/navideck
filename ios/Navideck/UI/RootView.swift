@@ -81,6 +81,7 @@ struct MainTabs: View {
         .onChange(of: selection) { _, tab in
             visitedTabs.insert(tab)
         }
+        .environment(\.bottomBarInset, barHeight)
         .tint(Theme.accent)
         .overlay {
             if navExpanded {
@@ -315,9 +316,7 @@ struct MainTabs: View {
                     destination(for: route)
                 }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear.frame(height: barHeight)
-        }
+
     }
 
     @ViewBuilder
