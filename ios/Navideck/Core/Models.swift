@@ -289,10 +289,13 @@ struct Playlist: Codable, Identifiable, Hashable, Sendable {
     var duration: Int?
     var coverArt: String?
     var comment: String?
+    var created: String?
+    var changed: String?
     var entries: [Song]
 
     enum CodingKeys: String, CodingKey {
-        case id, name, songCount, duration, coverArt, comment, entries = "entry"
+        case id, name, songCount, duration, coverArt, comment, created, changed
+        case entries = "entry"
     }
 
     init(from decoder: Decoder) throws {
@@ -303,6 +306,8 @@ struct Playlist: Codable, Identifiable, Hashable, Sendable {
         duration = flexInt(c, .duration)
         coverArt = try? c.decodeIfPresent(String.self, forKey: .coverArt)
         comment = try? c.decodeIfPresent(String.self, forKey: .comment)
+        created = try? c.decodeIfPresent(String.self, forKey: .created)
+        changed = try? c.decodeIfPresent(String.self, forKey: .changed)
         entries = flexList(c, .entries)
     }
 
@@ -313,6 +318,8 @@ struct Playlist: Codable, Identifiable, Hashable, Sendable {
         duration: Int? = nil,
         coverArt: String? = nil,
         comment: String? = nil,
+        created: String? = nil,
+        changed: String? = nil,
         entries: [Song] = []
     ) {
         self.id = id
@@ -321,7 +328,14 @@ struct Playlist: Codable, Identifiable, Hashable, Sendable {
         self.duration = duration
         self.coverArt = coverArt
         self.comment = comment
+        self.created = created
+        self.changed = changed
         self.entries = entries
+    }
+
+    var changedDate: Date? {
+        guard let changed else { return nil }
+        return ISO8601DateFormatter().date(from: changed)
     }
 }
 
@@ -372,6 +386,9 @@ struct SubsonicResponse: Decodable, Sendable {
     var searchResult3: SearchBlock?
     var starred2: StarredBlock?
     var genres: GenresBlock?
+    var podcasts: PodcastsBlock?
+    var newestPodcasts: NewestPodcastsBlock?
+    var internetRadioStations: RadioStationsBlock?
 }
 
 struct SubsonicErrorPayload: Decodable, Sendable {
@@ -417,5 +434,156 @@ struct GenresBlock: Decodable, Sendable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         genre = flexList(c, .genre)
+    }
+}
+
+// MARK: - Radio
+
+struct RadioStation: Codable, Identifiable, Hashable, Sendable {
+    var id: String
+    var name: String
+    var streamUrl: String
+    var homePageUrl: String?
+    var coverArt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, streamUrl, homePageUrl, coverArt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        streamUrl = (try? c.decodeIfPresent(String.self, forKey: .streamUrl)) ?? ""
+        homePageUrl = try? c.decodeIfPresent(String.self, forKey: .homePageUrl)
+        coverArt = try? c.decodeIfPresent(String.self, forKey: .coverArt)
+    }
+}
+
+// MARK: - Podcasts
+
+struct PodcastChannel: Codable, Identifiable, Hashable, Sendable {
+    var id: String
+    var url: String?
+    var title: String
+    var description: String?
+    var coverArt: String?
+    var originalImageUrl: String?
+    var status: String?
+    var episodes: [PodcastEpisode]
+
+    enum CodingKeys: String, CodingKey {
+        case id, url, title, description, coverArt, originalImageUrl, status
+        case episodes = "episode"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        url = try? c.decodeIfPresent(String.self, forKey: .url)
+        title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        description = try? c.decodeIfPresent(String.self, forKey: .description)
+        coverArt = try? c.decodeIfPresent(String.self, forKey: .coverArt)
+        originalImageUrl = try? c.decodeIfPresent(String.self, forKey: .originalImageUrl)
+        status = try? c.decodeIfPresent(String.self, forKey: .status)
+        episodes = flexList(c, .episodes)
+    }
+
+    var imageURL: URL? {
+        guard let originalImageUrl, !originalImageUrl.isEmpty else { return nil }
+        return URL(string: originalImageUrl)
+    }
+}
+
+struct PodcastEpisode: Codable, Identifiable, Hashable, Sendable {
+    var id: String
+    var streamId: String?
+    var channelId: String?
+    var title: String
+    var artist: String?
+    var description: String?
+    var publishDate: String?
+    var duration: Int?
+    var coverArt: String?
+    var status: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, streamId, channelId, title, artist, description, publishDate
+        case duration, coverArt, status
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        streamId = try? c.decodeIfPresent(String.self, forKey: .streamId)
+        channelId = try? c.decodeIfPresent(String.self, forKey: .channelId)
+        title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        artist = try? c.decodeIfPresent(String.self, forKey: .artist)
+        description = try? c.decodeIfPresent(String.self, forKey: .description)
+        publishDate = try? c.decodeIfPresent(String.self, forKey: .publishDate)
+        duration = flexInt(c, .duration)
+        coverArt = try? c.decodeIfPresent(String.self, forKey: .coverArt)
+        status = try? c.decodeIfPresent(String.self, forKey: .status)
+    }
+
+    var playableID: String { streamId?.isEmpty == false ? streamId! : id }
+
+    var song: Song {
+        Song(
+            id: playableID,
+            title: title,
+            album: artist,
+            artist: artist,
+            duration: duration,
+            coverArt: coverArt
+        )
+    }
+
+    var publishedText: String? {
+        guard let publishDate else { return nil }
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: publishDate) else { return nil }
+        return date.formatted(date: .abbreviated, time: .omitted)
+    }
+}
+
+// MARK: - Radio and podcast responses
+
+struct RadioStationsBlock: Decodable, Sendable {
+    var station: [RadioStation]
+
+    enum CodingKeys: String, CodingKey {
+        case station = "internetRadioStation"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        station = flexList(c, .station)
+    }
+}
+
+struct PodcastsBlock: Decodable, Sendable {
+    var channel: [PodcastChannel]
+
+    enum CodingKeys: String, CodingKey {
+        case channel
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channel = flexList(c, .channel)
+    }
+}
+
+struct NewestPodcastsBlock: Decodable, Sendable {
+    var episode: [PodcastEpisode]
+
+    enum CodingKeys: String, CodingKey {
+        case episode
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        episode = flexList(c, .episode)
     }
 }

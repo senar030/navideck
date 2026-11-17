@@ -17,6 +17,11 @@ struct AlbumDetailView: View {
                 header
                 actions
 
+                if let progress = app.downloads.progressValue(kind: .album, sourceID: album.id) {
+                    DownloadProgressView(progress: progress)
+                        .padding(.horizontal, 20)
+                }
+
                 if let errorMessage {
                     ErrorBanner(message: errorMessage)
                         .padding(.horizontal, 20)
@@ -40,20 +45,20 @@ struct AlbumDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.coverURL(album.coverArt, size: 700), radius: 16)
+            CoverArtView(url: app.artworkURL(album.coverArt, size: 700))
                 .frame(width: 220, height: 220)
-                .shadow(color: .black.opacity(0.45), radius: 24, y: 12)
+                .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 
             VStack(spacing: 4) {
                 Text(album.name)
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
 
                 if let artistId = album.artistId, let artist = album.artist {
-                    NavigationLink(value: Artist(id: artistId, name: artist)) {
+                    NavigationLink(value: LibraryRoute.artist(Artist(id: artistId, name: artist))) {
                         Text(artist)
-                            .font(.subheadline.weight(.medium))
+                            .font(.subheadline)
                             .foregroundStyle(Theme.accent)
                     }
                     .buttonStyle(.plain)
@@ -83,51 +88,89 @@ struct AlbumDetailView: View {
         return parts.joined(separator: " · ")
     }
 
+    // MARK: - Actions
+
     private var actions: some View {
-        HStack(spacing: 18) {
+        ZStack {
+            HStack(spacing: 6) {
+                SquareIconButton(systemName: "shuffle", accessibilityTitle: "Zufällig abspielen") {
+                    if !app.player.shuffleEnabled {
+                        app.player.toggleShuffle()
+                    }
+                    app.player.play(sortedSongs)
+                }
+
+                StarButton(starred: album.starred != nil, action: toggleStarAlbum)
+
+                Spacer(minLength: 0)
+
+                downloadButton
+                trackMenu
+            }
+
             PlayCircleButton(isPlaying: isPlaying) {
                 if isPlaying {
                     app.player.pause()
-                } else if let current = app.player.current, sortedSongs.contains(where: { $0.id == current.id }) {
+                } else if let current = app.player.current,
+                          sortedSongs.contains(where: { $0.id == current.id }) {
                     app.player.resume()
                 } else {
                     app.player.play(sortedSongs)
                 }
             }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 2)
+    }
 
-            Button {
-                if !app.player.shuffleEnabled {
-                    app.player.toggleShuffle()
+    @ViewBuilder
+    private var downloadButton: some View {
+        if app.downloads.item(kind: .album, sourceID: album.id) != nil {
+            SquareIconButton(systemName: "arrow.down.circle.fill", active: true, accessibilityTitle: "Heruntergeladen") {
+                if let item = app.downloads.item(kind: .album, sourceID: album.id) {
+                    app.downloads.delete(item)
                 }
-                app.player.play(sortedSongs)
+            }
+        } else if app.downloads.isDownloading(kind: .album, sourceID: album.id) {
+            Button {
+                app.downloads.cancel(kind: .album, sourceID: album.id)
             } label: {
-                Image(systemName: "shuffle")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                    .frame(width: 48, height: 48)
-                    .background(Theme.surface, in: Circle())
+                ProgressView()
+                    .tint(Theme.accent)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Zufällig abspielen")
-
-            StarButton(starred: album.starred != nil, action: toggleStarAlbum)
-
-            Menu {
-                Button("Alle zur Warteschlange") {
-                    app.player.addToQueue(sortedSongs)
+            .accessibilityLabel("Download abbrechen")
+        } else {
+            SquareIconButton(systemName: "arrow.down", accessibilityTitle: "Album herunterladen") {
+                if album.songs.isEmpty {
+                    Task { await load() }
                 }
-                Button("Als Nächstes abspielen") {
-                    app.player.playNext(sortedSongs)
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+                app.download(album)
             }
+            .disabled(album.songs.isEmpty)
         }
-        .padding(.top, 4)
+    }
+
+    private var trackMenu: some View {
+        Menu {
+            Button {
+                app.player.addToQueue(sortedSongs)
+            } label: {
+                Label("Alle zur Warteschlange", systemImage: "text.badge.plus")
+            }
+            Button {
+                app.player.playNext(sortedSongs)
+            } label: {
+                Label("Als Nächstes abspielen", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Theme.text)
+                .frame(width: 40, height: 44)
+                .contentShape(Rectangle())
+        }
     }
 
     // MARK: - Tracks
@@ -141,7 +184,8 @@ struct AlbumDetailView: View {
                     TrackRow(
                         song: song,
                         number: song.track ?? offset + 1,
-                        isCurrent: app.player.current?.id == song.id
+                        isCurrent: app.player.current?.id == song.id,
+                        downloaded: app.downloads.contains(songID: song.id)
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -157,6 +201,20 @@ struct AlbumDetailView: View {
                         app.player.addToQueue([song])
                     } label: {
                         Label("Zur Warteschlange", systemImage: "text.badge.plus")
+                    }
+                    Button {
+                        if app.downloads.contains(songID: song.id) {
+                            if let item = app.downloads.items.first(where: { $0.songs.contains(where: { $0.id == song.id }) }) {
+                                app.downloads.delete(item)
+                            }
+                        } else {
+                            app.download(song, from: album.name, artist: album.artist)
+                        }
+                    } label: {
+                        Label(
+                            app.downloads.contains(songID: song.id) ? "Download entfernen" : "Titel herunterladen",
+                            systemImage: app.downloads.contains(songID: song.id) ? "trash" : "arrow.down"
+                        )
                     }
                     Button {
                         toggleStar(song: song)

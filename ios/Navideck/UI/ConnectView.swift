@@ -122,7 +122,7 @@ struct ConnectView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(Theme.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Theme.accent)
                 .foregroundStyle(Theme.background)
             }
             .buttonStyle(.plain)
@@ -130,7 +130,8 @@ struct ConnectView: View {
             .opacity(canConnect ? 1 : 0.45)
         }
         .padding(18)
-        .background(Theme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Theme.surface.opacity(0.7))
+        .overlay { Rectangle().stroke(Theme.hairline, lineWidth: 0.5) }
         .padding(.horizontal, 20)
     }
 
@@ -173,7 +174,8 @@ struct ConnectView: View {
                     }
                 }
             }
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Theme.surface)
+            .overlay { Rectangle().stroke(Theme.hairline, lineWidth: 0.5) }
             .padding(.horizontal, 20)
         }
     }
@@ -183,7 +185,7 @@ struct ConnectView: View {
             .font(.body)
             .foregroundStyle(Theme.text)
             .padding(14)
-            .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(Color.black.opacity(0.18))
     }
 
     private var canConnect: Bool {

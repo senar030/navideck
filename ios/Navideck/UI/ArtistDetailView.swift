@@ -16,8 +16,13 @@ struct ArtistDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 header
+
+                if let progress = app.downloads.progressValue(kind: .artist, sourceID: artist.id) {
+                    DownloadProgressView(progress: progress)
+                        .padding(.horizontal, 20)
+                }
 
                 if let errorMessage {
                     ErrorBanner(message: errorMessage).padding(.horizontal, 20)
@@ -52,14 +57,14 @@ struct ArtistDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(spacing: 14) {
-            CoverArtView(url: app.coverURL(headerArtwork, size: 700), radius: 60)
+        VStack(spacing: 12) {
+            CoverArtView(url: app.artworkURL(headerArtwork, size: 700))
                 .frame(width: 180, height: 180)
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
 
             VStack(spacing: 4) {
                 Text(artist.name)
-                    .font(.title.weight(.bold))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
                 Text(metaLine)
@@ -68,37 +73,71 @@ struct ArtistDetailView: View {
             }
             .padding(.horizontal, 24)
 
-            HStack(spacing: 18) {
-                PlayCircleButton(isPlaying: isPlaying) {
-                    if isPlaying {
-                        app.player.pause()
-                    } else if topSongs.isEmpty {
-                        app.player.resume()
-                    } else {
-                        app.player.play(topSongs)
-                    }
-                }
-                .opacity(topSongs.isEmpty ? 0.5 : 1)
-
-                Button {
-                    if !topSongs.isEmpty {
-                        if !app.player.shuffleEnabled { app.player.toggleShuffle() }
-                        app.player.play(topSongs)
-                    }
-                } label: {
-                    Image(systemName: "shuffle")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Theme.text)
-                        .frame(width: 48, height: 48)
-                        .background(Theme.surface, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Zufällig abspielen")
-
-                StarButton(starred: artist.starred != nil, action: toggleStar)
-            }
+            actions
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var actions: some View {
+        ZStack {
+            HStack(spacing: 6) {
+                SquareIconButton(systemName: "shuffle", accessibilityTitle: "Zufällig abspielen") {
+                    guard !topSongs.isEmpty else { return }
+                    if !app.player.shuffleEnabled { app.player.toggleShuffle() }
+                    app.player.play(topSongs)
+                }
+
+                StarButton(starred: artist.starred != nil, action: toggleStar)
+
+                Spacer(minLength: 0)
+
+                downloadButton
+
+                if let first = artist.albums.first {
+                    NavigationLink(value: LibraryRoute.album(first)) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 40, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Erstes Album öffnen")
+                }
+            }
+
+            PlayCircleButton(isPlaying: isPlaying) {
+                if isPlaying {
+                    app.player.pause()
+                } else if topSongs.isEmpty {
+                    app.player.resume()
+                } else {
+                    app.player.play(topSongs)
+                }
+            }
+            .opacity(topSongs.isEmpty ? 0.5 : 1)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private var downloadButton: some View {
+        if app.downloads.item(kind: .artist, sourceID: artist.id) != nil {
+            SquareIconButton(systemName: "arrow.down.circle.fill", active: true, accessibilityTitle: "Heruntergeladen") {
+                if let item = app.downloads.item(kind: .artist, sourceID: artist.id) {
+                    app.downloads.delete(item)
+                }
+            }
+        } else if app.downloads.isDownloading(kind: .artist, sourceID: artist.id) {
+            ProgressView()
+                .tint(Theme.accent)
+                .frame(width: 44, height: 44)
+        } else {
+            SquareIconButton(systemName: "arrow.down", accessibilityTitle: "Alle Alben herunterladen") {
+                app.download(artist)
+            }
+            .disabled(artist.albums.isEmpty)
+        }
     }
 
     private var headerArtwork: String? {
@@ -149,7 +188,8 @@ struct ArtistDetailView: View {
                         song: song,
                         number: offset + 1,
                         isCurrent: app.player.current?.id == song.id,
-                        subtitle: song.album
+                        subtitle: song.album,
+                        downloaded: app.downloads.contains(songID: song.id)
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -165,6 +205,11 @@ struct ArtistDetailView: View {
                         app.player.addToQueue([song])
                     } label: {
                         Label("Zur Warteschlange", systemImage: "text.badge.plus")
+                    }
+                    Button {
+                        app.download(song, from: song.album, artist: song.artist)
+                    } label: {
+                        Label("Titel herunterladen", systemImage: "arrow.down")
                     }
                 }
             }

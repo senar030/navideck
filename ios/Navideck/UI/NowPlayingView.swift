@@ -14,16 +14,16 @@ struct NowPlayingView: View {
             if let song = app.player.current {
                 VStack(spacing: 0) {
                     topBar
-                    Spacer(minLength: 8)
+                    Spacer(minLength: 6)
 
-                    CoverArtView(url: app.coverURL(song.coverArt, size: 900), radius: 20)
+                    CoverArtView(url: app.artworkURL(song.coverArt, size: 900))
                         .aspectRatio(1, contentMode: .fit)
                         .frame(maxWidth: 380, maxHeight: 380)
-                        .shadow(color: .black.opacity(0.5), radius: 32, y: 18)
-                        .scaleEffect(app.player.isPlaying ? 1 : 0.94)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: app.player.isPlaying)
+                        .shadow(color: .black.opacity(0.45), radius: 24, y: 16)
+                        .scaleEffect(app.player.isPlaying ? 1 : 0.965)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: app.player.isPlaying)
 
-                    Spacer(minLength: 14)
+                    Spacer(minLength: 12)
                     metadata(for: song)
                     progress
                     controls
@@ -46,7 +46,7 @@ struct NowPlayingView: View {
                             if value.translation.height > 120 {
                                 dismiss()
                             } else {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                                     dragOffset = 0
                                 }
                             }
@@ -65,17 +65,9 @@ struct NowPlayingView: View {
     private func background(for song: Song) -> some View {
         ZStack {
             Theme.background
-            if let url = app.coverURL(song.coverArt, size: 900) {
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .blur(radius: 55)
-                            .opacity(0.5)
-                    }
-                }
-            }
+            CachedImage(url: app.artworkURL(song.coverArt, size: 900))
+                .blur(radius: 55)
+                .opacity(0.45)
             LinearGradient(
                 colors: [Theme.background.opacity(0.35), Theme.background.opacity(0.9), Theme.background],
                 startPoint: .top,
@@ -93,7 +85,7 @@ struct NowPlayingView: View {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Theme.text)
                     .frame(width: 44, height: 44)
             }
@@ -103,7 +95,7 @@ struct NowPlayingView: View {
             Spacer()
 
             Text("Wiedergabe")
-                .font(.footnote.weight(.semibold))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.muted)
 
             Spacer()
@@ -112,7 +104,7 @@ struct NowPlayingView: View {
                 app.player.showQueue = true
             } label: {
                 Image(systemName: "list.bullet")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Theme.text)
                     .frame(width: 44, height: 44)
             }
@@ -127,9 +119,9 @@ struct NowPlayingView: View {
     private func metadata(for song: Song) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(song.title)
-                        .font(.title2.weight(.bold))
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.text)
                         .lineLimit(2)
                     Text(song.artist ?? "Unbekannter Interpret")
@@ -154,13 +146,13 @@ struct NowPlayingView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 18)
+        .padding(.top, 16)
     }
 
     // MARK: - Progress
 
     private var progress: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Slider(
                 value: Binding(
                     get: { scrubTime ?? app.player.currentTime },
@@ -175,86 +167,92 @@ struct NowPlayingView: View {
                 }
             )
             .tint(Theme.accent)
+            .controlSize(.mini)
             .frame(maxWidth: .infinity)
 
             HStack {
                 Text(Format.duration(scrubTime ?? app.player.currentTime))
                 Spacer(minLength: 8)
                 Text(Format.duration(app.player.duration))
-                    .multilineTextAlignment(.trailing)
             }
             .font(.caption2.monospacedDigit())
             .foregroundStyle(Theme.muted)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 14)
+        .padding(.top, 10)
     }
 
     // MARK: - Controls
 
     private var controls: some View {
-        HStack(spacing: 26) {
+        HStack(spacing: 22) {
             Button {
                 app.player.toggleShuffle()
             } label: {
                 Image(systemName: "shuffle")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundStyle(app.player.shuffleEnabled ? Theme.accent : Theme.muted)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Zufällige Wiedergabe")
 
             Button {
                 app.player.previous()
             } label: {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 26, weight: .semibold))
+                Image(systemName: "backward.end")
+                    .font(.system(size: 20, weight: .regular))
                     .foregroundStyle(Theme.text)
-                    .frame(width: 56, height: 56)
+                    .frame(width: 48, height: 48)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Vorheriger Titel")
 
             Button {
                 app.player.toggle()
             } label: {
                 ZStack {
-                    Circle().fill(Theme.accent)
+                    Rectangle().fill(Theme.accent)
                     if app.player.isLoading {
                         ProgressView().tint(Theme.background)
                     } else {
                         Image(systemName: app.player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 30, weight: .bold))
+                            .font(.system(size: 22, weight: .medium))
                             .foregroundStyle(Theme.background)
-                            .offset(x: app.player.isPlaying ? 0 : 3)
+                            .offset(x: app.player.isPlaying ? 0 : 2)
                     }
                 }
-                .frame(width: 78, height: 78)
+                .frame(width: 64, height: 54)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(app.player.isPlaying ? "Pause" : "Abspielen")
 
             Button {
                 app.player.next()
             } label: {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 26, weight: .semibold))
+                Image(systemName: "forward.end")
+                    .font(.system(size: 20, weight: .regular))
                     .foregroundStyle(Theme.text)
-                    .frame(width: 56, height: 56)
+                    .frame(width: 48, height: 48)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Nächster Titel")
 
             Button {
                 app.player.cycleRepeat()
             } label: {
                 Image(systemName: app.player.repeatMode.symbol)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundStyle(app.player.repeatMode == .off ? Theme.muted : Theme.accent)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(app.player.repeatMode.label)
         }
-        .padding(.top, 10)
+        .padding(.top, 6)
     }
+
+    // MARK: - Bottom bar
 
     private func bottomBar(for song: Song) -> some View {
         HStack {
@@ -262,7 +260,7 @@ struct NowPlayingView: View {
                 app.player.toggleStarCurrent()
             } label: {
                 Image(systemName: (app.player.current?.starred != nil) ? "star.fill" : "star")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundStyle((app.player.current?.starred != nil) ? Theme.accent : Theme.muted)
                     .frame(width: 44, height: 44)
             }
@@ -274,22 +272,56 @@ struct NowPlayingView: View {
             Text("\(app.player.index + 1) von \(app.player.queue.count)")
                 .font(.caption2)
                 .foregroundStyle(Theme.muted)
+                .monospacedDigit()
 
             Spacer()
 
             Menu {
                 Button {
+                    app.openAlbum(id: song.albumId, name: song.album, artist: song.artist)
+                } label: {
+                    Label("Zum Album", systemImage: "square.stack")
+                }
+                .disabled(song.albumId == nil)
+
+                Button {
+                    app.openArtist(id: song.artistId, name: song.artist)
+                } label: {
+                    Label("Zum Interpreten", systemImage: "music.mic")
+                }
+                .disabled(song.artistId == nil)
+
+                Divider()
+
+                Button {
                     app.player.addToQueue([song])
                 } label: {
                     Label("Zur Warteschlange", systemImage: "text.badge.plus")
                 }
+
+                if app.downloads.contains(songID: song.id) {
+                    Button(role: .destructive) {
+                        if let item = app.downloads.items.first(where: { $0.songs.contains(where: { $0.id == song.id }) }) {
+                            app.downloads.delete(item)
+                        }
+                    } label: {
+                        Label("Download entfernen", systemImage: "trash")
+                    }
+                } else {
+                    Button {
+                        app.download(song, from: song.album, artist: song.artist)
+                    } label: {
+                        Label("Titel herunterladen", systemImage: "arrow.down")
+                    }
+                }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.muted)
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(Theme.text)
                     .frame(width: 44, height: 44)
             }
+            .accessibilityLabel("Mehr Optionen")
         }
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 }

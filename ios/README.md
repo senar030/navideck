@@ -4,20 +4,30 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.0)
+## Funktionsumfang (1.0.2)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
-- Startseite mit zuletzt gespielt, neu im Regal, meistgespielt und Zufall
+- Startseite mit Sofortmix, zuletzt gespielt, neu im Regal, meistgespielt und Zufall
+- Sofortmix: zufällige Titel, Anzahl und ausgeschlossene Genres in den Einstellungen
 - Alben mit Sortierung und Nachladen, Album-Detail mit Titelliste
 - Interpreten mit Biografie, Alben und beliebten Titeln
-- Playlists, Genres, Favoriten
+- Playlists, Genres, Favoriten; Playlists und Titellisten auf- und absteigend sortierbar
+- Podcasts mit Sendern, neuesten Folgen und Folgenlisten
+- Internet-Radio aus der Serverliste
 - Suche über Titel, Alben und Interpreten
+- Downloads: Alben, Playlists, Interpreten und einzelne Titel offline verfügbar,
+  eigene Offline-Ansicht mit Speicherverwaltung
 - Eigener Player: Warteschlange, Shuffle, Repeat, Spulen
 - Sperrbildschirm-Steuerung und Now-Playing-Infos, Hintergrundwiedergabe
+- Menü im Now Playing: „Zum Album“, „Zum Interpreten“, Warteschlange, Download
+- Streaming-Qualität (Original bis 128 kbit/s) in den Einstellungen
+- Cover-Cache (Speicher + Platte) und kürzere Umschaltzeiten zwischen Titeln
+- Schwebende Tab-Pille und schlanker Mini-Player; eckige Cover und Buttons
 - Mehrere Server speichern und wechseln (Passwörter im Keychain)
 
-Noch nicht enthalten (zweite Ausbaustufe): Podcasts, Hörbücher
-(Audiobookshelf) und Radio.
+Noch nicht enthalten: Hörbücher (Audiobookshelf). Offline-Downloads gibt es
+bisher nur in der iOS-App – Web und Desktop streamen weiterhin ausschließlich
+vom Server (siehe `AGENTS.md` zur plattformübergreifenden Parität).
 
 ## Bauen
 

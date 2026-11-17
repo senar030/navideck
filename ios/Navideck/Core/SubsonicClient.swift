@@ -72,8 +72,10 @@ struct SubsonicClient: Sendable {
         return url(for: "getCoverArt", extra: ["id": id, "size": String(size)])
     }
 
-    func streamURL(id: String) -> URL? {
-        url(for: "stream", extra: ["id": id])
+    func streamURL(id: String, maxBitRate: Int = 0) -> URL? {
+        var extra = ["id": id]
+        if maxBitRate > 0 { extra["maxBitRate"] = String(maxBitRate) }
+        return url(for: "stream", extra: extra)
     }
 
     private func url(for method: String, extra: [String: String] = [:]) -> URL? {
@@ -264,14 +266,33 @@ struct SubsonicClient: Sendable {
         return response.songsByGenre?.song ?? []
     }
 
-    func randomSongs(size: Int = 50) async throws -> [Song] {
-        let response = try await request("getRandomSongs", ["size": String(size)])
+    func randomSongs(size: Int = 50, genre: String? = nil) async throws -> [Song] {
+        var params = ["size": String(size)]
+        if let genre, !genre.isEmpty { params["genre"] = genre }
+        let response = try await request("getRandomSongs", params)
         return response.randomSongs?.song ?? []
     }
 
     func genres() async throws -> [Genre] {
         let response = try await request("getGenres")
         return response.genres?.genre ?? []
+    }
+
+    // MARK: - Radio and podcasts
+
+    func radioStations() async throws -> [RadioStation] {
+        let response = try await request("getInternetRadioStations")
+        return response.internetRadioStations?.station ?? []
+    }
+
+    func podcasts() async throws -> [PodcastChannel] {
+        let response = try await request("getPodcasts")
+        return response.podcasts?.channel ?? []
+    }
+
+    func newestPodcasts(count: Int = 24) async throws -> [PodcastEpisode] {
+        let response = try await request("getNewestPodcasts", ["count": String(count)])
+        return response.newestPodcasts?.episode ?? []
     }
 
     // MARK: - Playlists

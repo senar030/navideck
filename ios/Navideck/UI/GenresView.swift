@@ -11,13 +11,13 @@ struct GenresView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(genres) { genre in
-                    NavigationLink(value: genre) {
+                    NavigationLink(value: LibraryRoute.genre(genre)) {
                         HStack(spacing: 12) {
-                            Image(systemName: "guitars.fill")
-                                .font(.system(size: 15, weight: .semibold))
+                            Image(systemName: "guitars")
+                                .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 40, height: 40)
-                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .background(Theme.surface)
 
                             Text(genre.value)
                                 .font(.body.weight(.medium))

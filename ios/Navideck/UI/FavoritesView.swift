@@ -76,7 +76,7 @@ struct FavoritesView: View {
                             .foregroundStyle(Theme.background)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(Theme.accent, in: Capsule())
+                            .background(Theme.accent)
                     }
                     .buttonStyle(.plain)
 
@@ -89,7 +89,7 @@ struct FavoritesView: View {
                             .foregroundStyle(Theme.text)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(Theme.surface, in: Capsule())
+                            .background(Theme.surface)
                     }
                     .buttonStyle(.plain)
                 }

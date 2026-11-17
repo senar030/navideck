@@ -33,6 +33,11 @@ final class PlayerService {
     @ObservationIgnored private let player = AVPlayer()
     @ObservationIgnored private var client: SubsonicClient?
     @ObservationIgnored private var profileID: UUID?
+
+    /// Lokale Dateien aus dem Download-Speicher; gesetzt vom AppModel.
+    @ObservationIgnored var localURL: ((String) -> URL?)?
+    /// Obergrenze fürs Streaming in kbit/s (0 = Originaldatei).
+    @ObservationIgnored var streamBitRate: () -> Int = { 0 }
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
     @ObservationIgnored private var itemStatusObserver: NSKeyValueObservation?
@@ -67,7 +72,9 @@ final class PlayerService {
     // MARK: - Lifecycle
 
     init() {
-        player.automaticallyWaitsToMinimizeStalling = true
+        // Ohne dieses Warten startet ein Titel, sobald die ersten Daten da
+        // sind – der Wechsel zwischen Titeln fühlt sich dadurch kürzer an.
+        player.automaticallyWaitsToMinimizeStalling = false
         player.actionAtItemEnd = .pause
 
         timeObserver = player.addPeriodicTimeObserver(
@@ -329,14 +336,32 @@ final class PlayerService {
 
     // MARK: - Item loading
 
+    /// Plays a stream that does not belong to the library (radio stations).
+    func playExternal(url: URL, song: Song) {
+        queue = [song]
+        index = 0
+        scrobbled = true
+        pendingResume = 0
+        loadItem(url: url, song: song, autoplay: true, resume: 0)
+    }
+
     private func loadCurrent(autoplay: Bool, resume: Double) {
         guard let song = current, let client else { return }
-        guard let url = client.streamURL(id: song.id) else {
+        if let local = localURL?(song.id) {
+            loadItem(url: local, song: song, autoplay: autoplay, resume: resume)
+            return
+        }
+        guard let url = client.streamURL(id: song.id, maxBitRate: streamBitRate()) else {
             errorMessage = "Für diesen Titel gibt es keine Stream-Adresse."
             return
         }
+        loadItem(url: url, song: song, autoplay: autoplay, resume: resume)
+    }
 
-        let item = AVPlayerItem(url: url)
+    private func loadItem(url: URL, song: Song, autoplay: Bool, resume: Double) {
+        let asset = AVURLAsset(url: url)
+        let item = AVPlayerItem(asset: asset)
+        item.preferredForwardBufferDuration = 8
         itemStatusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
                 self?.handleItemStatus(item)
@@ -366,9 +391,10 @@ final class PlayerService {
             isPlaying = false
         }
 
-        scrobbled = false
+        if !scrobbled {
+            announceStart(to: client, song: song)
+        }
         updateNowPlaying()
-        announceStart(to: client, song: song)
         saveState()
     }
 
@@ -392,7 +418,8 @@ final class PlayerService {
         }
     }
 
-    private func announceStart(to client: SubsonicClient, song: Song) {
+    private func announceStart(to client: SubsonicClient?, song: Song) {
+        guard let client, !song.id.isEmpty else { return }
         Task {
             await client.scrobble(id: song.id, submission: false)
         }
@@ -599,9 +626,8 @@ final class PlayerService {
         artworkTask?.cancel()
         guard let url = client?.coverURL(id: song.coverArt, size: 600) else { return }
         artworkTask = Task { @MainActor [weak self] in
-            guard let (data, _) = try? await URLSession.shared.data(from: url),
-                  let image = UIImage(data: data) else { return }
-            guard !Task.isCancelled else { return }
+            guard let image = await ImageStore.shared.image(for: url),
+                  !Task.isCancelled else { return }
             let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             guard self?.current?.id == song.id else { return }
             var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
