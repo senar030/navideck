@@ -33,3 +33,6 @@ ios/*.xcworkspace/xcuserdata
 ios/*.xcodeproj/xcuserdata
 ios/*.xcodeproj/project.xcworkspace/xcuserdata
 *.xcuserstate
+
+# eigenes Apple-Signing-Team (lokal)
+.ios-team

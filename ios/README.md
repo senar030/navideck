@@ -24,35 +24,45 @@ Noch nicht enthalten (zweite Ausbaustufe): Podcasts, Hörbücher
 Voraussetzungen: macOS mit Xcode 16 oder neuer, iOS 17 als Ziel.
 
 Das Xcode-Projekt wird aus `project.yml` erzeugt und liegt bewusst nicht im
-Repository (sonst entstehen beim Cloud-Sync Duplikate):
+Repository: Der Projektordner liegt in einem Nextcloud-Ordner, und Xcode
+schreibt beim Öffnen ständig hinein – dadurch entstanden Duplikate
+(`Navideck 2.xcodeproj` …) und irgendwann fehlte `project.pbxproj`.
+
+Deshalb arbeitet Xcode auf einer lokalen Kopie außerhalb der Cloud:
 
 ```bash
-brew install xcodegen
-cd ios && xcodegen generate
-open Navideck.xcodeproj
+node scripts/ios-workdir.mjs --open
 ```
+
+Das synchronisiert `ios/` nach `~/Developer/navideck-ios`, erzeugt dort das
+Xcode-Projekt und öffnet es. Dein Signing-Team wird aus `.ios-team` (lokal,
+nicht im Repo) übernommen, alternativ aus `NAVIDECK_TEAM`.
 
 In Xcode das Target **Navideck** wählen, unter *Signing & Capabilities* dein
-Team eintragen und die Bundle-ID (`de.navideck.app`) auf etwas Eigenes ändern,
-falls sie schon vergeben ist. Dann auf ein angeschlossenes iPhone oder den
-Simulator starten.
+Team eintragen (falls noch nicht geschehen) und die Bundle-ID
+(`de.navideck.app`) auf etwas Eigenes ändern, falls sie schon vergeben ist.
+Dann das angeschlossene iPhone oder den Simulator starten.
 
-Nach jeder Änderung an `project.yml` (z. B. Versionsnummer) das Projekt neu
-erzeugen:
+## Aufs iPhone bringen
+
+1. iPhone per Kabel verbinden und entsperren, „Vertrauen“ bestätigen.
+2. **Einstellungen → Datenschutz & Sicherheit → Entwicklermodus** einschalten
+   (Neustart + Code).
+3. Einmalig signieren: in Xcode *Signing & Capabilities* → *Team*.
+4. Installieren und starten:
 
 ```bash
-cd ios && xcodegen generate
-```
-
-Kommandozeilen-Build für den Simulator:
-
-```bash
-cd ios
-xcodegen generate
+cd ~/Developer/navideck-ios
 xcodebuild -project Navideck.xcodeproj -scheme Navideck \
-  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  CODE_SIGNING_ALLOWED=NO build
+  -destination 'id=<UDID>' -allowProvisioningUpdates build
+xcrun devicectl device install app --device <UDID> \
+  DD-device/Build/Products/Debug-iphoneos/Navideck.app
+xcrun devicectl device process launch --device <UDID> de.navideck.app
 ```
+
+Beim ersten Start blockiert iOS die App, bis das Zertifikat unter
+*Einstellungen → Allgemein → VPN & Geräteverwaltung* vertraut wurde.
+Kostenlose Apple-IDs signieren 7 Tage; danach Build erneut installieren.
 
 ## Ohne Xcode aufs iPhone (CI)
 
