@@ -30,7 +30,13 @@ enum RepeatMode: String, Codable, Sendable {
 @MainActor
 @Observable
 final class PlayerService {
-    @ObservationIgnored private let player = AVPlayer()
+    /// A queue player instead of a single-item player: the next song is
+    /// appended while the current one plays, so tracks change without the
+    /// network round-trip and the buffering pause in between.
+    @ObservationIgnored private let player = AVQueuePlayer()
+    /// Items currently inside the queue player, in playback order, together
+    /// with the song index they belong to.
+    @ObservationIgnored private var playerSongs: [(songIndex: Int, songID: String, item: AVPlayerItem)] = []
     @ObservationIgnored private var client: SubsonicClient?
     @ObservationIgnored private var profileID: UUID?
 
@@ -93,9 +99,10 @@ final class PlayerService {
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] note in
             MainActor.assumeIsolated {
-                self?.handleTrackEnd()
+                guard let item = note.object as? AVPlayerItem else { return }
+                self?.handleTrackEnd(item)
             }
         }
 
@@ -126,7 +133,8 @@ final class PlayerService {
         self.client = client
         self.profileID = profileID
         player.pause()
-        player.replaceCurrentItem(with: nil)
+        player.removeAllItems()
+        playerSongs = []
         queue = []
         index = 0
         currentTime = 0
@@ -141,7 +149,8 @@ final class PlayerService {
 
     func stop() {
         player.pause()
-        player.replaceCurrentItem(with: nil)
+        player.removeAllItems()
+        playerSongs = []
         client = nil
         profileID = nil
         queue = []
@@ -173,7 +182,7 @@ final class PlayerService {
         scrobbled = false
         pendingResume = 0
         lastProgressReport = .distantPast
-        loadCurrent(autoplay: true, resume: resume)
+        startPlayback(at: start, autoplay: true, resume: resume)
     }
 
     func play(song: Song, within songs: [Song]) {
@@ -184,7 +193,7 @@ final class PlayerService {
     func toggle() {
         if player.currentItem == nil {
             guard current != nil else { return }
-            loadCurrent(autoplay: true, resume: pendingResume)
+            startPlayback(at: index, autoplay: true, resume: pendingResume)
             return
         }
         if isPlaying {
@@ -197,7 +206,7 @@ final class PlayerService {
     func resume() {
         guard current != nil else { return }
         if player.currentItem == nil {
-            loadCurrent(autoplay: true, resume: pendingResume)
+            startPlayback(at: index, autoplay: true, resume: pendingResume)
             return
         }
         activateAudioSession()
@@ -215,7 +224,7 @@ final class PlayerService {
     }
 
     func next() {
-        advance(automatic: false)
+        advance()
     }
 
     func previous() {
@@ -234,7 +243,7 @@ final class PlayerService {
         }
         scrobbled = false
         pendingResume = 0
-        loadCurrent(autoplay: isPlaying, resume: 0)
+        startPlayback(at: index, autoplay: isPlaying, resume: 0)
     }
 
     func seek(to seconds: Double) {
@@ -261,21 +270,28 @@ final class PlayerService {
         guard !songs.isEmpty else { return }
         let insertAt = min(index + 1, queue.count)
         queue.insert(contentsOf: songs, at: insertAt)
+        // The preloaded item is outdated now; swap it for the new first up.
+        preloadNext()
         saveState()
     }
 
     func addToQueue(_ songs: [Song]) {
         guard !songs.isEmpty else { return }
         queue.append(contentsOf: songs)
+        preloadNext()
         saveState()
     }
 
     func jump(to queueIndex: Int) {
+        jump(to: queueIndex, autoplay: true)
+    }
+
+    private func jump(to queueIndex: Int, autoplay: Bool) {
         guard queue.indices.contains(queueIndex) else { return }
         index = queueIndex
         scrobbled = false
         pendingResume = 0
-        loadCurrent(autoplay: true, resume: 0)
+        startPlayback(at: queueIndex, autoplay: autoplay, resume: 0)
     }
 
     func removeFromQueue(at offsets: IndexSet) {
@@ -292,7 +308,9 @@ final class PlayerService {
         index = min(index, queue.count - 1)
         if let playing, current?.id != playing.id {
             scrobbled = false
-            loadCurrent(autoplay: isPlaying, resume: 0)
+            startPlayback(at: index, autoplay: isPlaying, resume: 0)
+        } else {
+            preloadNext()
         }
         saveState()
     }
@@ -310,6 +328,10 @@ final class PlayerService {
                 rest.shuffle()
                 queue = [playing] + rest
                 index = 0
+                if !playerSongs.isEmpty {
+                    playerSongs[0] = (0, playing.id, playerSongs[0].item)
+                }
+                preloadNext()
             }
         }
         saveState()
@@ -347,34 +369,57 @@ final class PlayerService {
         index = 0
         scrobbled = true
         pendingResume = 0
-        loadItem(url: url, song: song, autoplay: true, resume: 0)
+
+        // Radio is a single stream: no preload, no automatic advance.
+        let item = makeItem(url: url)
+        player.removeAllItems()
+        playerSongs = [(0, song.id, item)]
+        player.insert(item, after: nil)
+        duration = 0
+        currentTime = 0
+        isLoading = true
+        errorMessage = nil
+        activateAudioSession()
+        player.play()
+        isPlaying = true
+        updateNowPlaying()
+        saveState()
     }
 
-    private func loadCurrent(autoplay: Bool, resume: Double) {
-        guard let song = current, let client else { return }
-        if let local = localURL?(song.id) {
-            loadItem(url: local, song: song, autoplay: autoplay, resume: resume)
-            return
-        }
-        guard let url = client.streamURL(id: song.id, maxBitRate: streamBitRate()) else {
-            errorMessage = "Für diesen Titel gibt es keine Stream-Adresse."
-            return
-        }
-        loadItem(url: url, song: song, autoplay: autoplay, resume: resume)
+    /// Stream URL for a queue entry, preferring the offline file.
+    private func playbackURL(for queueIndex: Int) -> URL? {
+        guard queue.indices.contains(queueIndex), let client else { return nil }
+        let song = queue[queueIndex]
+        if let local = localURL?(song.id) { return local }
+        return client.streamURL(id: song.id, maxBitRate: streamBitRate())
     }
 
-    private func loadItem(url: URL, song: Song, autoplay: Bool, resume: Double) {
-        let asset = AVURLAsset(url: url)
-        let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 8
+    private func makeItem(url: URL) -> AVPlayerItem {
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
+        // Enough runway for the next song to be buffered when the current one
+        // ends, which is what makes the transition gapless.
+        item.preferredForwardBufferDuration = 12
         itemStatusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
                 self?.handleItemStatus(item)
             }
         }
+        return item
+    }
 
-        player.replaceCurrentItem(with: item)
-        duration = Double(song.duration ?? 0)
+    /// Starts the queue at `queueIndex` and preloads the following entry.
+    private func startPlayback(at queueIndex: Int, autoplay: Bool, resume: Double) {
+        guard let url = playbackURL(for: queueIndex) else {
+            errorMessage = "Für diesen Titel gibt es keine Stream-Adresse."
+            return
+        }
+
+        let item = makeItem(url: url)
+        player.removeAllItems()
+        playerSongs = [(queueIndex, queue[queueIndex].id, item)]
+        player.insert(item, after: nil)
+
+        duration = Double(queue[queueIndex].duration ?? 0)
         currentTime = max(0, resume)
         isLoading = true
         errorMessage = nil
@@ -396,11 +441,49 @@ final class PlayerService {
             isPlaying = false
         }
 
-        if !scrobbled {
+        if !scrobbled, let song = current {
             announceStart(to: client, song: song)
         }
         updateNowPlaying()
+        preloadNext()
         saveState()
+    }
+
+    /// Keeps exactly one song queued behind the current one, so the queue
+    /// player can cross the track boundary without a network pause.
+    private func preloadNext() {
+        guard let last = playerSongs.last else { return }
+
+        let desired: Int?
+        if repeatMode == .one {
+            desired = last.songIndex
+        } else if last.songIndex + 1 < queue.count {
+            desired = last.songIndex + 1
+        } else if repeatMode == .all, !queue.isEmpty {
+            desired = 0
+        } else {
+            desired = nil
+        }
+        let desiredID = desired.flatMap { queue.indices.contains($0) ? queue[$0].id : nil }
+
+        if playerSongs.count > 1 {
+            let upcoming = playerSongs[1]
+            let stale = playerSongs.count > 2
+                || desiredID == nil
+                || (repeatMode != .one && upcoming.songID != desiredID)
+            if stale {
+                for extra in playerSongs.dropFirst() {
+                    player.remove(extra.item)
+                }
+                playerSongs.removeSubrange(1...)
+            }
+        }
+
+        guard playerSongs.count == 1, let desired, queue.indices.contains(desired) else { return }
+        guard let url = playbackURL(for: desired) else { return }
+        let item = makeItem(url: url)
+        player.insert(item, after: playerSongs[0].item)
+        playerSongs.append((desired, queue[desired].id, item))
     }
 
     private func handleItemStatus(_ item: AVPlayerItem) {
@@ -430,28 +513,15 @@ final class PlayerService {
         }
     }
 
-    private func advance(automatic: Bool) {
+    private func advance() {
         guard !queue.isEmpty else { return }
 
-        if automatic && repeatMode == .one {
-            seek(to: 0)
-            resume()
-            return
-        }
-
         if index + 1 < queue.count {
-            index += 1
-            scrobbled = false
-            pendingResume = 0
-            loadCurrent(autoplay: true, resume: 0)
+            jump(to: index + 1, autoplay: true)
             return
         }
-
         if repeatMode == .all {
-            index = 0
-            scrobbled = false
-            pendingResume = 0
-            loadCurrent(autoplay: true, resume: 0)
+            jump(to: 0, autoplay: true)
             return
         }
 
@@ -461,19 +531,46 @@ final class PlayerService {
         saveState()
     }
 
-    private func handleTrackEnd() {
-        // Mark the episode as finished before moving on.
-        if let song = current {
-            progressSink?(song, duration, duration)
+    /// The queue player already moved on to the preloaded item; only the app
+    /// state, the metadata and the next preload have to follow.
+    private func handleTrackEnd(_ finishedItem: AVPlayerItem) {
+        guard let finished = playerSongs.first, finished.item === finishedItem else { return }
+
+        let finishedIndex = finished.songIndex
+        if queue.indices.contains(finishedIndex) {
+            progressSink?(queue[finishedIndex], duration, duration)
         }
-        advance(automatic: true)
+        playerSongs.removeFirst()
+
+        if let upcoming = playerSongs.first {
+            index = upcoming.songIndex
+            scrobbled = false
+            pendingResume = 0
+            currentTime = 0
+            duration = Double(queue[index].duration ?? 0)
+            if let song = current {
+                announceStart(to: client, song: song)
+            }
+            updateNowPlaying()
+            preloadNext()
+            saveState()
+            return
+        }
+
+        // Nothing was preloaded: the queue is finished.
+        isPlaying = false
+        player.pause()
+        index = min(max(0, finishedIndex), max(0, queue.count - 1))
+        currentTime = 0
+        saveState()
     }
 
     private func stopPlaybackKeepingClient() {
         // Remember where the episode stopped before the queue disappears.
         reportProgress(force: true)
         player.pause()
-        player.replaceCurrentItem(with: nil)
+        player.removeAllItems()
+        playerSongs = []
         queue = []
         index = 0
         currentTime = 0
@@ -675,6 +772,14 @@ final class PlayerService {
     func saveNow() {
         saveState()
     }
+
+    #if DEBUG
+    /// Simulator helper: jump close to the end so the gapless transition can
+    /// be checked without waiting four minutes.
+    func demoTickToEnd() {
+        seek(to: max(0, duration - 8))
+    }
+    #endif
 
     private func saveState() {
         guard let profileID else { return }

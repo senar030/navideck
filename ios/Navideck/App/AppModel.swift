@@ -100,6 +100,12 @@ final class AppModel {
             if openPlayer {
                 player.showNowPlaying = true
             }
+            if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SKIP"] == "1" {
+                for _ in 0..<3 {
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    player.demoTickToEnd()
+                }
+            }
         }
     }
     #endif
