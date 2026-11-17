@@ -54,6 +54,9 @@ struct MainTabs: View {
         return 0
     }()
     @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 4)
+    /// Tabs that have been opened at least once. Their stacks stay mounted so
+    /// scroll positions survive, but a tab is not loaded before its first visit.
+    @State private var visitedTabs: Set<Int> = []
     /// Measured height of the Start/pill/Suche row; every stack reserves it.
     @State private var barHeight: CGFloat = 64
     @State private var navExpanded = false
@@ -62,22 +65,23 @@ struct MainTabs: View {
     var body: some View {
         @Bindable var player = app.player
 
-        TabView(selection: $selection) {
-            stack(0) { HomeView() }
-                .tag(0)
-
-            stack(1) { MusikView() }
-                .tag(1)
-
-            stack(2) { PodcastsView() }
-                .tag(2)
-
-            stack(3) { SettingsView() }
-                .tag(3)
+        // Deliberately no TabView: iOS 26 draws its own floating glass tab bar
+        // and left a remnant capsule behind our custom bar. A plain switcher
+        // keeps every stack alive after its first visit.
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                if visitedTabs.contains(index) || selection == index {
+                    stack(index) { screen(index) }
+                        .opacity(selection == index ? 1 : 0)
+                        .allowsHitTesting(selection == index)
+                        .zIndex(selection == index ? 1 : 0)
+                }
+            }
+        }
+        .onChange(of: selection) { _, tab in
+            visitedTabs.insert(tab)
         }
         .tint(Theme.accent)
-        // The system bar is replaced by the Start/pill/Suche row below.
-        .toolbar(.hidden, for: .tabBar)
         .overlay {
             if navExpanded {
                 Color.black.opacity(0.32)
@@ -290,6 +294,16 @@ struct MainTabs: View {
     }
 
     // MARK: - Tabs
+
+    @ViewBuilder
+    private func screen(_ index: Int) -> some View {
+        switch index {
+        case 0: HomeView()
+        case 1: MusikView()
+        case 2: PodcastsView()
+        default: SettingsView()
+        }
+    }
 
     private func stack<Content: View>(
         _ index: Int,

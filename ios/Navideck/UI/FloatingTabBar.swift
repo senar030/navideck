@@ -40,7 +40,6 @@ struct FloatingTabBar: View {
         }
         .padding(.horizontal, 8)
         .navideckGlass(Capsule(), tint: Theme.background.opacity(0.3))
-        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 
     private func isSelected(_ index: Int) -> Bool {
