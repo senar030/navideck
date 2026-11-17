@@ -143,7 +143,7 @@ struct AlbumsView: View {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
         loading = false
-        await prefetch(Array(albums.prefix(12)))
+        await prefetch(Array(albums.prefix(18)))
     }
 
     private func loadNextPage() async {
@@ -158,12 +158,12 @@ struct AlbumsView: View {
             canLoadMore = false
         }
         loading = false
-        await prefetch(Array(albums.suffix(12)))
+        await prefetch(Array(albums.suffix(18)))
     }
 
     /// Warms the cover cache so the grid fills in without blank tiles.
     private func prefetch(_ albums: [Album]) async {
         let urls = albums.compactMap { app.artworkURL($0.coverArt) }
-        await ImageStore.shared.prefetch(urls, limit: 12)
+        await ImageStore.shared.prefetch(urls, limit: 18)
     }
 }

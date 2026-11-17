@@ -58,7 +58,7 @@ struct ArtistDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(headerArtwork, size: 700))
+            CoverArtView(url: app.artworkURL(headerArtwork, size: 700), maxPixel: 1000)
                 .frame(width: 180, height: 180)
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
 

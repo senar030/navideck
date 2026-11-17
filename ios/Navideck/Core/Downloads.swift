@@ -52,12 +52,18 @@ struct DownloadItem: Codable, Identifiable, Hashable, Sendable {
 @MainActor
 @Observable
 final class DownloadStore {
-    private(set) var items: [DownloadItem] = []
+    private(set) var items: [DownloadItem] = [] {
+        didSet { rebuildIndex() }
+    }
     private(set) var progress: [String: Double] = [:]
     private(set) var failures: [String: String] = [:]
 
     @ObservationIgnored private var files: [String: String] = [:]
     @ObservationIgnored private var covers: [String: String] = [:]
+    /// Lookup table so list rows do not scan every download on each render.
+    @ObservationIgnored private var itemIndex: [String: DownloadItem] = [:]
+    /// Cover paths already checked on disk; avoids a stat per artwork lookup.
+    @ObservationIgnored private var verifiedCovers: Set<String> = []
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
 
     @ObservationIgnored private let root: URL
@@ -81,13 +87,20 @@ final class DownloadStore {
         configuration.waitsForConnectivity = true
         session = URLSession(configuration: configuration)
 
-        load()
+        loadInBackground()
     }
 
     // MARK: - Queries
 
     func item(kind: DownloadKind, sourceID: String) -> DownloadItem? {
-        items.first { $0.kind == kind && $0.sourceID == sourceID }
+        // Reading `items` keeps the download badge observed; the lookup table
+        // itself is not part of the observation graph.
+        _ = items.count
+        return itemIndex[key(kind, sourceID)]
+    }
+
+    private func rebuildIndex() {
+        itemIndex = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     func contains(songID: String) -> Bool {
@@ -104,7 +117,10 @@ final class DownloadStore {
     func localCoverURL(coverArt: String?) -> URL? {
         guard let coverArt, let path = covers[coverArt] else { return nil }
         let url = root.appendingPathComponent(path)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        if verifiedCovers.contains(path) { return url }
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        verifiedCovers.insert(path)
+        return url
     }
 
     func isDownloading(kind: DownloadKind, sourceID: String) -> Bool {
@@ -275,6 +291,7 @@ final class DownloadStore {
         items = []
         files = [:]
         covers = [:]
+        verifiedCovers = []
         persist()
     }
 
@@ -294,12 +311,22 @@ final class DownloadStore {
         try? data.write(to: manifestURL, options: .atomic)
     }
 
-    private func load() {
-        guard let data = try? Data(contentsOf: manifestURL),
-              let manifest = try? JSONDecoder().decode(Manifest.self, from: data) else { return }
-        items = manifest.items.sorted { $0.createdAt > $1.createdAt }
-        files = manifest.files
-        covers = manifest.covers
+    /// Decodes the manifest off the main thread; on large libraries this used
+    /// to block the first frame.
+    private func loadInBackground() {
+        let url = manifestURL
+        Task { [weak self] in
+            let manifest = await Task.detached(priority: .utility) { () -> Manifest? in
+                guard let data = try? Data(contentsOf: url) else { return nil }
+                return try? JSONDecoder().decode(Manifest.self, from: data)
+            }.value
+            guard let self, let manifest else { return }
+            self.items = manifest.items.sorted { $0.createdAt > $1.createdAt }
+            self.files = manifest.files
+            self.covers = manifest.covers
+            self.verifiedCovers = []
+            self.rebuildIndex()
+        }
     }
 
     private static func fileSuffix(for song: Song, response: URLResponse) -> String {

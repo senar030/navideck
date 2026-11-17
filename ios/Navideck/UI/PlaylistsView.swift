@@ -227,7 +227,7 @@ struct PlaylistDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(playlist.coverArt, size: 700))
+            CoverArtView(url: app.artworkURL(playlist.coverArt, size: 700), maxPixel: 1000)
                 .frame(width: 200, height: 200)
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
 

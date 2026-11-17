@@ -26,6 +26,9 @@ final class AppModel {
     private var podcastTask: Task<PodcastSnapshot, Error>?
     /// Only songs that belong to a podcast are written to the resume store.
     private var episodeIDs: Set<String> = []
+    /// Cover URLs are built in every row body; building them once per size is
+    /// much cheaper than parsing URL components during scrolling.
+    @ObservationIgnored private var artworkCache: [String: URL] = [:]
 
     var mixLoading = false
     var mixError: String?
@@ -139,6 +142,7 @@ final class AppModel {
         homeSnapshot = nil
         podcastSnapshot = nil
         episodeIDs = []
+        artworkCache = [:]
         pendingRoute = nil
         player.configure(client: client, profileID: profile.id)
     }
@@ -150,6 +154,7 @@ final class AppModel {
         homeSnapshot = nil
         podcastSnapshot = nil
         episodeIDs = []
+        artworkCache = [:]
     }
 
     func remove(profile: ServerProfile) {
@@ -449,8 +454,15 @@ final class AppModel {
     /// Offline artwork wins over the server so downloaded collections keep
     /// their covers without a connection.
     func artworkURL(_ id: String?, size: Int = 300) -> URL? {
+        guard let id, !id.isEmpty else { return nil }
+        // Offline covers are checked first (cheap) so a finished download wins
+        // over a previously cached server URL.
         if let local = downloads.localCoverURL(coverArt: id) { return local }
-        return client?.coverURL(id: id, size: size)
+        let key = "\(id)#\(size)"
+        if let hit = artworkCache[key] { return hit }
+        let url = client?.coverURL(id: id, size: size)
+        if let url { artworkCache[key] = url }
+        return url
     }
 
     var appVersion: String {

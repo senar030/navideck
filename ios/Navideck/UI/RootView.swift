@@ -129,7 +129,7 @@ struct MainTabs: View {
             return
         }
         if env["NAVIDECK_DEMO_NAV"] == "1" {
-            withAnimation(.easeOut(duration: 0.2)) { navExpanded = true }
+            withAnimation(.easeOut(duration: 0.16)) { navExpanded = true }
             return
         }
         guard let raw = env["NAVIDECK_DEMO_ROUTE"] else { return }
@@ -274,20 +274,20 @@ struct MainTabs: View {
     }
 
     private func toggleNavigation() {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.9)) {
             navExpanded.toggle()
         }
     }
 
     private func closeNavigation() {
         guard navExpanded else { return }
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(.easeOut(duration: 0.16)) {
             navExpanded = false
         }
     }
 
     private func openSearch() {
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(.easeOut(duration: 0.16)) {
             navExpanded = false
             showSearch = true
         }

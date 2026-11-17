@@ -86,8 +86,8 @@ struct AlbumCollectionView: View {
             let page = try await client.albumList(collection.listType, size: 100)
             albums = page
             await ImageStore.shared.prefetch(
-                page.prefix(16).compactMap { app.artworkURL($0.coverArt, size: 300) },
-                limit: 16
+                page.prefix(24).compactMap { app.artworkURL($0.coverArt, size: 300) },
+                limit: 24
             )
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

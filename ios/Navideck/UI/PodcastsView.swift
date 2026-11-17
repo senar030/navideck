@@ -184,7 +184,7 @@ struct PodcastsView: View {
 
     private func channelRow(_ channel: PodcastChannel) -> some View {
         HStack(spacing: 12) {
-            CoverArtView(url: channelImage(channel))
+            CoverArtView(url: channelImage(channel), maxPixel: 700)
                 .frame(width: 52, height: 52)
 
             VStack(alignment: .leading, spacing: 2) {

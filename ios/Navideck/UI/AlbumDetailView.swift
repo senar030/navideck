@@ -45,7 +45,7 @@ struct AlbumDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(album.coverArt, size: 700))
+            CoverArtView(url: app.artworkURL(album.coverArt, size: 700), maxPixel: 1000)
                 .frame(width: 220, height: 220)
                 .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 

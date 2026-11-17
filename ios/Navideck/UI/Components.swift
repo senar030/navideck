@@ -7,6 +7,9 @@ struct CoverArtView: View {
     /// Square by design. Kept as a parameter for the few places that still want
     /// a soft edge (e.g. the app icon in the settings).
     var radius: CGFloat = 0
+    /// Cap for the decoded bitmap. Lists use the default, full-screen views
+    /// pass a larger value.
+    var maxPixel: Int = 600
 
     var body: some View {
         ZStack {
@@ -19,7 +22,7 @@ struct CoverArtView: View {
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(Theme.muted.opacity(0.45))
 
-            CachedImage(url: url)
+            CachedImage(url: url, maxPixel: maxPixel)
         }
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .contentShape(Rectangle())

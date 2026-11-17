@@ -16,7 +16,7 @@ struct NowPlayingView: View {
                     topBar
                     Spacer(minLength: 6)
 
-                    CoverArtView(url: app.artworkURL(song.coverArt, size: 900))
+                    CoverArtView(url: app.artworkURL(song.coverArt, size: 900), maxPixel: 1200)
                         .aspectRatio(1, contentMode: .fit)
                         .frame(maxWidth: 380, maxHeight: 380)
                         .shadow(color: .black.opacity(0.45), radius: 24, y: 16)

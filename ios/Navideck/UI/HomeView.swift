@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// The four rows of the start screen. Loading them in one task group lets each
+/// section appear as soon as its request is done.
+private enum HomeRow: CaseIterable {
+    case recent
+    case newest
+    case frequent
+    case random
+
+    var listType: AlbumListType {
+        switch self {
+        case .recent: return .recent
+        case .newest: return .newest
+        case .frequent: return .frequent
+        case .random: return .random
+        }
+    }
+}
+
 struct HomeView: View {
     @Environment(AppModel.self) private var app
 
@@ -196,19 +214,26 @@ struct HomeView: View {
         loading = true
         errorMessage = nil
         do {
-            async let newestAlbums = client.albumList(.newest, size: 12)
-            async let recentAlbums = client.albumList(.recent, size: 12)
-            async let frequentAlbums = client.albumList(.frequent, size: 12)
-            async let randomAlbums = client.albumList(.random, size: 12)
-            let result = try await (newestAlbums, recentAlbums, frequentAlbums, randomAlbums)
-            let snapshot = HomeSnapshot(
-                newest: result.0,
-                recent: result.1,
-                frequent: result.2,
-                random: result.3
-            )
+            // Each row appears as soon as its request returns instead of the
+            // screen waiting for the slowest of four.
+            var snapshot = HomeSnapshot(newest: [], recent: [], frequent: [], random: [])
+            try await withThrowingTaskGroup(of: (HomeRow, [Album]).self) { group in
+                for row in HomeRow.allCases {
+                    group.addTask {
+                        (row, try await client.albumList(row.listType, size: 12))
+                    }
+                }
+                for try await (row, albums) in group {
+                    switch row {
+                    case .recent: snapshot.recent = albums
+                    case .newest: snapshot.newest = albums
+                    case .frequent: snapshot.frequent = albums
+                    case .random: snapshot.random = albums
+                    }
+                    apply(snapshot)
+                }
+            }
             app.homeSnapshot = snapshot
-            apply(snapshot)
             await prefetch(snapshot)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -227,8 +252,8 @@ struct HomeView: View {
     /// Warms the artwork cache so the rows do not flash in one by one.
     private func prefetch(_ snapshot: HomeSnapshot) async {
         let albums = snapshot.recent + snapshot.newest + snapshot.frequent + snapshot.random
-        let urls = albums.prefix(8).compactMap { app.artworkURL($0.coverArt) }
-        await ImageStore.shared.prefetch(urls)
+        let urls = albums.prefix(16).compactMap { app.artworkURL($0.coverArt) }
+        await ImageStore.shared.prefetch(urls, limit: 16)
     }
 
     private func loadRandom() async {

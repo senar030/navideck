@@ -410,6 +410,11 @@ struct SearchOverlay: View {
             results = found
             searched = true
             errorMessage = nil
+            // Warm the covers so the hits do not pop in one by one.
+            let urls = found.albums.prefix(6).compactMap { app.artworkURL($0.coverArt, size: 160) }
+                + found.songs.prefix(8).compactMap { app.artworkURL($0.coverArt, size: 160) }
+                + found.artists.prefix(4).compactMap { app.artworkURL($0.coverArt, size: 120) }
+            Task { await ImageStore.shared.prefetch(urls, limit: 14) }
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
