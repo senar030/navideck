@@ -41,21 +41,7 @@ struct MiniPlayerBar: View {
             .padding(.leading, 7)
             .padding(.trailing, 5)
             .padding(.vertical, 7)
-            .navideckGlass(Capsule(), interactive: true)
-            .overlay(alignment: .bottom) {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.08))
-                        Capsule()
-                            .fill(Theme.accent.opacity(0.9))
-                            .frame(width: geometry.size.width * fraction)
-                    }
-                }
-                .frame(height: 1.5)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 2)
-            }
-            .shadow(color: .black.opacity(0.25), radius: 12, y: 5)
+            .navideckGlass(Capsule())
             .contentShape(Capsule())
             .offset(x: dragOffset)
             .opacity(1 - min(0.85, abs(dragOffset) / 280))
@@ -106,11 +92,5 @@ struct MiniPlayerBar: View {
                     clearing = false
                 }
             }
-    }
-
-    private var fraction: Double {
-        let player = app.player
-        guard player.duration > 0 else { return 0 }
-        return min(1, max(0, player.currentTime / player.duration))
     }
 }
