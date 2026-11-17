@@ -93,15 +93,27 @@ final class AppModel {
     private func startDemoPlayback(openPlayer: Bool) {
         Task { @MainActor in
             guard let client else { return }
-            guard let albums = try? await client.albumList(.newest, size: 2),
-                  let first = albums.first else { return }
-            guard let full = try? await client.album(id: first.id), !full.songs.isEmpty else { return }
-            player.play(full.songs)
+            let demoPlaylist = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAYLIST"] == "1"
+            let songs: [Song]
+            if demoPlaylist {
+                guard let playlists = try? await client.playlists(),
+                      let first = playlists.first,
+                      let full = try? await client.playlist(id: first.id),
+                      !full.entries.isEmpty else { return }
+                songs = full.entries
+            } else {
+                guard let albums = try? await client.albumList(.newest, size: 2),
+                      let first = albums.first,
+                      let full = try? await client.album(id: first.id),
+                      !full.songs.isEmpty else { return }
+                songs = full.songs
+            }
+            player.play(songs)
             if openPlayer {
                 player.showNowPlaying = true
             }
             if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SKIP"] == "1" {
-                for _ in 0..<3 {
+                for _ in 0..<5 {
                     try? await Task.sleep(nanoseconds: 4_000_000_000)
                     player.demoTickToEnd()
                 }

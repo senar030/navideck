@@ -84,7 +84,9 @@ final class PlayerService {
         // Ohne dieses Warten startet ein Titel, sobald die ersten Daten da
         // sind – der Wechsel zwischen Titeln fühlt sich dadurch kürzer an.
         player.automaticallyWaitsToMinimizeStalling = false
-        player.actionAtItemEnd = .pause
+        // The queue player must move on to the preloaded item; pausing here
+        // stopped playback after the first song.
+        player.actionAtItemEnd = .advance
 
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
@@ -777,7 +779,7 @@ final class PlayerService {
     /// Simulator helper: jump close to the end so the gapless transition can
     /// be checked without waiting four minutes.
     func demoTickToEnd() {
-        seek(to: max(0, duration - 8))
+        seek(to: max(0, duration - 1))
     }
     #endif
 
