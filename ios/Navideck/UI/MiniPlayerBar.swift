@@ -41,7 +41,7 @@ struct MiniPlayerBar: View {
             .padding(.leading, 7)
             .padding(.trailing, 5)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule())
+            .navideckGlass(Capsule(), interactive: true)
             .overlay(alignment: .bottom) {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
@@ -55,10 +55,7 @@ struct MiniPlayerBar: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 2)
             }
-            .overlay {
-                Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-            }
-            .shadow(color: .black.opacity(0.3), radius: 12, y: 5)
+            .shadow(color: .black.opacity(0.25), radius: 12, y: 5)
             .contentShape(Capsule())
             .offset(x: dragOffset)
             .opacity(1 - min(0.85, abs(dragOffset) / 280))

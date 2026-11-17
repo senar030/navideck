@@ -229,7 +229,11 @@ struct MainTabs: View {
         .background {
             // Soft scrim so lists fade out instead of showing through the glass.
             LinearGradient(
-                colors: [Theme.background.opacity(0), Theme.background.opacity(0.9), Theme.background],
+                colors: [
+                    Theme.background.opacity(navExpanded ? 0.78 : 0),
+                    Theme.background.opacity(0.92),
+                    Theme.background,
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -243,6 +247,7 @@ struct MainTabs: View {
         }
     }
 
+    /// Round icon button. No label text: the symbol alone, on a glass circle.
     private func glassButton(
         _ title: String,
         icon: String,
@@ -250,21 +255,16 @@ struct MainTabs: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .medium))
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-            }
-            .foregroundStyle(active ? Theme.accent : Theme.text)
-            .padding(.horizontal, 12)
-            .frame(height: 46)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(active ? Theme.accent.opacity(0.55) : Color.white.opacity(0.12), lineWidth: 0.5)
-            }
-            .contentShape(Capsule())
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(active ? Theme.accent : Theme.text)
+                .frame(width: 48, height: 48)
+                .navideckGlass(
+                    Circle(),
+                    tint: active ? Theme.accent.opacity(0.3) : nil,
+                    interactive: true
+                )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

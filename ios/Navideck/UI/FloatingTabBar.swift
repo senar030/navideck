@@ -44,10 +44,7 @@ struct FloatingTabBar: View {
             }
         }
         .padding(.horizontal, 8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay {
-            Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-        }
+        .navideckGlass(Capsule(), tint: Theme.background.opacity(0.3))
         .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 

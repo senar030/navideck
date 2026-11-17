@@ -107,15 +107,18 @@ struct SearchOverlay: View {
             }
             .padding(.horizontal, 14)
             .frame(height: 44)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-            }
+            .navideckGlass(Capsule())
 
-            Button("Abbrechen", action: onClose)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.accent)
-                .buttonStyle(.plain)
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.text)
+                    .frame(width: 44, height: 44)
+                    .navideckGlass(Circle(), interactive: true)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Suche schließen")
         }
     }
 
@@ -182,10 +185,7 @@ struct SearchOverlay: View {
                             .foregroundStyle(Theme.text)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay {
-                                Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.5)
-                            }
+                            .navideckGlass(Capsule(), interactive: true)
                         }
                         .buttonStyle(.plain)
                     }
