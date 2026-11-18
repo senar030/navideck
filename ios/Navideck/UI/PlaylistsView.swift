@@ -271,9 +271,9 @@ struct PlaylistDetailView: View {
                     app.player.play(playlist.entries)
                 }
 
-                downloadButton
-
                 Spacer(minLength: 0)
+
+                downloadButton
 
                 Menu {
                     Button {
@@ -382,7 +382,8 @@ struct PlaylistDetailView: View {
                         number: offset + 1,
                         isCurrent: app.player.current?.id == song.id,
                         subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · "),
-                        downloaded: app.downloads.contains(songID: song.id)
+                        downloaded: app.downloads.contains(songID: song.id),
+                        progress: app.downloads.songProgress[song.id]
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)

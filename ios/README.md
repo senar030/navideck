@@ -4,12 +4,12 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.2.2)
+## Funktionsumfang (1.2.3)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
-- Vier Tabs (Start, Musik, Podcast, Optionen) plus feste Buttons „Start“ und
-  „Suche“ unten: „Start“ fährt die runde Glas-Navigation mit allen Zielen aus,
-  „Suche“ öffnet die Live-Suche
+- Vier Tabs (Start, Musik, Podcast, Optionen) plus feste Buttons „Menü“ und
+  „Suche“ unten: „Menü“ fährt die Glas-Navigation senkrecht nach oben aus dem
+  Button aus, „Suche“ öffnet die Live-Suche
 - Live-Suche als Overlay: Treffer erscheinen schon beim Tippen (Titel, Alben,
   Interpreten), gruppiert mit Covern, „Alle/Weniger“, letzte Suchanfragen und
   direkter Sprung in Album oder Interpret

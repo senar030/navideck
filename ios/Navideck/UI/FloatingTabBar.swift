@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Expanding navigation: four entries in a round glass capsule. It slides out
-/// above the Start button and collapses as soon as a destination is chosen.
-/// Search is not listed here — it has its own round button next to the pill.
+/// The expanded navigation. It slides up out of the Start button as a stack of
+/// glass capsules instead of a horizontal bar, so it reads as a menu that
+/// belongs to that button.
 struct FloatingTabBar: View {
     @Binding var selection: Int
-    /// Called after a tab was picked so the bar can slide back in.
+    /// Called after a tab was picked so the menu can slide back in.
     var onSelect: () -> Void
 
     private let items: [(title: String, icon: String, tab: Int)] = [
@@ -16,30 +16,36 @@ struct FloatingTabBar: View {
     ]
 
     var body: some View {
-        HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(items.indices, id: \.self) { index in
                 Button {
                     selection = items[index].tab
                     onSelect()
                 } label: {
-                    VStack(spacing: 3) {
+                    HStack(spacing: 10) {
                         Image(systemName: items[index].icon)
-                            .font(.system(size: 17, weight: isSelected(index) ? .semibold : .regular))
+                            .font(.system(size: 15, weight: isSelected(index) ? .semibold : .regular))
+                            .frame(width: 20)
+
                         Text(items[index].title)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.subheadline.weight(.medium))
+
+                        Spacer(minLength: 0)
                     }
-                    .foregroundStyle(isSelected(index) ? Theme.accent : Theme.muted)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 7)
-                    .contentShape(Rectangle())
+                    .foregroundStyle(isSelected(index) ? Theme.accent : Theme.text)
+                    .padding(.horizontal, 14)
+                    .frame(width: 188, height: 44)
+                    .navideckGlass(
+                        Capsule(),
+                        tint: isSelected(index) ? Theme.accent.opacity(0.16) : nil
+                    )
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(items[index].title)
                 .accessibilityAddTraits(isSelected(index) ? .isSelected : [])
             }
         }
-        .padding(.horizontal, 8)
-        .navideckGlass(Capsule(), tint: Theme.background.opacity(0.3))
     }
 
     private func isSelected(_ index: Int) -> Bool {

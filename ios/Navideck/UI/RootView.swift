@@ -196,16 +196,20 @@ struct MainTabs: View {
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             if navExpanded {
                 FloatingTabBar(selection: $selection) {
                     closeNavigation()
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                // Grows straight up out of the Start button.
+                .transition(
+                    .scale(scale: 0.25, anchor: .bottomLeading)
+                        .combined(with: .opacity)
+                )
             }
 
             HStack(spacing: 10) {
-                glassButton("Start", icon: "house", active: navExpanded) {
+                glassButton("Start", icon: "line.3.horizontal", active: navExpanded) {
                     toggleNavigation()
                 }
 
