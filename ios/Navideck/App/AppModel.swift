@@ -26,6 +26,7 @@ final class AppModel {
     var absError: String?
     @ObservationIgnored private var absLoadedAt: Date?
     @ObservationIgnored private var absTrackURLs: [String: URL] = [:]
+    @ObservationIgnored private var absTrackAssets: [String: AVURLAsset] = [:]
     @ObservationIgnored private var absTrackBooks: [String: (bookID: String, offset: Double, duration: Double)] = [:]
     @ObservationIgnored private var lastABSSync = Date.distantPast
 
@@ -745,12 +746,12 @@ final class AppModel {
     /// when needed.
     func playAudiobook(_ book: AbsBook, from time: Double? = nil) {
         guard abs != nil else { return }
-        if book.media.tracks.isEmpty {
+        if tracks(of: book).isEmpty {
             Task { @MainActor in
                 if let full = await fullBook(book) {
                     startAudiobook(full, from: time)
                 } else {
-                    player.errorMessage = "Das Hörbuch konnte nicht geladen werden."
+                    player.errorMessage = absError ?? "Das Hörbuch konnte nicht geladen werden."
                 }
             }
             return
@@ -762,25 +763,54 @@ final class AppModel {
     @discardableResult
     func fullBook(_ book: AbsBook) async -> AbsBook? {
         guard let abs else { return nil }
-        if !book.media.tracks.isEmpty { return book }
-        guard let full = try? await abs.item(id: book.id), !full.media.tracks.isEmpty else {
+        if !book.media.tracks.isEmpty || !book.media.audioFiles.isEmpty { return book }
+
+        do {
+            let full = try await abs.item(id: book.id)
+            guard !tracks(of: full).isEmpty else {
+                absError = "Audiobookshelf liefert für dieses Buch keine Audiodateien."
+                return nil
+            }
+            if let index = absBooks.firstIndex(where: { $0.id == full.id }) {
+                absBooks[index] = full
+            }
+            return full
+        } catch {
+            absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return nil
         }
-        if let index = absBooks.firstIndex(where: { $0.id == full.id }) {
-            absBooks[index] = full
+    }
+
+    /// Track list for playback, falling back to `audioFiles` and to the
+    /// conventional file URL when the server omits `contentUrl`.
+    func tracks(of book: AbsBook) -> [AbsTrack] {
+        if !book.media.tracks.isEmpty { return book.media.tracks }
+        return book.media.audioFiles.compactMap { file in
+            guard !file.ino.isEmpty else { return nil }
+            return AbsTrack(
+                ino: file.ino,
+                startOffset: 0,
+                duration: file.duration ?? 0,
+                contentUrl: "/api/items/\(book.id)/file/\(file.ino)"
+            )
         }
-        return full
     }
 
     private func startAudiobook(_ book: AbsBook, from time: Double?) {
         guard let abs else { return }
-        let tracks = book.media.tracks
-        guard !tracks.isEmpty else { return }
+        let tracks = tracks(of: book)
+        guard !tracks.isEmpty else {
+            player.errorMessage = "Für dieses Hörbuch sind keine Audiodateien hinterlegt."
+            return
+        }
 
         let startTime = time ?? absProgress[book.id]?.currentTime ?? 0
         var songs: [Song] = []
         for (index, track) in tracks.enumerated() {
-            guard let url = abs.streamURL(contentUrl: track.contentUrl) else { continue }
+            let contentUrl = track.contentUrl.isEmpty
+                ? "/api/items/\(book.id)/file/\(track.ino)"
+                : track.contentUrl
+            guard let url = abs.streamURL(contentUrl: contentUrl) else { continue }
             let title = tracks.count > 1
                 ? "\(book.media.metadata.title) · Teil \(index + 1)"
                 : book.media.metadata.title
@@ -794,6 +824,7 @@ final class AppModel {
                 coverArt: "abs:\(book.id)"
             )
             absTrackURLs[song.id] = url
+            absTrackAssets[song.id] = abs.playerAsset(contentUrl: contentUrl)
             absTrackBooks[song.id] = (book.id, track.startOffset, track.duration)
             songs.append(song)
         }
@@ -815,16 +846,10 @@ final class AppModel {
         player.play(songs, startingAt: index, resumeAt: offset)
     }
 
-    /// Builds an AVPlayer asset with the Audiobookshelf token as a header.
-    /// Plain URLs alone fail on servers that only accept the header.
+    /// Asset for a book track, prepared when playback starts so the derived
+    /// stream URL and the auth header are known to match.
     func absAsset(for song: Song) -> AVURLAsset? {
-        guard let abs, let meta = absTrackBooks[song.id],
-              let track = absBooks
-                  .first(where: { $0.id == meta.bookID })?
-                  .media.tracks
-                  .first(where: { "abs:\(meta.bookID):\($0.ino)" == song.id })
-        else { return nil }
-        return abs.playerAsset(contentUrl: track.contentUrl)
+        absTrackAssets[song.id]
     }
 
     private func handleAudiobookProgress(song: Song, position: Double) {

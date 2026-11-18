@@ -75,6 +75,83 @@ struct AbsTrack: Decodable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case ino, index, startOffset, duration, contentUrl, title
     }
+
+    init(
+        ino: String,
+        index: Int? = nil,
+        startOffset: Double = 0,
+        duration: Double = 0,
+        contentUrl: String = "",
+        title: String? = nil
+    ) {
+        self.ino = ino
+        self.index = index
+        self.startOffset = startOffset
+        self.duration = duration
+        self.contentUrl = contentUrl
+        self.title = title
+    }
+
+    /// Audiobookshelf versions differ: numbers may be strings, `startOffset`
+    /// or `contentUrl` may be missing. A single malformed track used to discard
+    /// the whole list, which is why nothing played.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let value = try? c.decodeIfPresent(String.self, forKey: .ino) {
+            ino = value
+        } else if let value = try? c.decodeIfPresent(Int.self, forKey: .ino) {
+            ino = String(value)
+        } else {
+            ino = ""
+        }
+
+        index = try? c.decodeIfPresent(Int.self, forKey: .index)
+        title = try? c.decodeIfPresent(String.self, forKey: .title)
+        contentUrl = (try? c.decodeIfPresent(String.self, forKey: .contentUrl)) ?? ""
+
+        if let value = try? c.decodeIfPresent(Double.self, forKey: .startOffset) {
+            startOffset = value
+        } else if let value = try? c.decodeIfPresent(String.self, forKey: .startOffset),
+                  let number = Double(value) {
+            startOffset = number
+        } else {
+            startOffset = 0
+        }
+
+        if let value = try? c.decodeIfPresent(Double.self, forKey: .duration) {
+            duration = value
+        } else if let value = try? c.decodeIfPresent(String.self, forKey: .duration),
+                  let number = Double(value) {
+            duration = number
+        } else {
+            duration = 0
+        }
+    }
+}
+
+/// Older servers expose `audioFiles` only; they are enough to stream a book.
+struct AbsAudioFile: Decodable, Hashable, Sendable {
+    var ino: String
+    var duration: Double?
+    var mimeType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ino, duration, mimeType
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let value = try? c.decodeIfPresent(String.self, forKey: .ino) {
+            ino = value
+        } else if let value = try? c.decodeIfPresent(Int.self, forKey: .ino) {
+            ino = String(value)
+        } else {
+            ino = ""
+        }
+        duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
+        mimeType = try? c.decodeIfPresent(String.self, forKey: .mimeType)
+    }
 }
 
 struct AbsMedia: Decodable, Hashable, Sendable {
@@ -82,10 +159,11 @@ struct AbsMedia: Decodable, Hashable, Sendable {
     var duration: Double
     var chapters: [AbsChapter]
     var tracks: [AbsTrack]
+    var audioFiles: [AbsAudioFile]
     var numTracks: Int?
 
     enum CodingKeys: String, CodingKey {
-        case metadata, duration, chapters, tracks, numTracks
+        case metadata, duration, chapters, tracks, audioFiles, numTracks
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +172,7 @@ struct AbsMedia: Decodable, Hashable, Sendable {
         duration = (try? c.decodeIfPresent(Double.self, forKey: .duration)) ?? 0
         chapters = (try? c.decodeIfPresent([AbsChapter].self, forKey: .chapters)) ?? []
         tracks = (try? c.decodeIfPresent([AbsTrack].self, forKey: .tracks)) ?? []
+        audioFiles = (try? c.decodeIfPresent([AbsAudioFile].self, forKey: .audioFiles)) ?? []
         numTracks = try? c.decodeIfPresent(Int.self, forKey: .numTracks)
     }
 }
