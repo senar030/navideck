@@ -7,6 +7,9 @@ struct SettingsView: View {
     @State private var showABSAdd = false
     @State private var absURL = ""
     @State private var absToken = ""
+    @State private var absUser = ""
+    @State private var absPassword = ""
+    @State private var absUseLogin = false
     @State private var absError: String?
     @State private var absConnecting = false
     @State private var removeCandidate: ServerProfile?
@@ -235,6 +238,9 @@ struct SettingsView: View {
             Button {
                 absURL = ""
                 absToken = ""
+                absUser = ""
+                absPassword = ""
+                absUseLogin = false
                 absError = nil
                 showABSAdd = true
             } label: {
@@ -283,10 +289,25 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
+                }
 
-                    SecureField("API-Token", text: $absToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                Section("Anmeldung") {
+                    Picker("Methode", selection: $absUseLogin) {
+                        Text("API-Token").tag(false)
+                        Text("Benutzername & Passwort").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if absUseLogin {
+                        TextField("Benutzername", text: $absUser)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        SecureField("Passwort", text: $absPassword)
+                    } else {
+                        TextField("API-Token", text: $absToken)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
                 }
 
                 if let absError {
@@ -298,7 +319,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Text("Den Token erzeugst du in Audiobookshelf unter Einstellungen → Benutzer → API-Token.")
+                    Text("Den API-Token erzeugst du in Audiobookshelf unter Einstellungen → Benutzer. Alternativ kannst du dich direkt mit deinem Konto anmelden.")
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
@@ -319,7 +340,11 @@ struct SettingsView: View {
                             Text("Verbinden")
                         }
                     }
-                    .disabled(absConnecting || absURL.isEmpty || absToken.isEmpty)
+                    .disabled(
+                        absConnecting
+                            || absURL.isEmpty
+                            || (absUseLogin ? (absUser.isEmpty || absPassword.isEmpty) : absToken.isEmpty)
+                    )
                 }
             }
         }
@@ -330,7 +355,15 @@ struct SettingsView: View {
         absError = nil
         Task {
             do {
-                try await app.connectAudiobookshelf(urlText: absURL, token: absToken)
+                if absUseLogin {
+                    try await app.connectAudiobookshelf(
+                        urlText: absURL,
+                        username: absUser,
+                        password: absPassword
+                    )
+                } else {
+                    try await app.connectAudiobookshelf(urlText: absURL, token: absToken)
+                }
                 await app.loadAudiobooks(force: true)
                 showABSAdd = false
             } catch {

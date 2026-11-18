@@ -109,6 +109,17 @@ final class AppModel {
         }
 
         if let absURL = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_URL"],
+           let login = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_LOGIN"] {
+            let parts = login.split(separator: ":", maxSplits: 1).map(String.init)
+            Task { @MainActor in
+                try? await connectAudiobookshelf(
+                    urlText: absURL,
+                    username: parts.first ?? "",
+                    password: parts.count > 1 ? parts[1] : ""
+                )
+                await loadAudiobooks(force: true)
+            }
+        } else if let absURL = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_URL"],
            let url = URL(string: absURL) {
             let profile = servers.saveAudiobookshelf(
                 baseURL: url,
@@ -613,6 +624,26 @@ final class AppModel {
 
         let profile = servers.saveAudiobookshelf(baseURL: url, token: trimmed)
         activateAudiobookshelf(profile, client: candidate)
+    }
+
+    /// Alternative to the API token: log in with a normal account and keep the
+    /// returned token.
+    func connectAudiobookshelf(urlText: String, username: String, password: String) async throws {
+        guard let url = Format.serverURL(urlText) else {
+            throw AudiobookshelfFailure(message: "Bitte eine gültige Server-Adresse eingeben.")
+        }
+        let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !user.isEmpty, !password.isEmpty else {
+            throw AudiobookshelfFailure(message: "Bitte Benutzername und Passwort eingeben.")
+        }
+        let token = try await AudiobookshelfClient(baseURL: url, token: "").login(
+            username: user,
+            password: password
+        )
+        let client = AudiobookshelfClient(baseURL: url, token: token)
+        _ = try await client.libraries()
+        let profile = servers.saveAudiobookshelf(baseURL: url, token: token)
+        activateAudiobookshelf(profile, client: client)
     }
 
     func activateAudiobookshelf(_ profile: ServerProfile) {

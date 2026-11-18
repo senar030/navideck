@@ -146,6 +146,18 @@ private struct AbsMeResponse: Decodable {
     var mediaProgress: [AbsProgress]?
 }
 
+private struct AbsLoginResponse: Decodable {
+    struct User: Decodable {
+        var token: String
+        var username: String?
+    }
+    var user: User
+}
+
+private struct AbsErrorBody: Decodable {
+    var error: String?
+}
+
 // MARK: - Client
 
 /// Minimal Audiobookshelf client: libraries, books, covers, streams and
@@ -164,7 +176,15 @@ struct AudiobookshelfClient: Sendable {
 
     init(baseURL: URL, token: String) {
         self.baseURL = baseURL
-        self.token = token
+        // Copied tokens sometimes carry a prefix or surrounding whitespace.
+        var cleaned = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleaned.lowercased().hasPrefix("bearer ") {
+            cleaned = String(cleaned.dropFirst(7)).trimmingCharacters(in: .whitespaces)
+        }
+        if cleaned.hasPrefix("\"") && cleaned.hasSuffix("\""), cleaned.count > 1 {
+            cleaned = String(cleaned.dropFirst().dropLast())
+        }
+        self.token = cleaned
     }
 
     // MARK: Requests
@@ -192,21 +212,55 @@ struct AudiobookshelfClient: Sendable {
         let response: URLResponse
         do {
             (data, response) = try await Self.session.data(for: request)
+        } catch let error as URLError {
+            throw AudiobookshelfFailure(message: Self.message(for: error, url: baseURL))
         } catch {
-            throw AudiobookshelfFailure(message: "Audiobookshelf nicht erreichbar.")
+            throw AudiobookshelfFailure(message: error.localizedDescription)
         }
         if let http = response as? HTTPURLResponse {
             if http.statusCode == 401 || http.statusCode == 403 {
-                throw AudiobookshelfFailure(message: "Audiobookshelf hat den API-Token abgelehnt.")
+                throw AudiobookshelfFailure(
+                    message: "Der API-Token wurde abgelehnt. Erzeuge in Audiobookshelf unter Einstellungen → Benutzer einen neuen Token."
+                )
+            }
+            if http.statusCode == 404 {
+                throw AudiobookshelfFailure(
+                    message: "Unter dieser Adresse antwortet keine Audiobookshelf-API. Prüfe die URL (inklusive Unterpfad, falls die App dort läuft)."
+                )
             }
             if !(200...299).contains(http.statusCode) {
-                throw AudiobookshelfFailure(message: "Audiobookshelf antwortete mit HTTP \(http.statusCode).")
+                let detail = (try? JSONDecoder().decode(AbsErrorBody.self, from: data))?.error
+                throw AudiobookshelfFailure(
+                    message: "Audiobookshelf antwortete mit HTTP \(http.statusCode)\(detail.map { ": \($0)" } ?? "")."
+                )
             }
         }
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            throw AudiobookshelfFailure(message: "Unerwartete Antwort von Audiobookshelf.")
+            throw AudiobookshelfFailure(
+                message: "Unerwartete Antwort von Audiobookshelf. Zeigt die URL wirklich auf den Server?"
+            )
+        }
+    }
+
+    private static func message(for error: URLError, url: URL) -> String {
+        switch error.code {
+        case .notConnectedToInternet:
+            return "Keine Internetverbindung."
+        case .cannotFindHost, .dnsLookupFailed:
+            return "Server nicht gefunden. Prüfe die Adresse."
+        case .cannotConnectToHost:
+            return "Server nicht erreichbar. Läuft Audiobookshelf unter \(Format.host(url))?"
+        case .timedOut:
+            return "Zeitüberschreitung beim Verbinden mit Audiobookshelf."
+        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate,
+             .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid:
+            return "Die TLS-Verbindung zu Audiobookshelf ist nicht vertrauenswürdig."
+        case .appTransportSecurityRequiresSecureConnection:
+            return "iOS blockiert die unverschlüsselte Verbindung."
+        default:
+            return "Audiobookshelf nicht erreichbar (\(error.localizedDescription))."
         }
     }
 
@@ -230,6 +284,42 @@ struct AudiobookshelfClient: Sendable {
             ]
         )
         return response.results
+    }
+
+    /// Logs in with a normal Audiobookshelf account and returns its token.
+    func login(username: String, password: String) async throws -> String {
+        guard let url = url("login") else {
+            throw AudiobookshelfFailure(message: "Ungültige Audiobookshelf-Adresse.")
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "username": username,
+            "password": password,
+        ])
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await Self.session.data(for: request)
+        } catch let error as URLError {
+            throw AudiobookshelfFailure(message: Self.message(for: error, url: baseURL))
+        } catch {
+            throw AudiobookshelfFailure(message: error.localizedDescription)
+        }
+        if let http = response as? HTTPURLResponse {
+            if http.statusCode == 401 {
+                throw AudiobookshelfFailure(message: "Benutzername oder Passwort stimmen nicht.")
+            }
+            if !(200...299).contains(http.statusCode) {
+                throw AudiobookshelfFailure(message: "Anmeldung fehlgeschlagen (HTTP \(http.statusCode)).")
+            }
+        }
+        guard let login = try? JSONDecoder().decode(AbsLoginResponse.self, from: data) else {
+            throw AudiobookshelfFailure(message: "Unerwartete Antwort bei der Anmeldung.")
+        }
+        return login.user.token
     }
 
     func progress() async throws -> [AbsProgress] {

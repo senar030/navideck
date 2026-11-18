@@ -30,7 +30,9 @@ enum Format {
         var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if !trimmed.contains("://") {
-            trimmed = "http://" + trimmed
+            // Local servers speak plain http, public ones almost always https.
+            let host = trimmed.split(separator: "/").first.map(String.init) ?? trimmed
+            trimmed = (isLocalHost(host) ? "http://" : "https://") + trimmed
         }
         while trimmed.hasSuffix("/") {
             trimmed.removeLast()
@@ -39,6 +41,18 @@ enum Format {
             return nil
         }
         return url
+    }
+
+    /// LAN addresses and .local names are the ones that usually run plain http.
+    private static func isLocalHost(_ host: String) -> Bool {
+        let name = host.split(separator: ":").first.map(String.init)?.lowercased() ?? host.lowercased()
+        if name == "localhost" || name.hasSuffix(".local") { return true }
+        let parts = name.split(separator: ".").compactMap { Int($0) }
+        guard parts.count == 4 else { return false }
+        if parts[0] == 10 || parts[0] == 127 { return true }
+        if parts[0] == 192, parts[1] == 168 { return true }
+        if parts[0] == 172, (16...31).contains(parts[1]) { return true }
+        return false
     }
 
     /// `https://music.example.org` → `music.example.org`, used as a server label.
