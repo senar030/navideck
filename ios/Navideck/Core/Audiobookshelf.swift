@@ -154,16 +154,67 @@ struct AbsAudioFile: Decodable, Hashable, Sendable {
     }
 }
 
+struct AbsEpisodeFile: Decodable, Hashable, Sendable {
+    var ino: String
+
+    enum CodingKeys: String, CodingKey { case ino }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let value = try? c.decodeIfPresent(String.self, forKey: .ino) {
+            ino = value
+        } else if let value = try? c.decodeIfPresent(Int.self, forKey: .ino) {
+            ino = String(value)
+        } else {
+            ino = ""
+        }
+    }
+}
+
+struct AbsEpisode: Decodable, Hashable, Sendable, Identifiable {
+    var id: String
+    var title: String
+    var subtitle: String?
+    var publishedAt: Double?
+    var duration: Double?
+    var audioFile: AbsEpisodeFile?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, subtitle, publishedAt, duration, audioFile
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
+        title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        subtitle = try? c.decodeIfPresent(String.self, forKey: .subtitle)
+        publishedAt = try? c.decodeIfPresent(Double.self, forKey: .publishedAt)
+        duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
+        audioFile = try? c.decodeIfPresent(AbsEpisodeFile.self, forKey: .audioFile)
+    }
+
+    var publishedText: String? {
+        guard let publishedAt, publishedAt > 0 else { return nil }
+        let date = Date(timeIntervalSince1970: publishedAt > 10_000_000_000 ? publishedAt / 1000 : publishedAt)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+}
+
 struct AbsMedia: Decodable, Hashable, Sendable {
     var metadata: AbsMetadata
     var duration: Double
     var chapters: [AbsChapter]
     var tracks: [AbsTrack]
     var audioFiles: [AbsAudioFile]
+    var episodes: [AbsEpisode]
     var numTracks: Int?
 
     enum CodingKeys: String, CodingKey {
-        case metadata, duration, chapters, tracks, audioFiles, numTracks
+        case metadata, duration, chapters, tracks, audioFiles, episodes, numTracks
     }
 
     init(from decoder: Decoder) throws {
@@ -173,6 +224,7 @@ struct AbsMedia: Decodable, Hashable, Sendable {
         chapters = (try? c.decodeIfPresent([AbsChapter].self, forKey: .chapters)) ?? []
         tracks = (try? c.decodeIfPresent([AbsTrack].self, forKey: .tracks)) ?? []
         audioFiles = (try? c.decodeIfPresent([AbsAudioFile].self, forKey: .audioFiles)) ?? []
+        episodes = (try? c.decodeIfPresent([AbsEpisode].self, forKey: .episodes)) ?? []
         numTracks = try? c.decodeIfPresent(Int.self, forKey: .numTracks)
     }
 }

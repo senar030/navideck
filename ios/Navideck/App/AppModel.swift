@@ -133,6 +133,18 @@ final class AppModel {
             if let client = servers.makeAudiobookshelfClient(for: profile) {
                 self.abs = client
             }
+            if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PODCAST_ABS"] == "1" {
+                prefs.podcastSource = profile.id.uuidString
+            }
+        }
+
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAYEP"] == "1" {
+            Task { @MainActor in
+                await loadPodcasts(force: true)
+                if let show = absPodcasts.first, let episode = show.media.episodes.first {
+                    playAbsEpisode(episode, from: show)
+                }
+            }
         }
 
         if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAYABS"] == "1" {
@@ -585,7 +597,8 @@ final class AppModel {
 
     func servers(for category: Category) -> [ServerProfile] {
         switch category {
-        case .music, .podcasts: return servers.profiles.filter { $0.kind == .subsonic }
+        case .music: return servers.profiles.filter { $0.kind == .subsonic }
+        case .podcasts: return servers.profiles
         case .audiobooks: return servers.profiles.filter { $0.kind == .audiobookshelf }
         }
     }
@@ -612,8 +625,27 @@ final class AppModel {
     /// A category is available when it is not switched off and its server is
     /// connected. Legacy values ("subsonic", "audiobookshelf") behave as auto.
     var musicAvailable: Bool { categoryEnabled(.music) && client != nil }
-    var podcastsAvailable: Bool { categoryEnabled(.podcasts) && client != nil }
+    var podcastsAvailable: Bool { podcastBackend != .none }
     var audiobooksAvailable: Bool { categoryEnabled(.audiobooks) && abs != nil }
+
+    enum PodcastBackend { case subsonic, audiobookshelf, none }
+
+    /// Podcasts can come from the Subsonic server or from Audiobookshelf.
+    var podcastBackend: PodcastBackend {
+        guard categoryEnabled(.podcasts) else { return .none }
+
+        let raw = sourceValue(for: .podcasts)
+        if let id = UUID(uuidString: raw),
+           let profile = servers.profiles.first(where: { $0.id == id }) {
+            if profile.kind == .audiobookshelf {
+                return abs != nil ? .audiobookshelf : .none
+            }
+            return client != nil ? .subsonic : .none
+        }
+        if client != nil { return .subsonic }
+        if abs != nil { return .audiobookshelf }
+        return .none
+    }
 
     private func categoryEnabled(_ category: Category) -> Bool {
         sourceValue(for: category) != "off"
@@ -719,6 +751,62 @@ final class AppModel {
             absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
         absLoading = false
+    }
+
+    // MARK: Audiobookshelf podcasts
+
+    private(set) var absPodcasts: [AbsBook] = []
+    @ObservationIgnored private var absPodcastsLoadedAt: Date?
+
+    func loadPodcasts(force: Bool = false) async {
+        guard let abs else { return }
+        if !force, let loaded = absPodcastsLoadedAt,
+           Date().timeIntervalSince(loaded) < 300, !absPodcasts.isEmpty {
+            return
+        }
+        do {
+            let libraries = try await abs.libraries()
+            var shows: [AbsBook] = []
+            for library in libraries where library.mediaType == "podcast" {
+                if let page = try? await abs.books(libraryID: library.id, page: 0, limit: 100) {
+                    shows.append(contentsOf: page)
+                }
+            }
+            var seen = Set<String>()
+            absPodcasts = shows
+                .filter { seen.insert($0.id).inserted }
+                .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+            absPodcastsLoadedAt = Date()
+        } catch {
+            absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// Plays one Audiobookshelf podcast episode.
+    func playAbsEpisode(_ episode: AbsEpisode, from show: AbsBook) {
+        guard let abs, let ino = episode.audioFile?.ino, !ino.isEmpty else {
+            player.errorMessage = "Für diese Folge ist keine Audiodatei hinterlegt."
+            return
+        }
+        let songID = "abs:\(show.id):\(ino)"
+        let contentUrl = "/api/items/\(show.id)/file/\(ino)"
+        guard let asset = abs.playerAsset(contentUrl: contentUrl) else {
+            player.errorMessage = "Die Folge konnte nicht geladen werden."
+            return
+        }
+        absTrackAssets[songID] = asset
+        absTrackURLs[songID] = abs.streamURL(contentUrl: contentUrl)
+        absTrackBooks[songID] = (show.id, 0, episode.duration ?? 0)
+
+        let song = Song(
+            id: songID,
+            title: episode.title,
+            album: show.media.metadata.title,
+            artist: show.media.metadata.authorName,
+            duration: episode.duration.map { Int($0.rounded()) },
+            coverArt: "abs:\(show.id)"
+        )
+        player.play([song])
     }
 
     var audiobooksInProgress: [AbsBook] {

@@ -21,13 +21,21 @@ struct PodcastsView: View {
         Group {
             if app.offlineMode {
                 OfflineEpisodesView()
+            } else if app.podcastBackend == .audiobookshelf {
+                AbsPodcastsView()
             } else {
                 library
             }
         }
         .navigationTitle("Podcasts")
         .offlineModeToolbar()
-        .task { await load() }
+        .task {
+            if app.podcastBackend == .audiobookshelf {
+                await app.loadPodcasts()
+            } else {
+                await load()
+            }
+        }
     }
 
     private var library: some View {

@@ -1,0 +1,181 @@
+import SwiftUI
+
+/// Podcasts from Audiobookshelf: shows first, episodes inside the show.
+struct AbsPodcastsView: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                if let error = app.absError {
+                    ErrorBanner(message: error)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
+                }
+
+                ForEach(Array(app.absPodcasts.enumerated()), id: \.element.id) { offset, show in
+                    NavigationLink {
+                        AbsPodcastShowView(show: show)
+                    } label: {
+                        row(show)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+
+                    if offset < app.absPodcasts.count - 1 {
+                        Divider().overlay(Theme.hairline).padding(.leading, 76)
+                    }
+                }
+
+                if app.absPodcasts.isEmpty {
+                    EmptyStateView(
+                        icon: "waveform",
+                        title: "Keine Podcasts",
+                        message: "Der Audiobookshelf-Server hat keine Podcast-Bibliothek oder sie ist leer."
+                    )
+                    .padding(.top, 30)
+                }
+            }
+            .padding(.vertical, 12)
+        }
+        .task { await app.loadPodcasts() }
+        .refreshable { await app.loadPodcasts(force: true) }
+    }
+
+    private func row(_ show: AbsBook) -> some View {
+        HStack(spacing: 12) {
+            CoverArtView(url: app.absCoverURL(show, width: 200))
+                .frame(width: 52, height: 52)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(show.media.metadata.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                Text("\(show.media.episodes.count) Folgen")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.muted.opacity(0.7))
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+struct AbsPodcastShowView: View {
+    @Environment(AppModel.self) private var app
+    let show: AbsBook
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+
+                if let description = show.media.metadata.description, !description.isEmpty {
+                    Text(description)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                        .padding(.horizontal, 20)
+                }
+
+                let episodes = show.media.episodes
+                if episodes.isEmpty {
+                    EmptyStateView(
+                        icon: "waveform",
+                        title: "Keine Folgen",
+                        message: "Für diesen Podcast liegen keine Folgen vor."
+                    )
+                } else {
+                    ForEach(Array(episodes.enumerated()), id: \.element.id) { offset, episode in
+                        episodeRow(episode)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 6)
+
+                        if offset < episodes.count - 1 {
+                            Divider().overlay(Theme.hairline).padding(.leading, 76)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(show.media.metadata.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .navideckScreen()
+    }
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            CoverArtView(url: app.absCoverURL(show, width: 400))
+                .frame(width: 96, height: 96)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(show.media.metadata.title)
+                    .font(.headline)
+                    .foregroundStyle(Theme.text)
+                if let author = show.media.metadata.authorName, !author.isEmpty {
+                    Text(author)
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+                Text("\(show.media.episodes.count) Folgen")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func episodeRow(_ episode: AbsEpisode) -> some View {
+        let songID = "abs:\(show.id):\(episode.audioFile?.ino ?? "")"
+        let isCurrent = app.player.current?.id == songID
+
+        return Button {
+            app.playAbsEpisode(episode, from: show)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: isCurrent && app.player.isPlaying ? "waveform" : "play.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isCurrent ? Theme.accent : Theme.muted.opacity(0.8))
+                    .frame(width: 22, height: 22)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(episode.title)
+                        .font(.subheadline)
+                        .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    Text(meta(episode))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                if let duration = episode.duration, duration > 0 {
+                    Text(Format.duration(duration))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func meta(_ episode: AbsEpisode) -> String {
+        var parts: [String] = []
+        if let published = episode.publishedText { parts.append(published) }
+        if let subtitle = episode.subtitle, !subtitle.isEmpty { parts.append(subtitle) }
+        return parts.joined(separator: " · ")
+    }
+}
