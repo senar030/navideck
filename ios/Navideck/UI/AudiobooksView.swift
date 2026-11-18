@@ -65,6 +65,11 @@ struct AudiobooksView: View {
                         .padding(.horizontal, 20)
                 }
 
+                if let playerError = app.player.errorMessage {
+                    ErrorBanner(message: playerError)
+                        .padding(.horizontal, 20)
+                }
+
                 if app.absLoading && app.absBooks.isEmpty {
                     ProgressView("Hörbücher werden geladen …")
                         .tint(Theme.accent)
@@ -278,7 +283,11 @@ struct AudiobookCollectionView: View {
 
 struct AudiobookDetailView: View {
     @Environment(AppModel.self) private var app
-    let book: AbsBook
+    @State private var book: AbsBook
+
+    init(book: AbsBook) {
+        _book = State(initialValue: book)
+    }
 
     private var metadata: AbsMetadata { book.media.metadata }
     private var progress: AbsProgress? { app.absProgress[book.id] }
@@ -309,7 +318,13 @@ struct AudiobookDetailView: View {
         .navigationTitle(metadata.title)
         .navigationBarTitleDisplayMode(.inline)
         .navideckScreen()
-        .task { await app.loadAudiobooks() }
+        .task {
+            await app.loadAudiobooks()
+            // The library list may omit chapters and tracks.
+            if let full = await app.fullBook(book) {
+                book = full
+            }
+        }
     }
 
     private var header: some View {

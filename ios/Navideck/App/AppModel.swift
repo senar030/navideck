@@ -740,8 +740,39 @@ final class AppModel {
         return min(1, max(0, progress.currentTime / progress.duration))
     }
 
-    /// Plays a book from the saved position, or from the given time.
+    /// Plays a book from the saved position, or from the given time. Library
+    /// list items often ship without tracks, so the full item is fetched first
+    /// when needed.
     func playAudiobook(_ book: AbsBook, from time: Double? = nil) {
+        guard abs != nil else { return }
+        if book.media.tracks.isEmpty {
+            Task { @MainActor in
+                if let full = await fullBook(book) {
+                    startAudiobook(full, from: time)
+                } else {
+                    player.errorMessage = "Das Hörbuch konnte nicht geladen werden."
+                }
+            }
+            return
+        }
+        startAudiobook(book, from: time)
+    }
+
+    /// Loads tracks/chapters that the library list omitted and updates the cache.
+    @discardableResult
+    func fullBook(_ book: AbsBook) async -> AbsBook? {
+        guard let abs else { return nil }
+        if !book.media.tracks.isEmpty { return book }
+        guard let full = try? await abs.item(id: book.id), !full.media.tracks.isEmpty else {
+            return nil
+        }
+        if let index = absBooks.firstIndex(where: { $0.id == full.id }) {
+            absBooks[index] = full
+        }
+        return full
+    }
+
+    private func startAudiobook(_ book: AbsBook, from time: Double?) {
         guard let abs else { return }
         let tracks = book.media.tracks
         guard !tracks.isEmpty else { return }

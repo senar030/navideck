@@ -323,6 +323,12 @@ struct AudiobookshelfClient: Sendable {
         return login.user.token
     }
 
+    /// Full item, including tracks and chapters. Libraries list items often
+    /// arrive without them.
+    func item(id: String) async throws -> AbsBook {
+        try await request("api/items/\(id)")
+    }
+
     func progress() async throws -> [AbsProgress] {
         let response: AbsMeResponse = try await request("api/me")
         return response.mediaProgress ?? []
@@ -368,12 +374,27 @@ struct AudiobookshelfClient: Sendable {
     /// Stream URL for one audio file of a book. Audiobookshelf accepts the
     /// token as a query parameter, which AVPlayer can use directly.
     func streamURL(contentUrl: String) -> URL? {
-        guard var components = URLComponents(
-            url: baseURL.appendingPathComponent(contentUrl),
-            resolvingAgainstBaseURL: false
-        ) else { return nil }
+        let absolute: URL
+        if contentUrl.lowercased().hasPrefix("http"), let direct = URL(string: contentUrl) {
+            absolute = direct
+        } else if contentUrl.hasPrefix("/") {
+            // Keep the base path (e.g. behind a reverse proxy) but not a
+            // doubled slash.
+            var base = baseURL.absoluteString
+            while base.hasSuffix("/") { base.removeLast() }
+            guard let joined = URL(string: base + contentUrl) else { return nil }
+            absolute = joined
+        } else {
+            absolute = baseURL.appendingPathComponent(contentUrl)
+        }
+
+        guard var components = URLComponents(url: absolute, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
         var items = components.queryItems ?? []
-        items.append(URLQueryItem(name: "token", value: token))
+        if !items.contains(where: { $0.name == "token" }) {
+            items.append(URLQueryItem(name: "token", value: token))
+        }
         components.queryItems = items
         return components.url
     }
