@@ -4,7 +4,7 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.2.1)
+## Funktionsumfang (1.2.2)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
 - Vier Tabs (Start, Musik, Podcast, Optionen) plus feste Buttons „Start“ und
@@ -34,7 +34,8 @@ Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 - Downloads: Alben, Playlists, Interpreten und einzelne Titel offline verfügbar.
   Die Download-Seite öffnet heruntergeladene Alben und Interpreten, löscht
   einzeln (Papierkorb oder Wischen) oder alles (mit Bestätigung) und zeigt
-  laufende Downloads mit Fortschritt je Titel (kleiner, sich füllender Kreis)
+  laufende Downloads mit Fortschritt je Titel (kleiner, sich füllender und
+  drehender Kreis)
   bzw. je Album
 - Album- und Interpret-Seite ersetzen den Download-Pfeil nach dem Herunterladen
   durch einen Papierkorb

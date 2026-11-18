@@ -153,11 +153,11 @@ struct TrackRow: View {
 
             if let progress, progress < 0.999 {
                 DownloadRing(progress: progress)
-                    .frame(width: 16, height: 16)
+                    .frame(width: 13, height: 13)
                     .accessibilityLabel("Download \(Int(progress * 100)) Prozent")
             } else if downloaded || progress != nil {
                 Image(systemName: "arrow.down.circle.fill")
-                    .font(.caption2)
+                    .font(.system(size: 13))
                     .foregroundStyle(Theme.muted)
             }
 
@@ -395,21 +395,32 @@ struct EmptyStateView: View {
 
 // MARK: - Download state
 
-/// Small ring that fills while a song is being downloaded. Sits exactly where
-/// the "downloaded" symbol appears once the file is on the device.
+/// Small ring that fills while a song is being downloaded. It also spins
+/// slowly, so it stays visibly alive while a large file is buffering.
+/// Sits exactly where the "downloaded" symbol appears afterwards.
 struct DownloadRing: View {
     let progress: Double
+
+    @State private var spinning = false
+
+    private var fill: Double {
+        // Always leave a visible arc, otherwise the first percent looks dead.
+        min(1, max(0.16, progress))
+    }
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.16), lineWidth: 2)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1.8)
+
             Circle()
-                .trim(from: 0, to: min(1, max(0, progress)))
-                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.35), value: progress)
+                .trim(from: 0, to: fill)
+                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                .rotationEffect(.degrees(spinning ? 270 : -90))
+                .animation(.linear(duration: 1.3).repeatForever(autoreverses: false), value: spinning)
+                .animation(.easeOut(duration: 0.3), value: fill)
         }
+        .onAppear { spinning = true }
     }
 }
 

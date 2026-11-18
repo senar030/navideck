@@ -233,7 +233,7 @@ final class DownloadStore {
                 Task { @MainActor in
                     guard let self else { return }
                     let previous = self.songProgress[song.id] ?? 0
-                    if fraction >= 1 || fraction - previous > 0.02 {
+                    if fraction >= 1 || fraction - previous > 0.01 {
                         self.songProgress[song.id] = fraction
                         let done = Double(finished[key] ?? 0)
                         self.albumProgress[key] = (done + fraction) / Double(total)
