@@ -12,15 +12,15 @@ struct MiniPlayerBar: View {
         if let song = app.player.current {
             HStack(spacing: 8) {
                 CoverArtView(url: app.artworkURL(song.coverArt, size: 160))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 38, height: 38)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(song.title)
-                        .font(.caption.weight(.medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                     Text(song.artist ?? song.album ?? " ")
-                        .font(.system(size: 9))
+                        .font(.caption2)
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }
@@ -32,7 +32,7 @@ struct MiniPlayerBar: View {
                     Image(systemName: app.player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.text)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 38, height: 38)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

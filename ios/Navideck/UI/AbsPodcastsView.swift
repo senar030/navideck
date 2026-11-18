@@ -45,16 +45,16 @@ struct AbsPodcastsView: View {
 
     private func row(_ show: AbsBook) -> some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.absCoverURL(show, width: 200))
-                .frame(width: 52, height: 52)
+            CoverArtView(url: app.absCoverURL(show, width: 200), radius: Theme.artworkRadius)
+                .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(show.media.metadata.title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 Text("\(show.media.episodes.count) Folgen")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(Theme.muted)
             }
 
@@ -125,7 +125,7 @@ struct AbsPodcastShowView: View {
                         .foregroundStyle(Theme.muted)
                 }
                 Text("\(show.media.episodes.count) Folgen")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)

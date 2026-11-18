@@ -19,6 +19,8 @@ enum PlaylistSort: String, CaseIterable, Identifiable {
 }
 
 struct PlaylistsView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var playlists: [Playlist] = []
@@ -62,7 +64,7 @@ struct PlaylistsView: View {
                 )
             }
         }
-        .navigationTitle("Playlists")
+        .navigationTitle(embedded ? "" : "Playlists")
         .navideckScreen()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

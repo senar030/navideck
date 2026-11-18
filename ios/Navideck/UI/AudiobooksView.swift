@@ -83,7 +83,7 @@ struct AudiobooksView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(alignment: .top, spacing: 14) {
                                 ForEach(inProgress) { book in
-                                    AudiobookCard(book: book, width: 148, showsProgress: true)
+                                    AudiobookCard(book: book, width: Theme.cardWidth, showsProgress: true)
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -96,7 +96,7 @@ struct AudiobooksView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(alignment: .top, spacing: 14) {
                                 ForEach(newest) { book in
-                                    AudiobookCard(book: book, width: 148)
+                                    AudiobookCard(book: book, width: Theme.cardWidth)
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -195,12 +195,12 @@ struct AudiobookCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.audiobook(book)) {
             VStack(alignment: .leading, spacing: 6) {
-                CoverArtView(url: app.absCoverURL(book, width: 400))
+                CoverArtView(url: app.absCoverURL(book, width: 400), radius: Theme.artworkRadius)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: width)
 
                 Text(book.media.metadata.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)

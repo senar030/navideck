@@ -134,6 +134,10 @@ final class AppModel {
             }
         }
 
+        if let section = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_MUSIK_SECTION"] {
+            UserDefaults.standard.set(Int(section) ?? 0, forKey: "navideck.musik-section")
+        }
+
         if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_OFFLINE"] == "1" {
             prefs.offlineMode = true
         }
@@ -250,7 +254,8 @@ final class AppModel {
         urlText: String,
         username: String,
         password: String,
-        auth: SubsonicAuth
+        auth: SubsonicAuth,
+        name: String = ""
     ) async throws {
         guard let url = Format.serverURL(urlText) else {
             throw SubsonicFailure(code: -1, message: "Bitte eine gültige Server-Adresse eingeben.")
@@ -266,8 +271,16 @@ final class AppModel {
         let candidate = SubsonicClient(baseURL: url, username: user, password: password, auth: auth)
         try await candidate.ping()
 
-        let profile = servers.save(baseURL: url, username: user, password: password, auth: auth)
+        let profile = servers.save(
+            baseURL: url,
+            username: user,
+            password: password,
+            auth: auth,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name,
+            flavor: .subsonic
+        )
         activate(profile, client: candidate)
+        await refreshLibraries()
     }
 
     func activate(_ profile: ServerProfile) {
@@ -670,13 +683,15 @@ final class AppModel {
                         mediaType: "music"
                     ))
                 }
-                // Subsonic podcasts are server-wide, not per folder.
-                found.append(MediaLibrary(
-                    serverID: profile.id,
-                    id: "__server__",
-                    name: "Podcasts",
-                    mediaType: "podcast"
-                ))
+                // Only offer a podcast source if the server really has one.
+                if await client.hasPodcasts() {
+                    found.append(MediaLibrary(
+                        serverID: profile.id,
+                        id: "__server__",
+                        name: "Podcasts",
+                        mediaType: "podcast"
+                    ))
+                }
             case .audiobookshelf:
                 guard let client = servers.makeAudiobookshelfClient(for: profile) else { continue }
                 let libs = (try? await client.libraries()) ?? []

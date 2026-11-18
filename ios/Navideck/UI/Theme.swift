@@ -12,6 +12,16 @@ enum Theme {
     static let muted = Color(hex: 0xA99CC4)
     static let danger = Color(hex: 0xEE9AA6)
     static let hairline = Color.white.opacity(0.08)
+
+    // MARK: - Geometry
+    /// One artwork size for every list row, across all categories.
+    static let rowArtwork: CGFloat = 56
+    /// Corner radius for square artwork (albums, books, podcasts, songs).
+    static let artworkRadius: CGFloat = 12
+    /// Fixed card width in horizontal rows.
+    static let cardWidth: CGFloat = 156
+    /// Bottom row buttons and menu.
+    static let controlSize: CGFloat = 52
 }
 
 extension Color {

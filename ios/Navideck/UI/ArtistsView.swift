@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ArtistsView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var indexes: [ArtistIndex] = []
@@ -43,7 +45,7 @@ struct ArtistsView: View {
                 ProgressView().tint(Theme.accent).padding(.vertical, 40)
             }
         }
-        .navigationTitle("Interpreten")
+        .navigationTitle(embedded ? "" : "Interpreten")
         .navideckScreen()
         .task { await load() }
         .refreshable { await load() }

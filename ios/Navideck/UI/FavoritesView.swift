@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct FavoritesView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     private enum Mode: String, CaseIterable {
         case albums = "Alben"
         case songs = "Titel"
@@ -45,7 +47,7 @@ struct FavoritesView: View {
             }
             .padding(.vertical, 12)
         }
-        .navigationTitle("Favoriten")
+        .navigationTitle(embedded ? "" : "Favoriten")
         .navideckScreen()
         .task { await load() }
         .refreshable { await load() }

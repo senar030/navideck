@@ -3,6 +3,8 @@ import SwiftUI
 /// Everything that lives on the device. Rows open the downloaded album or
 /// artist; playback happens in those screens, not here.
 struct DownloadsView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var filter: DownloadKind?
@@ -64,7 +66,7 @@ struct DownloadsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .navigationTitle("Downloads")
+        .navigationTitle(embedded ? "" : "Downloads")
         .navideckScreen()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

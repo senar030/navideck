@@ -16,9 +16,9 @@ struct FloatingTabBar: View {
                     onSelect()
                 } label: {
                     Image(systemName: items[index].icon)
-                        .font(.system(size: 16, weight: isSelected(index) ? .semibold : .regular))
+                        .font(.system(size: 18, weight: isSelected(index) ? .semibold : .regular))
                         .foregroundStyle(isSelected(index) ? Theme.accent : Theme.muted)
-                        .frame(width: 48, height: 46)
+                        .frame(width: Theme.controlSize, height: 50)
                         .background {
                             if isSelected(index) {
                                 Circle()
@@ -34,7 +34,7 @@ struct FloatingTabBar: View {
             }
         }
         .padding(.vertical, 5)
-        .frame(width: 48)
+        .frame(width: Theme.controlSize)
         .navideckGlass(Capsule())
     }
 

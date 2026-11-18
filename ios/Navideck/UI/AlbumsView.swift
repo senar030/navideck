@@ -31,6 +31,8 @@ enum AlbumSort: String, CaseIterable, Identifiable {
 }
 
 struct AlbumsView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var albums: [Album] = []
@@ -99,7 +101,7 @@ struct AlbumsView: View {
                 )
             }
         }
-        .navigationTitle("Alben")
+        .navigationTitle(embedded ? "" : "Alben")
         .navideckScreen()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

@@ -289,9 +289,9 @@ struct MainTabs: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(active ? Theme.accent : Theme.text)
-                .frame(width: 48, height: 48)
+                .frame(width: Theme.controlSize, height: Theme.controlSize)
                 .navideckGlass(
                     Circle(),
                     tint: active ? Theme.accent.opacity(0.3) : nil
@@ -349,9 +349,9 @@ struct MainTabs: View {
     private func screen(_ index: Int) -> some View {
         switch index {
         case 0: HomeView()
-        case 1: MusikView()
-        case 2: PodcastsView()
-        case 3: AudiobooksView()
+        case 1: MusikCategoryView()
+        case 2: PodcastCategoryView()
+        case 3: HörbücherCategoryView()
         default: SettingsView()
         }
     }

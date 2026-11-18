@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct GenresView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var genres: [Genre] = []
@@ -65,7 +67,7 @@ struct GenresView: View {
                 )
             }
         }
-        .navigationTitle("Genres")
+        .navigationTitle(embedded ? "" : "Genres")
         .navideckScreen()
         .task { await load() }
         .refreshable { await load() }

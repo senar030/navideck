@@ -3,6 +3,8 @@ import SwiftUI
 /// Internet radio stations the server knows about. Tapping one starts the
 /// stream directly, no queue and no scrobbling.
 struct RadioView: View {
+    /// Used inside a category shell that already provides the chrome.
+    var embedded = false
     @Environment(AppModel.self) private var app
 
     @State private var stations: [RadioStation] = []
@@ -42,7 +44,7 @@ struct RadioView: View {
                 )
             }
         }
-        .navigationTitle("Radio")
+        .navigationTitle(embedded ? "" : "Radio")
         .navideckScreen()
         .task { await load() }
         .refreshable { await load() }

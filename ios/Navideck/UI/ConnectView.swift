@@ -3,6 +3,7 @@ import SwiftUI
 struct ConnectView: View {
     @Environment(AppModel.self) private var app
 
+    @State private var serverName = ""
     @State private var serverURL = ""
     @State private var username = ""
     @State private var password = ""
@@ -72,6 +73,8 @@ struct ConnectView: View {
     private var form: some View {
         VStack(spacing: 14) {
             field {
+                TextField("Name (optional)", text: $serverName)
+
                 TextField("Server, z. B. http://192.168.1.10:4533", text: $serverURL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)

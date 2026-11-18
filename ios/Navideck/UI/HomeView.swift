@@ -27,12 +27,33 @@ struct HomeView: View {
     @State private var random: [Album] = []
     @State private var loading = false
     @State private var errorMessage: String?
+    @State private var showWidgetSettings = false
+    @AppStorage("navideck.home-widgets") private var widgetOrderRaw = ""
+    @AppStorage("navideck.home-widgets-hidden") private var widgetHiddenRaw = ""
 
     var body: some View {
         library
             .navigationTitle("Start")
             .offlineModeToolbar()
-            .task { await load() }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showWidgetSettings = true
+                    } label: {
+                        Image(systemName: "square.grid.2x2")
+                            .foregroundStyle(Theme.text)
+                    }
+                    .accessibilityLabel("Start anpassen")
+                }
+            }
+            .sheet(isPresented: $showWidgetSettings) {
+                HomeWidgetSettingsView()
+            }
+            .task {
+                await load()
+                if app.audiobooksAvailable { await app.loadAudiobooks() }
+                if app.podcastBackend == .audiobookshelf { await app.loadPodcasts() }
+            }
     }
 
     private var library: some View {
@@ -56,8 +77,6 @@ struct HomeView: View {
                     ErrorBanner(message: mixError)
                         .padding(.horizontal, 20)
                 }
-
-                shortcuts
 
                 if app.offlineMode && !app.hasDownloads {
                     EmptyStateView(
@@ -87,24 +106,10 @@ struct HomeView: View {
                     if !downloaded.isEmpty {
                         albumSection("Deine Downloads", albums: downloaded)
                     }
-                }
-
-                if !app.offlineMode, !recent.isEmpty {
-                    albumSection("Zuletzt gespielt", albums: recent)
-                }
-                if !app.offlineMode, !newest.isEmpty {
-                    albumSection("Neu im Regal", albums: newest)
-                }
-                if !app.offlineMode, !frequent.isEmpty {
-                    albumSection("Meistgespielt", albums: frequent)
-                }
-                if !app.offlineMode, !random.isEmpty {
-                    albumSection(
-                        "Zufällig",
-                        albums: random,
-                        actionTitle: "Neu mischen",
-                        action: { Task { await loadRandom() } }
-                    )
+                } else {
+                    ForEach(visibleWidgets) { widget in
+                        widgetView(widget)
+                    }
                 }
             }
             .padding(.vertical, 12)
@@ -212,6 +217,133 @@ struct HomeView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Widgets
+
+    private var widgetOrder: [HomeWidget] {
+        let stored = widgetOrderRaw.split(separator: ",").compactMap { HomeWidget(rawValue: String($0)) }
+        let missing = HomeWidget.defaultOrder.filter { !stored.contains($0) }
+        return stored + missing
+    }
+
+    private var hiddenWidgets: Set<HomeWidget> {
+        Set(widgetHiddenRaw.split(separator: ",").compactMap { HomeWidget(rawValue: String($0)) })
+    }
+
+    private var visibleWidgets: [HomeWidget] {
+        widgetOrder.filter { !hiddenWidgets.contains($0) }
+    }
+
+    @ViewBuilder
+    private func widgetView(_ widget: HomeWidget) -> some View {
+        switch widget {
+        case .shortcuts:
+            WidgetSection(title: widget.title, icon: widget.icon) { shortcuts }
+
+        case .musicRecent:
+            if !recent.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    albumRow(recent)
+                }
+            }
+        case .musicNewest:
+            if !newest.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    albumRow(newest)
+                }
+            }
+        case .musicFrequent:
+            if !frequent.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    albumRow(frequent)
+                }
+            }
+        case .musicRandom:
+            if !random.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    albumRow(random)
+                }
+            }
+        case .audiobooksContinue:
+            let books = app.audiobooksInProgress
+            if !books.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(books) { book in
+                                AudiobookCard(book: book, width: Theme.cardWidth, showsProgress: true)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+            }
+        case .audiobooksNewest:
+            let books = Array(app.absBooks.prefix(12))
+            if !books.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(books) { book in
+                                AudiobookCard(book: book, width: Theme.cardWidth)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+            }
+        case .podcastsNewest:
+            let shows = Array(app.absPodcasts.prefix(12))
+            if !shows.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(shows) { show in
+                                NavigationLink {
+                                    AbsPodcastShowView(show: show)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        CoverArtView(url: app.absCoverURL(show, width: 300), radius: Theme.artworkRadius)
+                                            .aspectRatio(1, contentMode: .fit)
+                                            .frame(width: Theme.cardWidth)
+                                        Text(show.media.metadata.title)
+                                            .font(.body.weight(.semibold))
+                                            .foregroundStyle(Theme.text)
+                                            .lineLimit(2)
+                                        Text("\(show.media.episodes.count) Folgen")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.muted)
+                                    }
+                                    .frame(width: Theme.cardWidth, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+            }
+        case .downloads:
+            let albums = app.downloadedAlbums
+            if !albums.isEmpty {
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    albumRow(albums)
+                }
+            }
+        }
+    }
+
+    private func albumRow(_ albums: [Album]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(albums) { album in
+                    AlbumCard(album: album)
+                        .frame(width: Theme.cardWidth)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
     }
 
     // MARK: - Album rows

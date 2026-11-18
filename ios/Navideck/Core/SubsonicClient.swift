@@ -309,6 +309,19 @@ struct SubsonicClient: Sendable {
         return response.musicFolders?.musicFolder ?? []
     }
 
+    /// Whether the server actually offers podcasts. Navidrome, for example,
+    /// returns an empty list or an error here.
+    func hasPodcasts() async -> Bool {
+        do {
+            let channels = try await podcasts()
+            return !channels.isEmpty
+        } catch let failure as SubsonicFailure where failure.code == 30 || failure.code == 0 {
+            return false
+        } catch {
+            return false
+        }
+    }
+
     func playlists() async throws -> [Playlist] {
         let response = try await request("getPlaylists")
         return response.playlists?.playlist ?? []

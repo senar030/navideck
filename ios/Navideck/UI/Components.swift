@@ -29,6 +29,18 @@ struct CoverArtView: View {
     }
 }
 
+/// Circular portrait for artists and authors, matching the square artwork
+/// direction used for albums, books and podcasts.
+struct PersonAvatar: View {
+    let url: URL?
+    var size: CGFloat = Theme.rowArtwork
+
+    var body: some View {
+        CoverArtView(url: url, radius: size / 2)
+            .frame(width: size, height: size)
+    }
+}
+
 // MARK: - Headers and buttons
 
 struct SectionHeader: View {
@@ -138,12 +150,12 @@ struct TrackRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(song.title)
-                    .font(.subheadline.weight(isCurrent ? .semibold : .regular))
+                    .font(.body.weight(isCurrent ? .semibold : .regular))
                     .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
                     .lineLimit(1)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }
@@ -183,7 +195,7 @@ struct AlbumCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.album(album)) {
             VStack(alignment: .leading, spacing: 6) {
-                CoverArtView(url: app.artworkURL(album.coverArt))
+                CoverArtView(url: app.artworkURL(album.coverArt), radius: Theme.artworkRadius)
                     .aspectRatio(1, contentMode: .fit)
                     .overlay(alignment: .bottomTrailing) {
                         if app.downloads.item(kind: .album, sourceID: album.id) != nil {
@@ -231,17 +243,17 @@ struct AlbumRowContent: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(album.coverArt, size: 160))
-                .frame(width: 52, height: 52)
+            CoverArtView(url: app.artworkURL(album.coverArt, size: 200), radius: Theme.artworkRadius)
+                .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(album.name)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
 
                 Text(albumSubtitle)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
             }
@@ -278,17 +290,16 @@ struct ArtistRow: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.artist(artist)) {
             HStack(spacing: 12) {
-                CoverArtView(url: app.artworkURL(artist.coverArt, size: 120))
-                    .frame(width: 44, height: 44)
+                PersonAvatar(url: app.artworkURL(artist.coverArt, size: 200))
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(artist.name)
-                        .font(.subheadline.weight(.medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                     if let count = artist.albumCount {
                         Text("\(count) \(count == 1 ? "Album" : "Alben")")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(Theme.muted)
                     }
                 }
@@ -313,16 +324,16 @@ struct PlaylistRow: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.playlist(playlist)) {
             HStack(spacing: 12) {
-                CoverArtView(url: app.artworkURL(playlist.coverArt, size: 160))
-                    .frame(width: 48, height: 48)
+                CoverArtView(url: app.artworkURL(playlist.coverArt, size: 200), radius: Theme.artworkRadius)
+                    .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(playlist.name)
-                        .font(.subheadline.weight(.medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                     Text(Self.meta(playlist))
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }
