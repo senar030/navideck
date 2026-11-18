@@ -179,24 +179,30 @@ struct DownloadsView: View {
 
     // MARK: - Rows
 
-    @ViewBuilder
+    /// Every row opens its content and carries the same trash button.
     private func row(_ item: DownloadItem) -> some View {
-        if let route = route(for: item) {
-            // Albums and artists open their detail screen; the trash lives in
-            // the swipe action so the whole row can navigate.
-            NavigationLink(value: route) {
-                rowContent(item, showsTrash: false)
+        HStack(spacing: 10) {
+            NavigationLink(value: route(for: item)) {
+                rowContent(item)
             }
             .buttonStyle(.plain)
-            .contextMenu { deleteButton(item) }
-        } else {
-            HStack(spacing: 8) {
-                rowContent(item, showsTrash: true)
+
+            Button {
+                app.downloads.delete(item)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 40, height: 40)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Download löschen")
         }
+        .contextMenu { deleteButton(item) }
     }
 
-    private func rowContent(_ item: DownloadItem, showsTrash: Bool) -> some View {
+    private func rowContent(_ item: DownloadItem) -> some View {
         HStack(spacing: 12) {
             CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
                 .frame(width: 52, height: 52)
@@ -221,21 +227,6 @@ struct DownloadsView: View {
             }
 
             Spacer(minLength: 8)
-
-            if showsTrash {
-                Button {
-                    app.downloads.delete(item)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 40, height: 40)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Download löschen")
-            }
-
         }
         .contentShape(Rectangle())
         .padding(.vertical, 4)
@@ -250,8 +241,10 @@ struct DownloadsView: View {
         }
     }
 
-    /// Albums and artists have a detail screen that also works offline.
-    private func route(for item: DownloadItem) -> LibraryRoute? {
+    /// Every download opens something that also works offline: albums and
+    /// artists their detail page, playlists their entry list, single songs the
+    /// album they belong to.
+    private func route(for item: DownloadItem) -> LibraryRoute {
         switch item.kind {
         case .album:
             return .album(
@@ -266,8 +259,29 @@ struct DownloadsView: View {
             )
         case .artist:
             return .artist(Artist(id: item.sourceID, name: item.title, coverArt: item.coverArt))
-        default:
-            return nil
+        case .playlist:
+            return .playlist(
+                Playlist(
+                    id: item.sourceID,
+                    name: item.title,
+                    songCount: item.songs.count,
+                    coverArt: item.coverArt,
+                    comment: item.subtitle,
+                    entries: item.songs
+                )
+            )
+        case .song:
+            let song = item.songs.first
+            return .album(
+                Album(
+                    id: song?.albumId ?? item.sourceID,
+                    name: song?.album ?? item.title,
+                    artist: song?.artist ?? item.subtitle,
+                    coverArt: item.coverArt ?? song?.coverArt,
+                    songCount: item.songs.count,
+                    songs: item.songs
+                )
+            )
         }
     }
 

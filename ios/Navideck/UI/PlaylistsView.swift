@@ -442,7 +442,7 @@ struct PlaylistDetailView: View {
     }
 
     private func load() async {
-        guard let client = app.client, playlist.entries.isEmpty else { return }
+        guard !app.offlineMode, let client = app.client, playlist.entries.isEmpty else { return }
         loading = true
         do {
             playlist = try await client.playlist(id: playlist.id)

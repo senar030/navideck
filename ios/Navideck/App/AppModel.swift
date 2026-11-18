@@ -84,6 +84,26 @@ final class AppModel {
             prefs.offlineMode = true
         }
 
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SEED_DOWNLOADS"] == "1" {
+            Task { @MainActor in
+                guard let client else { return }
+                if let albums = try? await client.albumList(.newest, size: 1),
+                   let first = albums.first,
+                   let full = try? await client.album(id: first.id) {
+                    download(full)
+                }
+                if let playlists = try? await client.playlists(),
+                   let first = playlists.first,
+                   let full = try? await client.playlist(id: first.id) {
+                    download(full)
+                }
+                if let songs = try? await client.randomSongs(size: 1),
+                   let song = songs.first {
+                    download(song, from: song.album, artist: song.artist)
+                }
+            }
+        }
+
         let demoPlay = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAY"]
         if demoPlay == "1" || demoPlay == "2" {
             startDemoPlayback(openPlayer: demoPlay == "1")
