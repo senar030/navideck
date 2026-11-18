@@ -210,7 +210,7 @@ struct MainTabs: View {
 
             HStack(spacing: 10) {
                 glassButton("Start", icon: "line.3.horizontal", active: navExpanded) {
-                    toggleNavigation()
+                    startButtonTapped()
                 }
 
                 if app.player.current != nil {
@@ -276,6 +276,26 @@ struct MainTabs: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+    }
+
+    /// The Start button doubles as a home button: from another tab it brings
+    /// the Start tab back (keeping whatever screen was open there), and a
+    /// second tap returns to the Start root. Only then does it open the menu.
+    private func startButtonTapped() {
+        if navExpanded {
+            closeNavigation()
+            return
+        }
+        if selection != 0 {
+            closeNavigation()
+            selection = 0
+            return
+        }
+        if !paths[0].isEmpty {
+            paths[0] = NavigationPath()
+            return
+        }
+        toggleNavigation()
     }
 
     private func toggleNavigation() {
