@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 // MARK: - Errors
@@ -351,6 +352,17 @@ struct AudiobookshelfClient: Sendable {
             URLQueryItem(name: "width", value: String(width)),
             URLQueryItem(name: "token", value: token),
         ])
+    }
+
+    /// AVPlayer asset for one audio file. The token is sent both as a header
+    /// (what Audiobookshelf actually checks) and as a query parameter, because
+    /// AVPlayer cannot set headers on a plain URL.
+    func playerAsset(contentUrl: String) -> AVURLAsset? {
+        guard let url = streamURL(contentUrl: contentUrl) else { return nil }
+        return AVURLAsset(
+            url: url,
+            options: ["AVURLAssetHTTPHeaderFieldsKey": ["Authorization": "Bearer \(token)"]]
+        )
     }
 
     /// Stream URL for one audio file of a book. Audiobookshelf accepts the

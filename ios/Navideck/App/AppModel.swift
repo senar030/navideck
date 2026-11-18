@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Observation
 import SwiftUI
@@ -84,6 +85,9 @@ final class AppModel {
 
         player.externalURLResolver = { [weak self] song in
             self?.absTrackURLs[song.id]
+        }
+        player.externalAssetResolver = { [weak self] song in
+            self?.absAsset(for: song)
         }
 
         #if DEBUG
@@ -569,45 +573,50 @@ final class AppModel {
         }
     }
 
-    func preference(for category: Category) -> CategorySource {
+    /// Raw source selection: "auto", "off" or the UUID of a server.
+    func sourceValue(for category: Category) -> String {
         switch category {
-        case .music: return CategorySource(rawValue: prefs.musicSource) ?? .auto
-        case .podcasts: return CategorySource(rawValue: prefs.podcastSource) ?? .auto
-        case .audiobooks: return CategorySource(rawValue: prefs.audiobookSource) ?? .auto
+        case .music: return prefs.musicSource
+        case .podcasts: return prefs.podcastSource
+        case .audiobooks: return prefs.audiobookSource
         }
     }
 
-    func setPreference(_ source: CategorySource, for category: Category) {
+    func servers(for category: Category) -> [ServerProfile] {
         switch category {
-        case .music: prefs.musicSource = source.rawValue
-        case .podcasts: prefs.podcastSource = source.rawValue
-        case .audiobooks: prefs.audiobookSource = source.rawValue
+        case .music, .podcasts: return servers.profiles.filter { $0.kind == .subsonic }
+        case .audiobooks: return servers.profiles.filter { $0.kind == .audiobookshelf }
         }
     }
 
-    /// Resolves the configured preference against what is actually connected.
-    func resolvedSource(for category: Category) -> CategorySource {
-        let wants = preference(for: category)
-        switch wants {
-        case .off:
-            return .off
-        case .subsonic:
-            return client != nil ? .subsonic : .off
-        case .audiobookshelf:
-            return abs != nil ? .audiobookshelf : .off
-        case .auto:
-            switch category {
-            case .music, .podcasts:
-                return client != nil ? .subsonic : .off
-            case .audiobooks:
-                return abs != nil ? .audiobookshelf : .off
+    func setSourceValue(_ value: String, for category: Category) {
+        switch category {
+        case .music: prefs.musicSource = value
+        case .podcasts: prefs.podcastSource = value
+        case .audiobooks: prefs.audiobookSource = value
+        }
+
+        // Picking a concrete server makes it the active one for that kind.
+        if let id = UUID(uuidString: value),
+           let profile = servers.profiles.first(where: { $0.id == id }) {
+            switch profile.kind {
+            case .subsonic:
+                if servers.activeID != profile.id { activate(profile) }
+            case .audiobookshelf:
+                if servers.absID != profile.id { activateAudiobookshelf(profile) }
             }
         }
     }
 
-    var musicAvailable: Bool { resolvedSource(for: .music) != .off }
-    var podcastsAvailable: Bool { resolvedSource(for: .podcasts) != .off }
-    var audiobooksAvailable: Bool { resolvedSource(for: .audiobooks) != .off }
+    /// A category is available when it is not switched off and its server is
+    /// connected. Legacy values ("subsonic", "audiobookshelf") behave as auto.
+    var musicAvailable: Bool { categoryEnabled(.music) && client != nil }
+    var podcastsAvailable: Bool { categoryEnabled(.podcasts) && client != nil }
+    var audiobooksAvailable: Bool { categoryEnabled(.audiobooks) && abs != nil }
+
+    private func categoryEnabled(_ category: Category) -> Bool {
+        sourceValue(for: category) != "off"
+    }
 
     // MARK: - Audiobookshelf
 
@@ -773,6 +782,18 @@ final class AppModel {
             }
         }
         player.play(songs, startingAt: index, resumeAt: offset)
+    }
+
+    /// Builds an AVPlayer asset with the Audiobookshelf token as a header.
+    /// Plain URLs alone fail on servers that only accept the header.
+    func absAsset(for song: Song) -> AVURLAsset? {
+        guard let abs, let meta = absTrackBooks[song.id],
+              let track = absBooks
+                  .first(where: { $0.id == meta.bookID })?
+                  .media.tracks
+                  .first(where: { "abs:\(meta.bookID):\($0.ino)" == song.id })
+        else { return nil }
+        return abs.playerAsset(contentUrl: track.contentUrl)
     }
 
     private func handleAudiobookProgress(song: Song, position: Double) {

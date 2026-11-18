@@ -4,6 +4,8 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var app
 
     @State private var showDisconnectConfirm = false
+    @State private var renameCandidate: ServerProfile?
+    @State private var renameText = ""
     @State private var showABSAdd = false
     @State private var absURL = ""
     @State private var absToken = ""
@@ -172,6 +174,14 @@ struct SettingsView: View {
                         Label("Entfernen", systemImage: "trash")
                     }
                 }
+                .contextMenu {
+                    Button {
+                        renameCandidate = profile
+                        renameText = profile.name
+                    } label: {
+                        Label("Umbenennen", systemImage: "pencil")
+                    }
+                }
             }
             .listRowBackground(Theme.surface)
 
@@ -232,6 +242,14 @@ struct SettingsView: View {
                         Label("Entfernen", systemImage: "trash")
                     }
                 }
+                .contextMenu {
+                    Button {
+                        renameCandidate = profile
+                        renameText = profile.name
+                    } label: {
+                        Label("Umbenennen", systemImage: "pencil")
+                    }
+                }
             }
             .listRowBackground(Theme.surface)
 
@@ -250,35 +268,60 @@ struct SettingsView: View {
             .listRowBackground(Theme.surface)
         }
         .sheet(isPresented: $showABSAdd) { audiobookshelfSheet }
+        .alert(
+            "Server umbenennen",
+            isPresented: Binding(
+                get: { renameCandidate != nil },
+                set: { if !$0 { renameCandidate = nil } }
+            )
+        ) {
+            TextField("Name", text: $renameText)
+            Button("Speichern") {
+                if let profile = renameCandidate {
+                    app.servers.rename(profile, to: renameText)
+                }
+                renameCandidate = nil
+            }
+            Button("Abbrechen", role: .cancel) { renameCandidate = nil }
+        } message: {
+            Text("Der Name erscheint in der Serverliste und in der Quellenauswahl.")
+        }
     }
 
     private var sourcesSection: some View {
         Section("Quellen") {
-            sourceRow("Musik", category: .music, options: [.auto, .subsonic, .off])
-            sourceRow("Podcasts", category: .podcasts, options: [.auto, .subsonic, .off])
-            sourceRow("Hörbücher", category: .audiobooks, options: [.auto, .audiobookshelf, .off])
+            sourceRow("Musik", category: .music)
+            sourceRow("Podcasts", category: .podcasts)
+            sourceRow("Hörbücher", category: .audiobooks)
 
-            Text("Automatisch nutzt den verbundenen Server der passenden Art. Kategorien ohne Quelle werden ausgeblendet.")
+            Text("Jede Kategorie nutzt den gewählten Server. „Automatisch“ nimmt den verbundenen Server der passenden Art, „Aus“ blendet die Kategorie aus.")
                 .font(.caption)
                 .foregroundStyle(Theme.muted)
                 .listRowBackground(Theme.surface)
         }
     }
 
-    private func sourceRow(
-        _ title: String,
-        category: AppModel.Category,
-        options: [CategorySource]
-    ) -> some View {
+    private func sourceRow(_ title: String, category: AppModel.Category) -> some View {
         Picker(title, selection: Binding(
-            get: { app.preference(for: category) },
-            set: { app.setPreference($0, for: category) }
+            get: { normalizedSourceValue(for: category) },
+            set: { app.setSourceValue($0, for: category) }
         )) {
-            ForEach(options) { option in
-                Text(option.label).tag(option)
+            Text("Automatisch").tag("auto")
+            ForEach(app.servers(for: category)) { profile in
+                Text(profile.displayName).tag(profile.id.uuidString)
             }
+            Text("Aus").tag("off")
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// Legacy values from earlier versions map to "auto".
+    private func normalizedSourceValue(for category: AppModel.Category) -> String {
+        let raw = app.sourceValue(for: category)
+        if raw == "off" || raw == "auto" || UUID(uuidString: raw) != nil {
+            return raw
+        }
+        return "auto"
     }
 
     private var audiobookshelfSheet: some View {

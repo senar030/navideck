@@ -224,6 +224,16 @@ final class ServerStore {
         return AudiobookshelfClient(baseURL: url, token: token)
     }
 
+    /// Renames a server; an empty name falls back to the host.
+    func rename(_ profile: ServerProfile, to newName: String) {
+        guard let index = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
+        var updated = profiles[index]
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.name = trimmed.isEmpty ? (updated.url.map(Format.host) ?? updated.baseURL) : trimmed
+        profiles[index] = updated
+        persist()
+    }
+
     func setActiveABS(_ profile: ServerProfile) {
         absID = profile.id
         persist()

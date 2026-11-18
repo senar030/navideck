@@ -44,6 +44,8 @@ final class PlayerService {
     @ObservationIgnored var localURL: ((String) -> URL?)?
     /// Direct stream URLs for sources without a Subsonic client (audiobooks).
     @ObservationIgnored var externalURLResolver: ((Song) -> URL?)?
+    /// Full assets for sources that need request headers (Audiobookshelf).
+    @ObservationIgnored var externalAssetResolver: ((Song) -> AVURLAsset?)?
     /// Obergrenze fürs Streaming in kbit/s (0 = Originaldatei).
     @ObservationIgnored var streamBitRate: () -> Int = { 0 }
     /// Reports playback position so podcast episodes can be continued later.
@@ -379,7 +381,7 @@ final class PlayerService {
         pendingResume = 0
 
         // Radio is a single stream: no preload, no automatic advance.
-        let item = makeItem(url: url)
+        let item = makeItem(url: url, song: song)
         player.removeAllItems()
         playerSongs = [(0, song.id, item)]
         player.insert(item, after: nil)
@@ -404,8 +406,14 @@ final class PlayerService {
         return client.streamURL(id: song.id, maxBitRate: streamBitRate())
     }
 
-    private func makeItem(url: URL) -> AVPlayerItem {
-        let item = AVPlayerItem(asset: AVURLAsset(url: url))
+    private func makeItem(url: URL, song: Song?) -> AVPlayerItem {
+        let asset: AVURLAsset
+        if let song, let external = externalAssetResolver?(song) {
+            asset = external
+        } else {
+            asset = AVURLAsset(url: url)
+        }
+        let item = AVPlayerItem(asset: asset)
         // Enough runway for the next song to be buffered when the current one
         // ends, which is what makes the transition gapless.
         item.preferredForwardBufferDuration = 12
@@ -424,9 +432,10 @@ final class PlayerService {
             return
         }
 
-        let item = makeItem(url: url)
+        let song = queue[queueIndex]
+        let item = makeItem(url: url, song: song)
         player.removeAllItems()
-        playerSongs = [(queueIndex, queue[queueIndex].id, item)]
+        playerSongs = [(queueIndex, song.id, item)]
         player.insert(item, after: nil)
 
         duration = Double(queue[queueIndex].duration ?? 0)
@@ -491,7 +500,8 @@ final class PlayerService {
 
         guard playerSongs.count == 1, let desired, queue.indices.contains(desired) else { return }
         guard let url = playbackURL(for: desired) else { return }
-        let item = makeItem(url: url)
+        let upcoming = queue[desired]
+        let item = makeItem(url: url, song: upcoming)
         player.insert(item, after: playerSongs[0].item)
         playerSongs.append((desired, queue[desired].id, item))
     }
