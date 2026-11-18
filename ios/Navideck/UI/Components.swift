@@ -147,21 +147,15 @@ struct TrackRow: View {
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }
-                if let progress {
-                    HStack(spacing: 6) {
-                        DownloadProgressView(progress: progress)
-                            .frame(width: 70)
-                        Text("\(Int(progress * 100)) %")
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .padding(.top, 2)
-                }
             }
 
             Spacer(minLength: 8)
 
-            if downloaded {
+            if let progress, progress < 0.999 {
+                DownloadRing(progress: progress)
+                    .frame(width: 16, height: 16)
+                    .accessibilityLabel("Download \(Int(progress * 100)) Prozent")
+            } else if downloaded || progress != nil {
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.caption2)
                     .foregroundStyle(Theme.muted)
@@ -400,6 +394,24 @@ struct EmptyStateView: View {
 }
 
 // MARK: - Download state
+
+/// Small ring that fills while a song is being downloaded. Sits exactly where
+/// the "downloaded" symbol appears once the file is on the device.
+struct DownloadRing: View {
+    let progress: Double
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.16), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: min(1, max(0, progress)))
+                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeOut(duration: 0.35), value: progress)
+        }
+    }
+}
 
 struct DownloadProgressView: View {
     let progress: Double
