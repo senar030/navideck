@@ -35,7 +35,7 @@ struct FavoritesView: View {
                     ProgressView().tint(Theme.accent).padding(.vertical, 20)
                 }
 
-                if !loading && result.isEmpty && errorMessage == nil {
+                if !loading && shown.isEmpty && errorMessage == nil {
                     EmptyStateView(
                         icon: "star",
                         title: "Noch keine Favoriten",
@@ -51,6 +51,16 @@ struct FavoritesView: View {
         .refreshable { await load() }
     }
 
+    /// Offline the page shows the downloaded part of the favorites.
+    private var shown: SearchResult {
+        guard app.offlineMode else { return result }
+        return SearchResult(
+            artists: app.downloadedArtists.filter { $0.starred != nil },
+            albums: app.downloadedAlbums.filter { $0.starred != nil },
+            songs: app.downloadedSongs.filter { $0.starred != nil }
+        )
+    }
+
     @ViewBuilder
     private var content: some View {
         switch mode {
@@ -59,17 +69,17 @@ struct FavoritesView: View {
                 columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
                 spacing: 20
             ) {
-                ForEach(result.albums) { album in
+                ForEach(shown.albums) { album in
                     AlbumCard(album: album)
                 }
             }
             .padding(.horizontal, 20)
 
         case .songs:
-            if !result.songs.isEmpty {
+            if !shown.songs.isEmpty {
                 HStack(spacing: 14) {
                     Button {
-                        app.player.play(result.songs)
+                        app.player.play(shown.songs)
                     } label: {
                         Label("Alle abspielen", systemImage: "play.fill")
                             .font(.subheadline.weight(.semibold))
@@ -82,7 +92,7 @@ struct FavoritesView: View {
 
                     Button {
                         if !app.player.shuffleEnabled { app.player.toggleShuffle() }
-                        app.player.play(result.songs)
+                        app.player.play(shown.songs)
                     } label: {
                         Label("Mischen", systemImage: "shuffle")
                             .font(.subheadline.weight(.semibold))
@@ -96,9 +106,9 @@ struct FavoritesView: View {
                 .padding(.horizontal, 20)
             }
 
-            ForEach(Array(result.songs.enumerated()), id: \.element.id) { offset, song in
+            ForEach(Array(shown.songs.enumerated()), id: \.element.id) { offset, song in
                 Button {
-                    app.player.play(result.songs, startingAt: offset)
+                    app.player.play(shown.songs, startingAt: offset)
                 } label: {
                     TrackRow(
                         song: song,
@@ -112,7 +122,7 @@ struct FavoritesView: View {
             }
 
         case .artists:
-            ForEach(result.artists) { artist in
+            ForEach(shown.artists) { artist in
                 ArtistRow(artist: artist)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -125,6 +135,11 @@ struct FavoritesView: View {
     }
 
     private func load() async {
+        if app.offlineMode {
+            errorMessage = nil
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil

@@ -50,10 +50,20 @@ struct ArtistsView: View {
     }
 
     private var sections: [ArtistIndex] {
-        indexes.filter { !$0.artists.isEmpty }
+        if app.offlineMode {
+            let artists = app.downloadedArtists
+            return artists.isEmpty ? [] : [ArtistIndex(artists: artists)]
+        }
+        return indexes.filter { !$0.artists.isEmpty }
     }
 
     private func load() async {
+        if app.offlineMode {
+            indexes = [ArtistIndex(artists: app.downloadedArtists)]
+            errorMessage = nil
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil

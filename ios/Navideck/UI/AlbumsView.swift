@@ -48,7 +48,7 @@ struct AlbumsView: View {
         ScrollView {
             if layout == "grid" {
                 LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(albums) { album in
+                    ForEach(shownAlbums) { album in
                         AlbumCard(album: album)
                             .onAppear {
                                 if album.id == albums.last?.id {
@@ -61,7 +61,7 @@ struct AlbumsView: View {
                 .padding(.vertical, 12)
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(albums.enumerated()), id: \.element.id) { offset, album in
+                    ForEach(Array(shownAlbums.enumerated()), id: \.element.id) { offset, album in
                         AlbumRow(album: album)
                             .padding(.horizontal, 20)
                             .onAppear {
@@ -129,7 +129,19 @@ struct AlbumsView: View {
         .refreshable { await reload() }
     }
 
+    /// Offline the grid is simply a filtered view of the downloads.
+    private var shownAlbums: [Album] {
+        app.offlineMode ? app.downloadedAlbums : albums
+    }
+
     private func reload() async {
+        if app.offlineMode {
+            albums = app.downloadedAlbums
+            canLoadMore = false
+            errorMessage = nil
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         albums = []
         canLoadMore = true
@@ -147,7 +159,7 @@ struct AlbumsView: View {
     }
 
     private func loadNextPage() async {
-        guard let client = app.client, canLoadMore, !loading else { return }
+        guard !app.offlineMode, let client = app.client, canLoadMore, !loading else { return }
         loading = true
         do {
             let page = try await client.albumList(sort.listType, offset: albums.count)

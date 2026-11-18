@@ -10,7 +10,7 @@ struct GenresView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(genres) { genre in
+                ForEach(shownGenres) { genre in
                     NavigationLink(value: LibraryRoute.genre(genre)) {
                         HStack(spacing: 12) {
                             Image(systemName: "guitars")
@@ -42,7 +42,7 @@ struct GenresView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if genre.id != genres.last?.id {
+                    if genre.id != shownGenres.last?.id {
                         Divider().overlay(Theme.hairline).padding(.leading, 80)
                     }
                 }
@@ -53,11 +53,11 @@ struct GenresView: View {
                 ErrorBanner(message: errorMessage).padding(.horizontal, 20)
             }
 
-            if loading && genres.isEmpty {
+            if loading && shownGenres.isEmpty {
                 ProgressView().tint(Theme.accent).padding(.vertical, 40)
             }
 
-            if genres.isEmpty && !loading && errorMessage == nil {
+            if shownGenres.isEmpty && !loading && errorMessage == nil {
                 EmptyStateView(
                     icon: "guitars",
                     title: "Keine Genres",
@@ -71,7 +71,16 @@ struct GenresView: View {
         .refreshable { await load() }
     }
 
+    private var shownGenres: [Genre] {
+        app.offlineMode ? app.downloadedGenres : genres
+    }
+
     private func load() async {
+        if app.offlineMode {
+            errorMessage = nil
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil
@@ -203,6 +212,15 @@ struct GenreDetailView: View {
     }
 
     private func loadAlbums() async {
+        if app.offlineMode {
+            albums = app.downloadedAlbums.filter {
+                ($0.genre ?? "").caseInsensitiveCompare(genre.value) == .orderedSame
+                    || $0.songs.contains { ($0.genre ?? "").caseInsensitiveCompare(genre.value) == .orderedSame }
+            }
+            albumsDone = true
+            loading = false
+            return
+        }
         guard let client = app.client, !loading, !albumsDone else { return }
         loading = true
         do {
@@ -217,6 +235,14 @@ struct GenreDetailView: View {
     }
 
     private func loadSongs() async {
+        if app.offlineMode {
+            songs = app.downloadedSongs.filter {
+                ($0.genre ?? "").caseInsensitiveCompare(genre.value) == .orderedSame
+            }
+            songsDone = true
+            loading = false
+            return
+        }
         guard let client = app.client, !loading, !songsDone else { return }
         loading = true
         do {

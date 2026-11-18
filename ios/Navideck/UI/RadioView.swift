@@ -90,6 +90,12 @@ struct RadioView: View {
     }
 
     private func load() async {
+        if app.offlineMode {
+            stations = []
+            errorMessage = "Radio-Streams brauchen eine Verbindung. Im Offline-Modus stehen nur Downloads zur Verfügung."
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil

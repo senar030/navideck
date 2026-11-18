@@ -226,6 +226,16 @@ final class AppModel {
         let wanted = max(1, size ?? prefs.mixSize)
         let excluded = Set(prefs.excludedGenres.map { $0.lowercased() })
 
+        if offlineMode {
+            let pool = downloadedSongs.filter { !excluded.contains(($0.genre ?? "").lowercased()) }
+            guard !pool.isEmpty else {
+                mixError = "Keine heruntergeladenen Titel für den Mix."
+                return
+            }
+            player.play(Array(pool.shuffled().prefix(wanted)))
+            return
+        }
+
         do {
             if let genre, !genre.isEmpty {
                 let songs = try await client.songs(byGenre: genre, count: max(wanted, 50))
@@ -356,7 +366,7 @@ final class AppModel {
     func download(_ episode: PodcastEpisode, from channel: PodcastChannel) {
         guard let client else { return }
         downloads.download(
-            kind: .song,
+            kind: .podcast,
             sourceID: episode.playableID,
             title: episode.title,
             subtitle: channel.title,
@@ -372,11 +382,11 @@ final class AppModel {
     }
 
     func isDownloading(_ episode: PodcastEpisode) -> Bool {
-        downloads.isDownloading(kind: .song, sourceID: episode.playableID)
+        downloads.isDownloading(kind: .podcast, sourceID: episode.playableID)
     }
 
     func cancelDownload(_ episode: PodcastEpisode) {
-        downloads.cancel(kind: .song, sourceID: episode.playableID)
+        downloads.cancel(kind: .podcast, sourceID: episode.playableID)
     }
 
     func removeDownload(_ episode: PodcastEpisode) {
@@ -498,6 +508,7 @@ final class AppModel {
     /// Albums that exist on the device, rebuilt from the downloaded songs so
     /// they can be opened without a server.
     var downloadedAlbums: [Album] {
+        print("NAVIDECK-DEBUG albums items=\(downloads.items.count)")
         var order: [String] = []
         var albums: [String: Album] = [:]
 
@@ -518,6 +529,7 @@ final class AppModel {
             }
         }
 
+        print("NAVIDECK-DEBUG albums result=\(order.count)")
         return order.compactMap { id in
             guard var album = albums[id] else { return nil }
             album.songCount = album.songs.count
@@ -553,6 +565,18 @@ final class AppModel {
     }
 
     var hasDownloads: Bool { !downloads.items.isEmpty }
+
+    /// Genres that exist among the downloaded songs.
+    var downloadedGenres: [Genre] {
+        var counts: [String: Int] = [:]
+        for song in downloadedSongs {
+            guard let genre = song.genre, !genre.isEmpty else { continue }
+            counts[genre, default: 0] += 1
+        }
+        return counts
+            .map { Genre(value: $0.key, songCount: $0.value) }
+            .sorted { $0.value.localizedCaseInsensitiveCompare($1.value) == .orderedAscending }
+    }
 
     /// Every song that exists on the device, without duplicates.
     var downloadedSongs: [Song] {

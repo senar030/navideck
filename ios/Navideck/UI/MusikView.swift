@@ -19,22 +19,16 @@ struct MusikView: View {
 
     var body: some View {
         Group {
-            if app.offlineMode {
-                OfflineLibraryView()
+            if editing {
+                editableList
+            } else if layout == "list" {
+                sectionList
             } else {
-                Group {
-                    if editing {
-                        editableList
-                    } else if layout == "list" {
-                        sectionList
-                    } else {
-                        grid
-                    }
-                }
-                .navideckScreen()
+                grid
             }
         }
         .navigationTitle("Musik")
+        .navideckScreen()
         .offlineModeToolbar()
         .task {
             #if DEBUG
@@ -48,31 +42,29 @@ struct MusikView: View {
             #endif
         }
         .toolbar {
-            if !app.offlineMode {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if editing {
-                        Button {
-                            orderRaw = ""
-                            hiddenRaw = ""
-                        } label: {
-                            Image(systemName: "arrow.counterclockwise")
-                        }
-                        .accessibilityLabel("Reihenfolge zurücksetzen")
-
-                        Button("Fertig") { endEditing() }
-                            .fontWeight(.medium)
-                    } else {
-                        Button {
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                layout = layout == "grid" ? "list" : "grid"
-                            }
-                        } label: {
-                            Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
-                        }
-                        .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
-
-                        Button("Bearbeiten") { beginEditing() }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if editing {
+                    Button {
+                        orderRaw = ""
+                        hiddenRaw = ""
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
                     }
+                    .accessibilityLabel("Reihenfolge zurücksetzen")
+
+                    Button("Fertig") { endEditing() }
+                        .fontWeight(.medium)
+                } else {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            layout = layout == "grid" ? "list" : "grid"
+                        }
+                    } label: {
+                        Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
+                    }
+                    .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+
+                    Button("Bearbeiten") { beginEditing() }
                 }
             }
         }

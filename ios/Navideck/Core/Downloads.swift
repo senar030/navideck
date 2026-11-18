@@ -6,6 +6,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
     case playlist
     case artist
     case song
+    case podcast
 
     var label: String {
         switch self {
@@ -13,6 +14,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
         case .playlist: return "Playlist"
         case .artist: return "Interpret"
         case .song: return "Titel"
+        case .podcast: return "Podcast"
         }
     }
 
@@ -22,6 +24,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
         case .playlist: return "music.note.list"
         case .artist: return "music.mic"
         case .song: return "music.note"
+        case .podcast: return "waveform"
         }
     }
 }

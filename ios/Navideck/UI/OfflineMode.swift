@@ -29,116 +29,12 @@ extension View {
     }
 }
 
-/// What Start and Musik show while offline mode is on: only what is stored on
-/// the device, with a pointer to the download manager when it is empty.
-struct OfflineLibraryView: View {
-    @Environment(AppModel.self) private var app
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                banner
-
-                if !app.hasDownloads {
-                    EmptyStateView(
-                        icon: "arrow.down.circle",
-                        title: "Nichts heruntergeladen",
-                        message: "Im Offline-Modus erscheint hier nur, was auf dem Gerät liegt. Schalte ihn aus oder lade Alben und Interpreten herunter."
-                    )
-                    .padding(.top, 20)
-
-                    NavigationLink(value: LibraryRoute.downloads) {
-                        Text("Downloads öffnen")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Theme.surface)
-                            .overlay {
-                                Rectangle().stroke(Theme.hairline, lineWidth: 0.5)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 20)
-                } else {
-                    albums
-                    artists
-                    playlists
-                }
-            }
-            .padding(.vertical, 12)
-        }
-        .navideckScreen()
-    }
-
-    private var banner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.down.circle.fill")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.accent)
-            Text("Offline-Modus — nur Downloads")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Theme.muted)
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-    }
-
-    private var albums: some View {
-        Group {
-            let list = app.downloadedAlbums
-            if !list.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Alben")
-                        .padding(.horizontal, 20)
-                    ForEach(list) { album in
-                        AlbumRow(album: album)
-                            .padding(.horizontal, 20)
-                    }
-                }
-            }
-        }
-    }
-
-    private var artists: some View {
-        Group {
-            let list = app.downloadedArtists
-            if !list.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Interpreten")
-                        .padding(.horizontal, 20)
-                    ForEach(list) { artist in
-                        ArtistRow(artist: artist)
-                            .padding(.horizontal, 20)
-                    }
-                }
-            }
-        }
-    }
-
-    private var playlists: some View {
-        Group {
-            let list = app.downloadedPlaylists
-            if !list.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionHeader(title: "Playlists")
-                        .padding(.horizontal, 20)
-                    ForEach(list) { playlist in
-                        PlaylistRow(playlist: playlist)
-                            .padding(.horizontal, 20)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Podcast tab while offline: the episodes that were downloaded.
 struct OfflineEpisodesView: View {
     @Environment(AppModel.self) private var app
 
     private var episodes: [DownloadItem] {
-        app.downloads.items.filter { $0.kind == .song }
+        app.downloads.items.filter { $0.kind == .podcast }
     }
 
     var body: some View {

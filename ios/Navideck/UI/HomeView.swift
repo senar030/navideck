@@ -29,21 +29,27 @@ struct HomeView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Group {
-            if app.offlineMode {
-                OfflineLibraryView()
-            } else {
-                library
-            }
-        }
-        .navigationTitle("Start")
-        .offlineModeToolbar()
-        .task { await load() }
+        library
+            .navigationTitle("Start")
+            .offlineModeToolbar()
+            .task { await load() }
     }
 
     private var library: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
+                if app.offlineMode {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.accent)
+                        Text("Offline-Modus — nur Downloads")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .padding(.horizontal, 20)
+                }
+
                 instantMix
 
                 if let mixError = app.mixError {
@@ -52,6 +58,14 @@ struct HomeView: View {
                 }
 
                 shortcuts
+
+                if app.offlineMode && !app.hasDownloads {
+                    EmptyStateView(
+                        icon: "arrow.down.circle",
+                        title: "Nichts heruntergeladen",
+                        message: "Im Offline-Modus siehst du nur Inhalte, die auf dem Gerät liegen. Lade Alben, Playlists oder Interpreten herunter."
+                    )
+                }
 
                 if let errorMessage {
                     ErrorBanner(message: errorMessage)
@@ -66,16 +80,25 @@ struct HomeView: View {
                         .padding(.vertical, 40)
                 }
 
-                if !recent.isEmpty {
+                if app.offlineMode {
+                    // Rendered straight from the download store, so the rows
+                    // appear as soon as the manifest is read.
+                    let downloaded = app.downloadedAlbums
+                    if !downloaded.isEmpty {
+                        albumSection("Deine Downloads", albums: downloaded)
+                    }
+                }
+
+                if !app.offlineMode, !recent.isEmpty {
                     albumSection("Zuletzt gespielt", albums: recent)
                 }
-                if !newest.isEmpty {
+                if !app.offlineMode, !newest.isEmpty {
                     albumSection("Neu im Regal", albums: newest)
                 }
-                if !frequent.isEmpty {
+                if !app.offlineMode, !frequent.isEmpty {
                     albumSection("Meistgespielt", albums: frequent)
                 }
-                if !random.isEmpty {
+                if !app.offlineMode, !random.isEmpty {
                     albumSection(
                         "Zufällig",
                         albums: random,
@@ -217,7 +240,26 @@ struct HomeView: View {
     // MARK: - Loading
 
     private func load(force: Bool = false) async {
-        guard !app.offlineMode else { return }
+        if app.offlineMode {
+            let downloaded = app.downloadedAlbums
+            let ids = Set(downloaded.map(\.id))
+            var snapshot = HomeSnapshot(newest: [], recent: [], frequent: [], random: [])
+            if let cached = app.homeSnapshot {
+                snapshot = HomeSnapshot(
+                    newest: cached.newest.filter { ids.contains($0.id) },
+                    recent: cached.recent.filter { ids.contains($0.id) },
+                    frequent: cached.frequent.filter { ids.contains($0.id) },
+                    random: cached.random.filter { ids.contains($0.id) }
+                )
+            }
+            // A fresh offline start has no cached rows; show the downloads then.
+            if snapshot.newest.isEmpty, snapshot.recent.isEmpty,
+               snapshot.frequent.isEmpty, snapshot.random.isEmpty {
+                snapshot.newest = downloaded
+            }
+            apply(snapshot)
+            return
+        }
         if !force, let snapshot = app.homeSnapshot, snapshot.isFresh {
             apply(snapshot)
             return

@@ -20,7 +20,7 @@ struct AlbumCollectionView: View {
         ScrollView {
             if layout == "grid" {
                 LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(albums) { album in
+                    ForEach(shownAlbums) { album in
                         AlbumCard(album: album)
                     }
                 }
@@ -28,7 +28,7 @@ struct AlbumCollectionView: View {
                 .padding(.vertical, 12)
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(albums.enumerated()), id: \.element.id) { offset, album in
+                    ForEach(Array(shownAlbums.enumerated()), id: \.element.id) { offset, album in
                         AlbumRow(album: album)
                             .padding(.horizontal, 20)
 
@@ -52,7 +52,7 @@ struct AlbumCollectionView: View {
                 ProgressView().tint(Theme.accent).padding(.vertical, 40)
             }
 
-            if albums.isEmpty && !loading && errorMessage == nil {
+            if shownAlbums.isEmpty && !loading && errorMessage == nil {
                 EmptyStateView(
                     icon: collection.icon,
                     title: "Keine Alben",
@@ -78,7 +78,16 @@ struct AlbumCollectionView: View {
         .refreshable { await load() }
     }
 
+    private var shownAlbums: [Album] {
+        app.offlineMode ? app.downloadedAlbums : albums
+    }
+
     private func load() async {
+        if app.offlineMode {
+            albums = app.downloadedAlbums
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil

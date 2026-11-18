@@ -256,6 +256,11 @@ struct ArtistIndex: Decodable, Hashable, Sendable {
         case name, artists = "artist"
     }
 
+    init(name: String? = nil, artists: [Artist]) {
+        self.name = name
+        self.artists = artists
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try? c.decodeIfPresent(String.self, forKey: .name)
@@ -348,6 +353,12 @@ struct Genre: Decodable, Identifiable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case value, songCount, albumCount
+    }
+
+    init(value: String, songCount: Int? = nil, albumCount: Int? = nil) {
+        self.value = value
+        self.songCount = songCount
+        self.albumCount = albumCount
     }
 
     init(from decoder: Decoder) throws {

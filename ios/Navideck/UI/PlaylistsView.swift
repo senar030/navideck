@@ -34,7 +34,7 @@ struct PlaylistsView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 sortBar
 
-                ForEach(Array(visible.enumerated()), id: \.element.id) { offset, playlist in
+                ForEach(Array(shownPlaylists.enumerated()), id: \.element.id) { offset, playlist in
                     PlaylistRow(playlist: playlist)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 6)
@@ -136,7 +136,16 @@ struct PlaylistsView: View {
         return descending ? result.reversed() : result
     }
 
+    private var shownPlaylists: [Playlist] {
+        app.offlineMode ? app.downloadedPlaylists : playlists
+    }
+
     private func load() async {
+        if app.offlineMode {
+            errorMessage = nil
+            loading = false
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil
