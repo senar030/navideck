@@ -20,10 +20,16 @@ final class Preferences {
         didSet { save() }
     }
 
+    /// Shows only downloaded content while it is on.
+    var offlineMode: Bool {
+        didSet { save() }
+    }
+
     private struct Snapshot: Codable {
         var mixSize: Int
         var excludedGenres: [String]
         var maxBitRate: Int
+        var offlineMode: Bool?
     }
 
     private static let key = "navideck.preferences"
@@ -34,13 +40,15 @@ final class Preferences {
         mixSize = stored?.mixSize ?? 30
         excludedGenres = Set(stored?.excludedGenres ?? [])
         maxBitRate = stored?.maxBitRate ?? 0
+        offlineMode = stored?.offlineMode ?? false
     }
 
     private func save() {
         let snapshot = Snapshot(
             mixSize: mixSize,
             excludedGenres: Array(excludedGenres).sorted(),
-            maxBitRate: maxBitRate
+            maxBitRate: maxBitRate,
+            offlineMode: offlineMode
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: Self.key)

@@ -29,6 +29,19 @@ struct HomeView: View {
     @State private var errorMessage: String?
 
     var body: some View {
+        Group {
+            if app.offlineMode {
+                OfflineLibraryView()
+            } else {
+                library
+            }
+        }
+        .navigationTitle("Start")
+        .offlineModeToolbar()
+        .task { await load() }
+    }
+
+    private var library: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 instantMix
@@ -73,10 +86,8 @@ struct HomeView: View {
             }
             .padding(.vertical, 12)
         }
-        .navigationTitle("Start")
         .navideckScreen()
         .defaultScrollAnchor(demoBottom ? .bottom : .top)
-        .task { await load() }
         .refreshable { await load(force: true) }
     }
 
@@ -206,6 +217,7 @@ struct HomeView: View {
     // MARK: - Loading
 
     private func load(force: Bool = false) async {
+        guard !app.offlineMode else { return }
         if !force, let snapshot = app.homeSnapshot, snapshot.isFresh {
             apply(snapshot)
             return

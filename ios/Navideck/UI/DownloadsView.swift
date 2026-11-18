@@ -1,50 +1,98 @@
 import SwiftUI
 
-/// Everything that lives on the device: browsable and playable without a
-/// connection.
+/// Everything that lives on the device. Rows open the downloaded album or
+/// artist; playback happens in those screens, not here.
 struct DownloadsView: View {
     @Environment(AppModel.self) private var app
 
     @State private var filter: DownloadKind?
+    @State private var confirmDeleteAll = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+        List {
+            Section {
                 summary
+                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
 
+            if !app.downloads.progress.isEmpty {
+                Section {
+                    ForEach(activeIDs, id: \.self) { key in
+                        activeRow(key)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                } header: {
+                    Text("Läuft gerade")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+
+            Section {
+                if filtered.isEmpty {
+                    EmptyStateView(
+                        icon: "arrow.down.circle",
+                        title: app.downloads.items.isEmpty ? "Noch keine Downloads" : "Nichts in diesem Filter",
+                        message: "Lade Alben, Playlists oder Interpreten herunter, um sie ohne Verbindung zu hören."
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(filtered) { item in
+                        row(item)
+                            .listRowInsets(EdgeInsets(top: 2, leading: 20, bottom: 2, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparatorTint(Theme.hairline)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    app.downloads.delete(item)
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+            } header: {
                 if !app.downloads.items.isEmpty {
                     filterBar
                 }
-
-                if !app.downloads.progress.isEmpty {
-                    activeDownloads
-                }
-
-                if filtered.isEmpty && app.downloads.items.isEmpty {
-                    EmptyStateView(
-                        icon: "arrow.down.circle",
-                        title: "Noch keine Downloads",
-                        message: "Lade Alben, Playlists oder Interpreten herunter, um sie ohne Verbindung zu hören."
-                    )
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(filtered.enumerated()), id: \.element.id) { offset, item in
-                            row(item)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 6)
-
-                            if offset < filtered.count - 1 {
-                                Divider().overlay(Theme.hairline).padding(.leading, 76)
-                            }
-                        }
-                    }
-                }
             }
-            .padding(.vertical, 12)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .navigationTitle("Downloads")
         .navideckScreen()
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    confirmDeleteAll = true
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundStyle(Theme.text)
+                }
+                .disabled(app.downloads.items.isEmpty)
+                .accessibilityLabel("Alle Downloads löschen")
+            }
+        }
+        .confirmationDialog(
+            "Alle Downloads löschen?",
+            isPresented: $confirmDeleteAll,
+            titleVisibility: .visible
+        ) {
+            Button("Alle löschen", role: .destructive) {
+                app.downloads.deleteEverything()
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Entfernt \(app.downloads.items.count) \(app.downloads.items.count == 1 ? "Sammlung" : "Sammlungen") (\(app.downloads.totalText)) vom Gerät.")
+        }
     }
+
+    // MARK: - Summary
 
     private var summary: some View {
         HStack(spacing: 10) {
@@ -52,7 +100,7 @@ struct DownloadsView: View {
                 .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(Theme.accent)
             VStack(alignment: .leading, spacing: 1) {
-                Text("\(app.downloads.items.count) Sammlungen offline")
+                Text("\(app.downloads.items.count) \(app.downloads.items.count == 1 ? "Sammlung" : "Sammlungen") offline")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.text)
                 Text(app.downloads.totalText)
@@ -66,8 +114,9 @@ struct DownloadsView: View {
         .overlay {
             Rectangle().stroke(Theme.hairline, lineWidth: 0.5)
         }
-        .padding(.horizontal, 20)
     }
+
+    // MARK: - Filter
 
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -79,8 +128,9 @@ struct DownloadsView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.vertical, 4)
         }
+        .textCase(nil)
     }
 
     private func chip(_ kind: DownloadKind?, label: String) -> some View {
@@ -97,112 +147,132 @@ struct DownloadsView: View {
         .buttonStyle(.plain)
     }
 
-    private var activeDownloads: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Läuft gerade")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.muted)
-                .padding(.horizontal, 20)
+    // MARK: - Active downloads
 
-            ForEach(app.downloads.progress.keys.sorted(), id: \.self) { key in
-                if let value = app.downloads.progress[key] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(label(for: key))
-                                .font(.caption)
-                                .foregroundStyle(Theme.text)
-                                .lineLimit(1)
-                            Spacer()
-                            Text("\(Int(value * 100)) %")
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(Theme.muted)
-                        }
-                        DownloadProgressView(progress: value)
-                    }
-                    .padding(.horizontal, 20)
-                }
+    private var activeIDs: [String] {
+        app.downloads.progress.keys.sorted()
+    }
+
+    private func activeRow(_ key: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label(for: key))
+                    .font(.caption)
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(Int((app.downloads.progress[key] ?? 0) * 100)) %")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(Theme.muted)
+            }
+            DownloadProgressView(progress: app.downloads.progress[key] ?? 0)
+        }
+    }
+
+    private func label(for key: String) -> String {
+        guard let item = app.downloads.items.first(where: { $0.id == key }) else {
+            let parts = key.split(separator: ":")
+            return parts.count > 1 ? String(parts[1]) : key
+        }
+        return item.title
+    }
+
+    // MARK: - Rows
+
+    @ViewBuilder
+    private func row(_ item: DownloadItem) -> some View {
+        if let route = route(for: item) {
+            // Albums and artists open their detail screen; the trash lives in
+            // the swipe action so the whole row can navigate.
+            NavigationLink(value: route) {
+                rowContent(item, showsTrash: false)
+            }
+            .buttonStyle(.plain)
+            .contextMenu { deleteButton(item) }
+        } else {
+            HStack(spacing: 8) {
+                rowContent(item, showsTrash: true)
             }
         }
     }
 
-    private func row(_ item: DownloadItem) -> some View {
-        let isPlaying = app.player.isPlaying && item.songs.contains { $0.id == app.player.current?.id }
-
-        return Button {
-            if isPlaying {
-                app.player.pause()
-            } else {
-                app.player.play(item.songs)
-            }
-        } label: {
-            HStack(spacing: 12) {
-                CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt)
-                             ?? app.artworkURL(item.coverArt))
-                    .frame(width: 52, height: 52)
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: item.kind.symbol)
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(Theme.text)
-                            .padding(3)
-                            .background(Theme.background.opacity(0.75))
-                            .padding(3)
-                    }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(isPlaying ? Theme.accent : Theme.text)
-                        .lineLimit(1)
-                    Text(item.metaText)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(1)
+    private func rowContent(_ item: DownloadItem, showsTrash: Bool) -> some View {
+        HStack(spacing: 12) {
+            CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
+                .frame(width: 52, height: 52)
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: item.kind.symbol)
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                        .padding(3)
+                        .background(Theme.background.opacity(0.75))
+                        .padding(3)
                 }
 
-                Spacer()
-
-                Image(systemName: isPlaying ? "pause" : "play")
-                    .font(.system(size: 14, weight: .regular))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.text)
-                    .frame(width: 36, height: 40)
+                    .lineLimit(1)
+                Text(item.subtitle ?? item.metaText)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+                    .lineLimit(1)
             }
-            .contentShape(Rectangle())
+
+            Spacer(minLength: 8)
+
+            if showsTrash {
+                Button {
+                    app.downloads.delete(item)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 40, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Download löschen")
+            }
+
         }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button {
-                app.player.play(item.songs)
-            } label: {
-                Label("Abspielen", systemImage: "play")
-            }
-            Button {
-                app.player.playNext(item.songs)
-            } label: {
-                Label("Als Nächstes", systemImage: "text.line.first.and.arrowtriangle.forward")
-            }
-            Button {
-                app.player.addToQueue(item.songs)
-            } label: {
-                Label("Zur Warteschlange", systemImage: "text.badge.plus")
-            }
-            Divider()
-            Button(role: .destructive) {
-                app.downloads.delete(item)
-            } label: {
-                Label("Download löschen", systemImage: "trash")
-            }
+        .contentShape(Rectangle())
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func deleteButton(_ item: DownloadItem) -> some View {
+        Button(role: .destructive) {
+            app.downloads.delete(item)
+        } label: {
+            Label("Download löschen", systemImage: "trash")
+        }
+    }
+
+    /// Albums and artists have a detail screen that also works offline.
+    private func route(for item: DownloadItem) -> LibraryRoute? {
+        switch item.kind {
+        case .album:
+            return .album(
+                Album(
+                    id: item.sourceID,
+                    name: item.title,
+                    artist: item.subtitle,
+                    coverArt: item.coverArt,
+                    songCount: item.songs.count,
+                    songs: item.songs
+                )
+            )
+        case .artist:
+            return .artist(Artist(id: item.sourceID, name: item.title, coverArt: item.coverArt))
+        default:
+            return nil
         }
     }
 
     private var filtered: [DownloadItem] {
         guard let filter else { return app.downloads.items }
         return app.downloads.items.filter { $0.kind == filter }
-    }
-
-    private func label(for key: String) -> String {
-        guard let item = app.downloads.items.first(where: { $0.id == key }) else {
-            return key.split(separator: ":").last.map(String.init) ?? key
-        }
-        return item.title
     }
 }

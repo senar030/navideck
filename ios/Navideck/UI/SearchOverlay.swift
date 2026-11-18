@@ -377,6 +377,31 @@ struct SearchOverlay: View {
         app.pendingRoute = route
     }
 
+    /// Offline search: only what was downloaded, matched locally.
+    private func runOffline(_ text: String) {
+        let query = text.lowercased()
+        let songs = app.downloadedSongs.filter {
+            $0.title.lowercased().contains(query)
+                || ($0.artist ?? "").lowercased().contains(query)
+                || ($0.album ?? "").lowercased().contains(query)
+        }
+        let albums = app.downloadedAlbums.filter {
+            $0.name.lowercased().contains(query)
+                || ($0.artist ?? "").lowercased().contains(query)
+        }
+        let artists = app.downloadedArtists.filter {
+            $0.name.lowercased().contains(query)
+        }
+        results = SearchResult(
+            artists: artists,
+            albums: albums,
+            songs: Array(songs.prefix(100))
+        )
+        searched = true
+        loading = false
+        errorMessage = nil
+    }
+
     private func remember(_ term: String) {
         let value = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard value.count >= 2 else { return }
@@ -402,6 +427,10 @@ struct SearchOverlay: View {
     }
 
     private func run(_ text: String) async {
+        if app.offlineMode {
+            runOffline(text)
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         do {

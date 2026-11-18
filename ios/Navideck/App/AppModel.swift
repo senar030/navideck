@@ -80,6 +80,10 @@ final class AppModel {
             }
         }
 
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_OFFLINE"] == "1" {
+            prefs.offlineMode = true
+        }
+
         let demoPlay = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAY"]
         if demoPlay == "1" || demoPlay == "2" {
             startDemoPlayback(openPlayer: demoPlay == "1")
@@ -461,6 +465,85 @@ final class AppModel {
                 maxBitRate: prefs.maxBitRate
             )
         }
+    }
+
+    // MARK: - Offline library
+
+    /// Global offline switch: only downloaded content is shown while it is on.
+    var offlineMode: Bool {
+        get { prefs.offlineMode }
+        set { prefs.offlineMode = newValue }
+    }
+
+    /// Albums that exist on the device, rebuilt from the downloaded songs so
+    /// they can be opened without a server.
+    var downloadedAlbums: [Album] {
+        var order: [String] = []
+        var albums: [String: Album] = [:]
+
+        for item in downloads.items {
+            for song in item.songs {
+                let id = song.albumId ?? song.album ?? item.sourceID
+                if albums[id] == nil {
+                    order.append(id)
+                    albums[id] = Album(
+                        id: id,
+                        name: song.album ?? item.title,
+                        artist: song.artist ?? item.subtitle,
+                        coverArt: song.coverArt ?? item.coverArt,
+                        songs: []
+                    )
+                }
+                albums[id]?.songs.append(song)
+            }
+        }
+
+        return order.compactMap { id in
+            guard var album = albums[id] else { return nil }
+            album.songCount = album.songs.count
+            album.duration = album.songs.compactMap(\.duration).reduce(0, +)
+            return album
+        }
+    }
+
+    /// Artists that were downloaded as a whole.
+    var downloadedArtists: [Artist] {
+        downloads.items.compactMap { item in
+            guard item.kind == .artist else { return nil }
+            return Artist(
+                id: item.sourceID,
+                name: item.title,
+                albumCount: Set(item.songs.compactMap(\.albumId)).count,
+                coverArt: item.coverArt
+            )
+        }
+    }
+
+    var downloadedPlaylists: [Playlist] {
+        downloads.items.compactMap { item in
+            guard item.kind == .playlist else { return nil }
+            return Playlist(
+                id: item.sourceID,
+                name: item.title,
+                songCount: item.songs.count,
+                coverArt: item.coverArt,
+                entries: item.songs
+            )
+        }
+    }
+
+    var hasDownloads: Bool { !downloads.items.isEmpty }
+
+    /// Every song that exists on the device, without duplicates.
+    var downloadedSongs: [Song] {
+        var seen = Set<String>()
+        var result: [Song] = []
+        for item in downloads.items {
+            for song in item.songs where seen.insert(song.id).inserted {
+                result.append(song)
+            }
+        }
+        return result
     }
 
     // MARK: - Convenience

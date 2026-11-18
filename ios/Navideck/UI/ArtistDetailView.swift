@@ -123,7 +123,7 @@ struct ArtistDetailView: View {
     @ViewBuilder
     private var downloadButton: some View {
         if app.downloads.item(kind: .artist, sourceID: artist.id) != nil {
-            SquareIconButton(systemName: "arrow.down.circle.fill", active: true, accessibilityTitle: "Heruntergeladen") {
+            SquareIconButton(systemName: "trash", accessibilityTitle: "Downloads des Interpreten löschen") {
                 if let item = app.downloads.item(kind: .artist, sourceID: artist.id) {
                     app.downloads.delete(item)
                 }
@@ -169,7 +169,17 @@ struct ArtistDetailView: View {
                 spacing: 20
             ) {
                 ForEach(artist.albums) { album in
-                    AlbumCard(album: album)
+                    VStack(alignment: .leading, spacing: 4) {
+                        AlbumCard(album: album)
+                        if let progress = app.downloads.albumProgress[album.id] {
+                            HStack(spacing: 6) {
+                                DownloadProgressView(progress: progress)
+                                Text("\(Int(progress * 100)) %")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -237,6 +247,10 @@ struct ArtistDetailView: View {
     // MARK: - Data
 
     private func load() async {
+        if app.offlineMode {
+            loadFromDownloads()
+            return
+        }
         guard let client = app.client else { return }
         loading = true
         errorMessage = nil
@@ -254,6 +268,22 @@ struct ArtistDetailView: View {
         info = try? await artistInfo
 
         loading = false
+    }
+
+    /// Offline: rebuild the artist page from the downloaded songs.
+    private func loadFromDownloads() {
+        let albums = app.downloadedAlbums.filter {
+            $0.artistId == artist.id || $0.artist == artist.name
+        }
+        artist.albums = albums
+        artist.albumCount = albums.count
+        topSongs = Array(
+            app.downloads.items
+                .flatMap(\.songs)
+                .filter { $0.artistId == artist.id || $0.artist == artist.name }
+                .prefix(10)
+        )
+        if artist.coverArt == nil { artist.coverArt = albums.first?.coverArt }
     }
 
     private func toggleStar() {

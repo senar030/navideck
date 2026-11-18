@@ -56,6 +56,10 @@ final class DownloadStore {
         didSet { rebuildIndex() }
     }
     private(set) var progress: [String: Double] = [:]
+    /// Per-song byte progress of running downloads, keyed by song id.
+    private(set) var songProgress: [String: Double] = [:]
+    /// Per-album progress, so an artist download can show one bar per album.
+    private(set) var albumProgress: [String: Double] = [:]
     private(set) var failures: [String: String] = [:]
 
     @ObservationIgnored private var files: [String: String] = [:]
@@ -195,7 +199,23 @@ final class DownloadStore {
         var written: [String: String] = [:]
         var bytes = 0
 
-        defer { tasks[id] = nil }
+        // Album bookkeeping: total songs per album, finished ones, and the
+        // album key each song belongs to.
+        let totals = Dictionary(grouping: songs, by: { $0.albumId ?? $0.id }).mapValues(\.count)
+        var finished: [String: Int] = [:]
+        func albumKey(_ song: Song) -> String { song.albumId ?? song.id }
+
+        func clearTrackProgress() {
+            for song in songs {
+                songProgress[song.id] = nil
+                albumProgress[albumKey(song)] = nil
+            }
+        }
+
+        defer {
+            tasks[id] = nil
+            clearTrackProgress()
+        }
 
         for (offset, song) in songs.enumerated() {
             if Task.isCancelled {
@@ -204,8 +224,26 @@ final class DownloadStore {
                 return
             }
             guard let url = client.streamURL(id: song.id, maxBitRate: maxBitRate) else { continue }
+
+            let key = albumKey(song)
+            let total = max(1, totals[key] ?? 1)
+            songProgress[song.id] = 0
+
+            let tracker = DownloadProgressTracker { [weak self] fraction in
+                Task { @MainActor in
+                    guard let self else { return }
+                    let previous = self.songProgress[song.id] ?? 0
+                    if fraction >= 1 || fraction - previous > 0.02 {
+                        self.songProgress[song.id] = fraction
+                        let done = Double(finished[key] ?? 0)
+                        self.albumProgress[key] = (done + fraction) / Double(total)
+                    }
+                }
+            }
+
             do {
-                let (temporary, response) = try await session.download(from: url)
+                let request = URLRequest(url: url)
+                let (temporary, response) = try await session.download(for: request, delegate: tracker)
                 if let http = response as? HTTPURLResponse, !(200...399).contains(http.statusCode) {
                     throw SubsonicFailure(code: http.statusCode, message: "HTTP \(http.statusCode)")
                 }
@@ -220,6 +258,9 @@ final class DownloadStore {
                 let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
                 bytes += size
                 written[song.id] = "\(folder)/\(name)"
+                finished[key] = (finished[key] ?? 0) + 1
+                songProgress[song.id] = 1
+                albumProgress[key] = Double(finished[key] ?? 1) / Double(total)
             } catch {
                 cleanUp(directory: directory)
                 for path in written.values {
@@ -272,6 +313,14 @@ final class DownloadStore {
     }
 
     func delete(_ item: DownloadItem) {
+        tasks[item.id]?.cancel()
+        tasks[item.id] = nil
+        progress[item.id] = nil
+        for song in item.songs {
+            songProgress[song.id] = nil
+            albumProgress[song.albumId ?? song.id] = nil
+        }
+
         let folder = item.id.replacingOccurrences(of: ":", with: "-")
         try? FileManager.default.removeItem(at: root.appendingPathComponent(folder, isDirectory: true))
         for song in item.songs { files[song.id] = nil }
@@ -285,6 +334,11 @@ final class DownloadStore {
     }
 
     func deleteEverything() {
+        for task in tasks.values { task.cancel() }
+        tasks.removeAll()
+        progress.removeAll()
+        songProgress.removeAll()
+        albumProgress.removeAll()
         for item in items { delete(item) }
         try? FileManager.default.removeItem(at: root)
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -343,5 +397,33 @@ final class DownloadStore {
     private static func safeName(_ value: String) -> String {
         value.replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
+    }
+}
+
+/// Reports byte progress of a single download task without a shared delegate.
+private final class DownloadProgressTracker: NSObject, URLSessionTaskDelegate, URLSessionDownloadDelegate {
+    private let onProgress: @Sendable (Double) -> Void
+
+    init(onProgress: @escaping @Sendable (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        // The async download call delivers the file; nothing to do here.
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        onProgress(min(1, Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)))
     }
 }

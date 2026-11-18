@@ -118,6 +118,8 @@ struct TrackRow: View {
     var isCurrent: Bool = false
     var subtitle: String?
     var downloaded: Bool = false
+    /// Set while this song is being downloaded.
+    var progress: Double?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -144,6 +146,16 @@ struct TrackRow: View {
                         .font(.caption2)
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
+                }
+                if let progress {
+                    HStack(spacing: 6) {
+                        DownloadProgressView(progress: progress)
+                            .frame(width: 70)
+                        Text("\(Int(progress * 100)) %")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .padding(.top, 2)
                 }
             }
 

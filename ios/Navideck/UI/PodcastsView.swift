@@ -18,6 +18,19 @@ struct PodcastsView: View {
     private var newest: [PodcastEpisode] { app.podcastSnapshot?.newest ?? [] }
 
     var body: some View {
+        Group {
+            if app.offlineMode {
+                OfflineEpisodesView()
+            } else {
+                library
+            }
+        }
+        .navigationTitle("Podcasts")
+        .offlineModeToolbar()
+        .task { await load() }
+    }
+
+    private var library: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 if let errorMessage {
@@ -95,12 +108,10 @@ struct PodcastsView: View {
                 )
             }
         }
-        .navigationTitle("Podcasts")
         .navideckScreen()
         .navigationDestination(item: $demoChannel) { channel in
             PodcastChannelView(channel: channel)
         }
-        .task { await load() }
         .refreshable { await load(force: true) }
         .onChange(of: app.episodeProgress.entries) { _, _ in
             rebuildContinued()
@@ -387,6 +398,10 @@ struct PodcastChannelView: View {
     }
 
     var body: some View {
+        library
+    }
+
+    private var library: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header

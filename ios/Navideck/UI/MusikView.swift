@@ -19,16 +19,23 @@ struct MusikView: View {
 
     var body: some View {
         Group {
-            if editing {
-                editableList
-            } else if layout == "list" {
-                sectionList
+            if app.offlineMode {
+                OfflineLibraryView()
             } else {
-                grid
+                Group {
+                    if editing {
+                        editableList
+                    } else if layout == "list" {
+                        sectionList
+                    } else {
+                        grid
+                    }
+                }
+                .navideckScreen()
             }
         }
         .navigationTitle("Musik")
-        .navideckScreen()
+        .offlineModeToolbar()
         .task {
             #if DEBUG
             let env = ProcessInfo.processInfo.environment
@@ -41,29 +48,31 @@ struct MusikView: View {
             #endif
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if editing {
-                    Button {
-                        orderRaw = ""
-                        hiddenRaw = ""
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise")
-                    }
-                    .accessibilityLabel("Reihenfolge zurücksetzen")
-
-                    Button("Fertig") { endEditing() }
-                        .fontWeight(.medium)
-                } else {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.18)) {
-                            layout = layout == "grid" ? "list" : "grid"
+            if !app.offlineMode {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if editing {
+                        Button {
+                            orderRaw = ""
+                            hiddenRaw = ""
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
                         }
-                    } label: {
-                        Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
-                    }
-                    .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+                        .accessibilityLabel("Reihenfolge zurücksetzen")
 
-                    Button("Bearbeiten") { beginEditing() }
+                        Button("Fertig") { endEditing() }
+                            .fontWeight(.medium)
+                    } else {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                layout = layout == "grid" ? "list" : "grid"
+                            }
+                        } label: {
+                            Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
+                        }
+                        .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+
+                        Button("Bearbeiten") { beginEditing() }
+                    }
                 }
             }
         }

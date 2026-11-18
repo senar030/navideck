@@ -38,7 +38,15 @@ struct AlbumDetailView: View {
         .navigationTitle(album.name)
         .navigationBarTitleDisplayMode(.inline)
         .navideckScreen()
-        .task { await load() }
+        .task {
+            await load()
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_DOWNLOAD"] == "1",
+               app.downloads.item(kind: .album, sourceID: album.id) == nil {
+                app.download(album)
+            }
+            #endif
+        }
     }
 
     // MARK: - Header
@@ -126,7 +134,7 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var downloadButton: some View {
         if app.downloads.item(kind: .album, sourceID: album.id) != nil {
-            SquareIconButton(systemName: "arrow.down.circle.fill", active: true, accessibilityTitle: "Heruntergeladen") {
+            SquareIconButton(systemName: "trash", accessibilityTitle: "Download löschen") {
                 if let item = app.downloads.item(kind: .album, sourceID: album.id) {
                     app.downloads.delete(item)
                 }
@@ -189,7 +197,8 @@ struct AlbumDetailView: View {
                         song: song,
                         number: song.track ?? offset + 1,
                         isCurrent: app.player.current?.id == song.id,
-                        downloaded: app.downloads.contains(songID: song.id)
+                        downloaded: app.downloads.contains(songID: song.id),
+                        progress: app.downloads.songProgress[song.id]
                     )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -254,7 +263,13 @@ struct AlbumDetailView: View {
     // MARK: - Data
 
     private func load() async {
-        guard let client = app.client, album.songs.isEmpty else { return }
+        if album.songs.isEmpty,
+           let item = app.downloads.item(kind: .album, sourceID: album.id) {
+            album.songs = item.songs
+            if album.coverArt == nil { album.coverArt = item.coverArt }
+            if album.artist == nil { album.artist = item.subtitle }
+        }
+        guard !app.offlineMode, let client = app.client, album.songs.isEmpty else { return }
         loading = true
         do {
             album = try await client.album(id: album.id)
