@@ -59,6 +59,9 @@ struct MainTabs: View {
     @State private var visitedTabs: Set<Int> = []
     /// Measured height of the Start/pill/Suche row; every stack reserves it.
     @State private var barHeight: CGFloat = 64
+    /// Set while the start button's long press runs so its release does not
+    /// also toggle the menu.
+    @State private var suppressStartTap = false
     @State private var navExpanded = false
     @State private var showSearch = false
 
@@ -196,7 +199,7 @@ struct MainTabs: View {
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             if navExpanded {
                 FloatingTabBar(selection: $selection) {
                     closeNavigation()
@@ -209,7 +212,13 @@ struct MainTabs: View {
             }
 
             HStack(spacing: 10) {
-                glassButton("Start", icon: "line.3.horizontal", active: navExpanded) {
+                glassButton(
+                    "Start",
+                    icon: "line.3.horizontal",
+                    active: navExpanded,
+                    onLongPress: goHome
+                ) {
+                    if suppressStartTap { return }
                     toggleNavigation()
                 }
 
@@ -238,8 +247,8 @@ struct MainTabs: View {
             // through too harshly.
             LinearGradient(
                 stops: [
-                    .init(color: Theme.background.opacity(navExpanded ? 0.6 : 0), location: 0),
-                    .init(color: Theme.background.opacity(0.45), location: 0.22),
+                    .init(color: Theme.background.opacity(0), location: 0),
+                    .init(color: Theme.background.opacity(navExpanded ? 0.25 : 0.45), location: 0.2),
                     .init(color: Theme.background.opacity(0.9), location: 0.62),
                     .init(color: Theme.background, location: 1),
                 ],
@@ -261,6 +270,7 @@ struct MainTabs: View {
         _ title: String,
         icon: String,
         active: Bool = false,
+        onLongPress: (() -> Void)? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -275,7 +285,28 @@ struct MainTabs: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    guard let onLongPress else { return }
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    suppressStartTap = true
+                    onLongPress()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        suppressStartTap = false
+                    }
+                }
+        )
         .accessibilityLabel(title)
+    }
+
+    /// Long press: jump to the Start root from anywhere.
+    private func goHome() {
+        withAnimation(.easeOut(duration: 0.18)) {
+            navExpanded = false
+        }
+        selection = 0
+        paths[0] = NavigationPath()
     }
 
     private func toggleNavigation() {

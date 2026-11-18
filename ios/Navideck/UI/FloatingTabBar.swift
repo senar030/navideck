@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// The expanded navigation. It slides up out of the Start button as a stack of
-/// glass capsules instead of a horizontal bar, so it reads as a menu that
-/// belongs to that button.
+/// The expanded navigation. A single glass capsule grows straight up out of the
+/// menu button; it only carries symbols, so it stays as narrow as the button.
 struct FloatingTabBar: View {
     @Binding var selection: Int
     /// Called after a tab was picked so the menu can slide back in.
@@ -16,36 +15,33 @@ struct FloatingTabBar: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 0) {
             ForEach(items.indices, id: \.self) { index in
                 Button {
                     selection = items[index].tab
                     onSelect()
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: items[index].icon)
-                            .font(.system(size: 15, weight: isSelected(index) ? .semibold : .regular))
-                            .frame(width: 20)
-
-                        Text(items[index].title)
-                            .font(.subheadline.weight(.medium))
-
-                        Spacer(minLength: 0)
-                    }
-                    .foregroundStyle(isSelected(index) ? Theme.accent : Theme.text)
-                    .padding(.horizontal, 14)
-                    .frame(width: 188, height: 44)
-                    .navideckGlass(
-                        Capsule(),
-                        tint: isSelected(index) ? Theme.accent.opacity(0.16) : nil
-                    )
-                    .contentShape(Capsule())
+                    Image(systemName: items[index].icon)
+                        .font(.system(size: 16, weight: isSelected(index) ? .semibold : .regular))
+                        .foregroundStyle(isSelected(index) ? Theme.accent : Theme.muted)
+                        .frame(width: 48, height: 46)
+                        .background {
+                            if isSelected(index) {
+                                Circle()
+                                    .fill(Theme.accent.opacity(0.16))
+                                    .frame(width: 34, height: 34)
+                            }
+                        }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(items[index].title)
                 .accessibilityAddTraits(isSelected(index) ? .isSelected : [])
             }
         }
+        .padding(.vertical, 5)
+        .frame(width: 48)
+        .navideckGlass(Capsule())
     }
 
     private func isSelected(_ index: Int) -> Bool {
