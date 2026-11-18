@@ -4,7 +4,7 @@ Native SwiftUI-App für Navidrome und andere Subsonic-Server. Sie teilt sich
 Bibliothek, Zugangsdaten und Hörgewohnheiten mit der Web-App und der
 Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
 
-## Funktionsumfang (1.4.5)
+## Funktionsumfang (1.5.0)
 
 - Anmeldung an Navidrome, Nextcloud Music (Passwort-Auth), Airsonic, Gonic …
 - Audiobookshelf parallel zum Musikserver (API-Token oder Konto-Anmeldung):
@@ -12,9 +12,12 @@ Desktop-Version – nur die Oberfläche ist hier echtes iOS statt Web.
   Fortschritts-Synchronisation
 - Podcasts wahlweise vom Subsonic-Server oder aus einer Audiobookshelf-
   Podcast-Bibliothek (Sender, Folgen, Wiedergabe)
-- Quellen pro Kategorie (Musik, Podcasts, Hörbücher) in den Einstellungen
-  wählbar; Server lassen sich umbenennen und erscheinen mit Namen in der
-  Quellenauswahl, Kategorien ohne Quelle werden ausgeblendet
+- Einstellungen → Verbindungen: geführter Dialog für Navidrome, Subsonic
+  (Token oder Legacy-Passwort) und Audiobookshelf (API-Token oder Konto);
+  Verbindungen lassen sich benennen, umbenennen und entfernen
+- Bibliotheken werden pro Verbindung eingelesen (Musikordner bei Subsonic,
+  Buch-/Podcast-Bibliotheken bei Audiobookshelf) und den Kategorien Musik,
+  Podcasts und Hörbücher zugeordnet; nicht zugeordnete Kategorien verschwinden
 - Vier Tabs (Start, Musik, Podcast, Optionen) plus feste Buttons „Menü“ und
   „Suche“ unten: „Menü“ lässt eine durchgängige Glas-Kapsel mit vier Symbolen
   senkrecht aus dem Button wachsen; langes Drücken auf den Button springt von

@@ -47,6 +47,9 @@ struct SubsonicClient: Sendable {
     private let token: String
     private let password: String
 
+    /// Restricts requests to one music folder when a library was assigned.
+    var musicFolderId: String?
+
     private static let session: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 20
@@ -118,7 +121,11 @@ struct SubsonicClient: Sendable {
     }
 
     private func request(_ method: String, _ extra: [String: String] = [:]) async throws -> SubsonicResponse {
-        guard let url = url(for: method, extra: extra) else {
+        var parameters = extra
+        if let musicFolderId, parameters["musicFolderId"] == nil {
+            parameters["musicFolderId"] = musicFolderId
+        }
+        guard let url = url(for: method, extra: parameters) else {
             throw SubsonicFailure(code: -1, message: "Ungültige Server-Adresse.")
         }
 
@@ -296,6 +303,11 @@ struct SubsonicClient: Sendable {
     }
 
     // MARK: - Playlists
+
+    func musicFolders() async throws -> [MusicFolder] {
+        let response = try await request("getMusicFolders")
+        return response.musicFolders?.musicFolder ?? []
+    }
 
     func playlists() async throws -> [Playlist] {
         let response = try await request("getPlaylists")

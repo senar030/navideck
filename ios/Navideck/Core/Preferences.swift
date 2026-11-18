@@ -25,7 +25,8 @@ final class Preferences {
         didSet { save() }
     }
 
-    /// Which backend feeds each category. Raw values of `CategorySource`.
+    /// Assigned library per category: empty = automatic, "off" = hidden,
+    /// otherwise a `MediaLibrary.key`.
     var musicSource: String {
         didSet { save() }
     }

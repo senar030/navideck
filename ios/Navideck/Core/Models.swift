@@ -433,6 +433,7 @@ struct SubsonicResponse: Decodable, Sendable {
     var albums: AlbumListBlock?
     var album: Album?
     var songsByGenre: SongsBlock?
+    var musicFolders: MusicFoldersBlock?
     var randomSongs: SongsBlock?
     var topSongs: SongsBlock?
     var playlists: PlaylistsBlock?
@@ -456,6 +457,36 @@ struct ArtistsBlock: Decodable, Sendable {
 
 struct AlbumListBlock: Decodable, Sendable {
     var album: [Album]?
+}
+
+struct MusicFolder: Decodable, Identifiable, Hashable, Sendable {
+    var id: String
+    var name: String
+
+    enum CodingKeys: String, CodingKey { case id, name }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let value = try? c.decodeIfPresent(String.self, forKey: .id) {
+            id = value
+        } else if let value = try? c.decodeIfPresent(Int.self, forKey: .id) {
+            id = String(value)
+        } else {
+            id = ""
+        }
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+    }
+}
+
+struct MusicFoldersBlock: Decodable, Sendable {
+    var musicFolder: [MusicFolder]?
+
+    enum CodingKeys: String, CodingKey { case musicFolder }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        musicFolder = try? c.decodeIfPresent([MusicFolder].self, forKey: .musicFolder)
+    }
 }
 
 struct SongsBlock: Decodable, Sendable {

@@ -52,6 +52,55 @@ enum ServerKind: String, Codable, Hashable, Sendable {
     case audiobookshelf
 }
 
+/// What the user picked when adding the connection. Determines the label and
+/// which login method is used.
+enum ServerFlavor: String, Codable, Hashable, Sendable, CaseIterable {
+    case navidrome
+    case subsonic
+    case subsonicLegacy
+    case audiobookshelf
+
+    var label: String {
+        switch self {
+        case .navidrome: return "Navidrome"
+        case .subsonic: return "Subsonic / Airsonic"
+        case .subsonicLegacy: return "Subsonic (Legacy-Passwort)"
+        case .audiobookshelf: return "Audiobookshelf"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .navidrome: return "Empfohlen. Meldung mit Benutzer und Passwort (Token)."
+        case .subsonic: return "Token-Anmeldung über Benutzer und Passwort."
+        case .subsonicLegacy: return "Für alte Server ohne Token: Passwort wird direkt gesendet."
+        case .audiobookshelf: return "Hörbücher und Podcasts. Benötigt einen API-Token."
+        }
+    }
+
+    var kind: ServerKind {
+        self == .audiobookshelf ? .audiobookshelf : .subsonic
+    }
+
+    var auth: SubsonicAuth {
+        self == .subsonicLegacy ? .password : .token
+    }
+}
+
+/// A library (music folder on Subsonic, library on Audiobookshelf) that can be
+/// assigned to one of Navideck's categories.
+struct MediaLibrary: Codable, Identifiable, Hashable, Sendable {
+    var serverID: UUID
+    /// Folder id or Audiobookshelf library id. `__server__` marks server-wide
+    /// content such as Subsonic podcasts.
+    var id: String
+    var name: String
+    /// "music", "podcast" or "book".
+    var mediaType: String
+
+    var key: String { "\(serverID.uuidString)|\(id)" }
+}
+
 struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var name: String
@@ -61,9 +110,11 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
     var addedAt: Date
     /// Older entries have no kind and are Subsonic servers.
     var kind: ServerKind
+    /// Server type as picked by the user; older entries derive it from `kind`.
+    var flavor: ServerFlavor
 
     enum CodingKeys: String, CodingKey {
-        case id, name, baseURL, username, auth, addedAt, kind
+        case id, name, baseURL, username, auth, addedAt, kind, flavor
     }
 
     init(
@@ -73,7 +124,8 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
         username: String,
         auth: SubsonicAuth,
         addedAt: Date,
-        kind: ServerKind = .subsonic
+        kind: ServerKind = .subsonic,
+        flavor: ServerFlavor = .subsonic
     ) {
         self.id = id
         self.name = name
@@ -82,6 +134,7 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
         self.auth = auth
         self.addedAt = addedAt
         self.kind = kind
+        self.flavor = flavor
     }
 
     init(from decoder: Decoder) throws {
@@ -93,6 +146,8 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
         auth = try c.decode(SubsonicAuth.self, forKey: .auth)
         addedAt = try c.decode(Date.self, forKey: .addedAt)
         kind = (try? c.decodeIfPresent(ServerKind.self, forKey: .kind)) ?? .subsonic
+        flavor = (try? c.decodeIfPresent(ServerFlavor.self, forKey: .flavor))
+            ?? (kind == .audiobookshelf ? .audiobookshelf : .subsonic)
     }
 
     var url: URL? { URL(string: baseURL) }
@@ -162,18 +217,28 @@ final class ServerStore {
     }
 
     /// Adds or updates the server for this host/account pair and returns it.
-    func save(baseURL: URL, username: String, password: String, auth: SubsonicAuth) -> ServerProfile {
+    func save(
+        baseURL: URL,
+        username: String,
+        password: String,
+        auth: SubsonicAuth,
+        name: String? = nil,
+        flavor: ServerFlavor = .subsonic
+    ) -> ServerProfile {
         let id = profiles.first {
             $0.kind == .subsonic && $0.baseURL == baseURL.absoluteString && $0.username == username
         }?.id ?? UUID()
 
+        let cleaned = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let profile = ServerProfile(
             id: id,
-            name: Format.host(baseURL),
+            name: cleaned.isEmpty ? Format.host(baseURL) : cleaned,
             baseURL: baseURL.absoluteString,
             username: username,
             auth: auth,
-            addedAt: Date()
+            addedAt: Date(),
+            kind: .subsonic,
+            flavor: flavor
         )
 
         if let index = profiles.firstIndex(where: { $0.id == id }) {
@@ -193,19 +258,21 @@ final class ServerStore {
 
     /// Adds or updates an Audiobookshelf server. The API token is stored in the
     /// keychain, like a password.
-    func saveAudiobookshelf(baseURL: URL, token: String) -> ServerProfile {
+    func saveAudiobookshelf(baseURL: URL, token: String, name: String? = nil) -> ServerProfile {
         let id = profiles.first {
             $0.kind == .audiobookshelf && $0.baseURL == baseURL.absoluteString
         }?.id ?? UUID()
 
+        let cleaned = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let profile = ServerProfile(
             id: id,
-            name: Format.host(baseURL),
+            name: cleaned.isEmpty ? Format.host(baseURL) : cleaned,
             baseURL: baseURL.absoluteString,
             username: "audiobookshelf",
             auth: .token,
             addedAt: Date(),
-            kind: .audiobookshelf
+            kind: .audiobookshelf,
+            flavor: .audiobookshelf
         )
 
         if let index = profiles.firstIndex(where: { $0.id == id }) {

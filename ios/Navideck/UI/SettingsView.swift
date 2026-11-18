@@ -3,17 +3,10 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var app
 
-    @State private var showDisconnectConfirm = false
     @State private var renameCandidate: ServerProfile?
     @State private var renameText = ""
-    @State private var showABSAdd = false
-    @State private var absURL = ""
-    @State private var absToken = ""
-    @State private var absUser = ""
-    @State private var absPassword = ""
-    @State private var absUseLogin = false
-    @State private var absError: String?
-    @State private var absConnecting = false
+    @State private var showAddConnection = false
+    @State private var refreshingLibraries = false
     @State private var removeCandidate: ServerProfile?
     @State private var showDeleteDownloads = false
 
@@ -21,12 +14,7 @@ struct SettingsView: View {
         @Bindable var prefs = app.prefs
 
         Form {
-            if let active = app.servers.active {
-                activeServerSection(active)
-            }
-
-            serversSection
-            audiobookServersSection
+            connectionsSection
             sourcesSection
 
             Section("Sofortmix") {
@@ -63,11 +51,6 @@ struct SettingsView: View {
                     }
                 }
                 .listRowBackground(Theme.surface)
-
-                Text("Gilt für das Streamen vom Server. Heruntergeladene Titel werden immer in der Originalqualität abgespielt.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-                    .listRowBackground(Theme.surface)
             }
 
             downloadsSection
@@ -77,199 +60,16 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Einstellungen")
-        .confirmationDialog(
-            "Verbindung trennen?",
-            isPresented: $showDisconnectConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Trennen", role: .destructive) {
-                app.disconnect()
-            }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Die gespeicherten Server bleiben erhalten.")
+        .sheet(isPresented: $showAddConnection) {
+            AddConnectionView()
         }
-        .confirmationDialog(
-            "Server entfernen?",
-            isPresented: Binding(
-                get: { removeCandidate != nil },
-                set: { if !$0 { removeCandidate = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Entfernen", role: .destructive) {
-                if let profile = removeCandidate {
-                    app.remove(profile: profile)
-                }
-                removeCandidate = nil
+        .onChange(of: showAddConnection) { _, open in
+            if !open {
+                Task { await app.refreshLibraries() }
             }
-            Button("Abbrechen", role: .cancel) { removeCandidate = nil }
-        } message: {
-            Text("Zugangsdaten und Warteschlange dieses Servers werden gelöscht.")
         }
-        .confirmationDialog(
-            "Alle Downloads löschen?",
-            isPresented: $showDeleteDownloads,
-            titleVisibility: .visible
-        ) {
-            Button("Löschen", role: .destructive) {
-                app.downloads.deleteEverything()
-            }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Heruntergeladene Titel und Cover werden vom Gerät entfernt.")
-        }
-    }
-
-    // MARK: - Sections
-
-    private func activeServerSection(_ profile: ServerProfile) -> some View {
-        Section("Verbunden mit") {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profile.displayName)
-                    .font(.headline)
-                    .foregroundStyle(Theme.text)
-                Text(profile.baseURL)
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-                Text("Benutzer: \(profile.username)")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-            }
-            .padding(.vertical, 4)
-            .listRowBackground(Theme.surface)
-
-            Button("Verbindung trennen", role: .destructive) {
-                showDisconnectConfirm = true
-            }
-            .listRowBackground(Theme.surface)
-        }
-    }
-
-    private var serversSection: some View {
-        Section("Server") {
-            ForEach(app.servers.profiles.filter { $0.kind == .subsonic }) { profile in
-                Button {
-                    app.activate(profile)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(profile.displayName)
-                                .foregroundStyle(Theme.text)
-                            Text(profile.username)
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                        }
-                        Spacer()
-                        if profile.id == app.servers.activeID {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Theme.accent)
-                        }
-                    }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        removeCandidate = profile
-                    } label: {
-                        Label("Entfernen", systemImage: "trash")
-                    }
-                }
-                .contextMenu {
-                    Button {
-                        renameCandidate = profile
-                        renameText = profile.name
-                    } label: {
-                        Label("Umbenennen", systemImage: "pencil")
-                    }
-                }
-            }
-            .listRowBackground(Theme.surface)
-
-            Button {
-                app.disconnect()
-            } label: {
-                Label("Server hinzufügen", systemImage: "plus")
-                    .foregroundStyle(Theme.accent)
-            }
-            .listRowBackground(Theme.surface)
-        }
-    }
-
-    private var audiobookServersSection: some View {
-        Section("Hörbuch-Server") {
-            if let active = app.servers.activeABS {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(active.displayName)
-                            .font(.headline)
-                            .foregroundStyle(Theme.text)
-                        Spacer()
-                        Text("Verbunden")
-                            .font(.caption)
-                            .foregroundStyle(Theme.accent)
-                    }
-                    Text(active.baseURL)
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
-                }
-                .padding(.vertical, 4)
-                .listRowBackground(Theme.surface)
-            }
-
-            ForEach(app.servers.audiobookServers) { profile in
-                Button {
-                    app.activateAudiobookshelf(profile)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(profile.displayName)
-                                .foregroundStyle(Theme.text)
-                            Text("Audiobookshelf")
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                        }
-                        Spacer()
-                        if profile.id == app.servers.absID {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Theme.accent)
-                        }
-                    }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        app.removeAudiobookshelf(profile)
-                    } label: {
-                        Label("Entfernen", systemImage: "trash")
-                    }
-                }
-                .contextMenu {
-                    Button {
-                        renameCandidate = profile
-                        renameText = profile.name
-                    } label: {
-                        Label("Umbenennen", systemImage: "pencil")
-                    }
-                }
-            }
-            .listRowBackground(Theme.surface)
-
-            Button {
-                absURL = ""
-                absToken = ""
-                absUser = ""
-                absPassword = ""
-                absUseLogin = false
-                absError = nil
-                showABSAdd = true
-            } label: {
-                Label("Audiobookshelf hinzufügen", systemImage: "plus")
-                    .foregroundStyle(Theme.accent)
-            }
-            .listRowBackground(Theme.surface)
-        }
-        .sheet(isPresented: $showABSAdd) { audiobookshelfSheet }
         .alert(
-            "Server umbenennen",
+            "Verbindung umbenennen",
             isPresented: Binding(
                 get: { renameCandidate != nil },
                 set: { if !$0 { renameCandidate = nil } }
@@ -284,136 +84,220 @@ struct SettingsView: View {
             }
             Button("Abbrechen", role: .cancel) { renameCandidate = nil }
         } message: {
-            Text("Der Name erscheint in der Serverliste und in der Quellenauswahl.")
+            Text("Der Name erscheint bei den Verbindungen und in der Quellenauswahl.")
+        }
+        .confirmationDialog(
+            "Verbindung entfernen?",
+            isPresented: Binding(
+                get: { removeCandidate != nil },
+                set: { if !$0 { removeCandidate = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Entfernen", role: .destructive) {
+                if let profile = removeCandidate {
+                    app.remove(profile: profile)
+                    Task { await app.refreshLibraries() }
+                }
+                removeCandidate = nil
+            }
+            Button("Abbrechen", role: .cancel) { removeCandidate = nil }
+        } message: {
+            Text("Zugangsdaten dieses Servers werden vom Gerät gelöscht.")
+        }
+        .confirmationDialog(
+            "Alle Downloads löschen?",
+            isPresented: $showDeleteDownloads,
+            titleVisibility: .visible
+        ) {
+            Button("Löschen", role: .destructive) {
+                app.downloads.deleteEverything()
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Heruntergeladene Titel und Cover werden vom Gerät entfernt.")
+        }
+        .task {
+            if app.libraries.isEmpty {
+                await app.refreshLibraries()
+            }
         }
     }
 
+    // MARK: - Verbindungen
+
+    private var connectionsSection: some View {
+        Section {
+            ForEach(app.servers.profiles) { profile in
+                Button {
+                    activate(profile)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: profile.kind == .audiobookshelf ? "books.vertical" : "music.note.house")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.displayName)
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                            Text("\(profile.flavor.label) · \(profile.baseURL)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        if isActive(profile) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Theme.surface)
+                .contextMenu {
+                    Button {
+                        renameCandidate = profile
+                        renameText = profile.name
+                    } label: {
+                        Label("Umbenennen", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        removeCandidate = profile
+                    } label: {
+                        Label("Entfernen", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        removeCandidate = profile
+                    } label: {
+                        Label("Entfernen", systemImage: "trash")
+                    }
+                }
+            }
+
+            Button {
+                showAddConnection = true
+            } label: {
+                Label("Verbindung hinzufügen", systemImage: "plus")
+                    .foregroundStyle(Theme.accent)
+            }
+            .listRowBackground(Theme.surface)
+
+            if !app.servers.profiles.isEmpty {
+                Button {
+                    refreshingLibraries = true
+                    Task {
+                        await app.refreshLibraries()
+                        refreshingLibraries = false
+                    }
+                } label: {
+                    HStack {
+                        Label("Bibliotheken aktualisieren", systemImage: "arrow.clockwise")
+                            .foregroundStyle(Theme.accent)
+                        Spacer()
+                        if refreshingLibraries {
+                            ProgressView().tint(Theme.accent)
+                        }
+                    }
+                }
+                .disabled(refreshingLibraries)
+                .listRowBackground(Theme.surface)
+            }
+        } header: {
+            Text("Verbindungen")
+        } footer: {
+            Text("Navidrome/Subsonic und Audiobookshelf laufen parallel. Nach dem Hinzufügen werden die Bibliotheken eingelesen und können unten den Kategorien zugeordnet werden.")
+            Text("DEBUG src=\(app.sourceValue(for: .music)) folder=\(app.selectedMusicFolderID ?? "-") libs=\(app.libraries.count)")
+                .font(.caption2)
+        }
+    }
+
+    private func isActive(_ profile: ServerProfile) -> Bool {
+        profile.kind == .audiobookshelf
+            ? app.servers.absID == profile.id
+            : app.servers.activeID == profile.id
+    }
+
+    private func activate(_ profile: ServerProfile) {
+        switch profile.kind {
+        case .subsonic: app.activate(profile)
+        case .audiobookshelf: app.activateAudiobookshelf(profile)
+        }
+    }
+
+    // MARK: - Quellen
+
     private var sourcesSection: some View {
-        Section("Quellen") {
+        Section {
             sourceRow("Musik", category: .music)
             sourceRow("Podcasts", category: .podcasts)
             sourceRow("Hörbücher", category: .audiobooks)
-
-            Text("Jede Kategorie nutzt den gewählten Server. „Automatisch“ nimmt den verbundenen Server der passenden Art, „Aus“ blendet die Kategorie aus.")
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
-                .listRowBackground(Theme.surface)
+        } header: {
+            Text("Quellen")
+        } footer: {
+            Text("Jede Kategorie nutzt genau eine Bibliothek. „Automatisch“ nimmt die erste passende Bibliothek einer verbundenen Quelle, „Aus“ blendet die Kategorie aus.")
         }
     }
 
+    @ViewBuilder
     private func sourceRow(_ title: String, category: AppModel.Category) -> some View {
-        Picker(title, selection: Binding(
-            get: { normalizedSourceValue(for: category) },
-            set: { app.setSourceValue($0, for: category) }
-        )) {
-            Text("Automatisch").tag("auto")
-            ForEach(app.servers(for: category)) { profile in
-                Text(profile.displayName).tag(profile.id.uuidString)
+        let options = app.libraries(for: category)
+        let value = app.sourceValue(for: category)
+
+        HStack {
+            Text(title)
+                .foregroundStyle(Theme.text)
+
+            Spacer(minLength: 12)
+
+            if options.isEmpty {
+                Text("Keine Bibliothek")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+            } else {
+                Menu {
+                    Button("Automatisch") { app.setSourceValue("", for: category) }
+                    ForEach(options) { library in
+                        Button(optionLabel(library)) {
+                            app.setSourceValue(library.key, for: category)
+                        }
+                    }
+                    Divider()
+                    Button("Aus") { app.setSourceValue("off", for: category) }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(currentSourceLabel(value, options: options))
+                            .foregroundStyle(value == "off" ? Theme.muted : Theme.accent)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
             }
-            Text("Aus").tag("off")
         }
         .listRowBackground(Theme.surface)
     }
 
-    /// Legacy values from earlier versions map to "auto".
-    private func normalizedSourceValue(for category: AppModel.Category) -> String {
-        let raw = app.sourceValue(for: category)
-        if raw == "off" || raw == "auto" || UUID(uuidString: raw) != nil {
-            return raw
+    private func currentSourceLabel(_ value: String, options: [MediaLibrary]) -> String {
+        if value == "off" { return "Aus" }
+        if value.isEmpty { return "Automatisch" }
+        if let library = options.first(where: { $0.key == value }) {
+            return optionLabel(library)
         }
-        return "auto"
+        return "Automatisch"
     }
 
-    private var audiobookshelfSheet: some View {
-        NavigationStack {
-            Form {
-                Section("Server") {
-                    TextField("https://books.example.com", text: $absURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                }
-
-                Section("Anmeldung") {
-                    Picker("Methode", selection: $absUseLogin) {
-                        Text("API-Token").tag(false)
-                        Text("Benutzername & Passwort").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-
-                    if absUseLogin {
-                        TextField("Benutzername", text: $absUser)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        SecureField("Passwort", text: $absPassword)
-                    } else {
-                        TextField("API-Token", text: $absToken)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                }
-
-                if let absError {
-                    Section {
-                        Text(absError)
-                            .font(.caption)
-                            .foregroundStyle(Theme.danger)
-                    }
-                }
-
-                Section {
-                    Text("Den API-Token erzeugst du in Audiobookshelf unter Einstellungen → Benutzer. Alternativ kannst du dich direkt mit deinem Konto anmelden.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
-                }
-            }
-            .navigationTitle("Audiobookshelf")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { showABSAdd = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        connectABS()
-                    } label: {
-                        if absConnecting {
-                            ProgressView()
-                        } else {
-                            Text("Verbinden")
-                        }
-                    }
-                    .disabled(
-                        absConnecting
-                            || absURL.isEmpty
-                            || (absUseLogin ? (absUser.isEmpty || absPassword.isEmpty) : absToken.isEmpty)
-                    )
-                }
-            }
-        }
-    }
-
-    private func connectABS() {
-        absConnecting = true
-        absError = nil
-        Task {
-            do {
-                if absUseLogin {
-                    try await app.connectAudiobookshelf(
-                        urlText: absURL,
-                        username: absUser,
-                        password: absPassword
-                    )
-                } else {
-                    try await app.connectAudiobookshelf(urlText: absURL, token: absToken)
-                }
-                await app.loadAudiobooks(force: true)
-                showABSAdd = false
-            } catch {
-                absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            }
-            absConnecting = false
-        }
+    private func optionLabel(_ library: MediaLibrary) -> String {
+        let server = app.servers.profiles.first(where: { $0.id == library.serverID })?.displayName
+        guard let server, !server.isEmpty else { return library.name }
+        return "\(server) · \(library.name)"
     }
 
     private var downloadsSection: some View {

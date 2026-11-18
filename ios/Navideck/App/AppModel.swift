@@ -91,6 +91,30 @@ final class AppModel {
             self?.absAsset(for: song)
         }
 
+        loadStoredLibraries()
+        applySelection()
+
+        if libraries.isEmpty, !servers.profiles.isEmpty {
+            Task { @MainActor in
+                await refreshLibraries()
+            }
+        }
+
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PICK_LIBS"] == "1" {
+            Task { @MainActor in
+                await refreshLibraries()
+                if let music = libraries(for: .music).first {
+                    setSourceValue(music.key, for: .music)
+                }
+                if let books = libraries(for: .audiobooks).first {
+                    setSourceValue(books.key, for: .audiobooks)
+                }
+                if let pods = libraries(for: .podcasts).first {
+                    setSourceValue(pods.key, for: .podcasts)
+                }
+            }
+        }
+
         #if DEBUG
         // Simulator-only convenience: point the app at a local test server
         // without typing credentials, e.g.
@@ -106,6 +130,7 @@ final class AppModel {
             if let client = servers.makeClient(for: profile) {
                 self.client = client
                 player.configure(client: client, profileID: profile.id)
+                applySelection()
             }
         }
 
@@ -260,6 +285,7 @@ final class AppModel {
         artworkCache = [:]
         pendingRoute = nil
         player.configure(client: client, profileID: profile.id)
+        applySelection()
     }
 
     func disconnect() {
@@ -273,6 +299,10 @@ final class AppModel {
     }
 
     func remove(profile: ServerProfile) {
+        if profile.kind == .audiobookshelf {
+            removeAudiobookshelf(profile)
+            return
+        }
         let removingActive = servers.activeID == profile.id
         servers.remove(profile)
         if removingActive {
@@ -586,20 +616,12 @@ final class AppModel {
         }
     }
 
-    /// Raw source selection: "auto", "off" or the UUID of a server.
+    /// Raw selection per category: "" (automatic), "off" or a MediaLibrary.key.
     func sourceValue(for category: Category) -> String {
         switch category {
         case .music: return prefs.musicSource
         case .podcasts: return prefs.podcastSource
         case .audiobooks: return prefs.audiobookSource
-        }
-    }
-
-    func servers(for category: Category) -> [ServerProfile] {
-        switch category {
-        case .music: return servers.profiles.filter { $0.kind == .subsonic }
-        case .podcasts: return servers.profiles
-        case .audiobooks: return servers.profiles.filter { $0.kind == .audiobookshelf }
         }
     }
 
@@ -609,49 +631,249 @@ final class AppModel {
         case .podcasts: prefs.podcastSource = value
         case .audiobooks: prefs.audiobookSource = value
         }
-
-        // Picking a concrete server makes it the active one for that kind.
-        if let id = UUID(uuidString: value),
-           let profile = servers.profiles.first(where: { $0.id == id }) {
-            switch profile.kind {
-            case .subsonic:
-                if servers.activeID != profile.id { activate(profile) }
-            case .audiobookshelf:
-                if servers.absID != profile.id { activateAudiobookshelf(profile) }
-            }
-        }
+        applySelection()
     }
 
-    /// A category is available when it is not switched off and its server is
-    /// connected. Legacy values ("subsonic", "audiobookshelf") behave as auto.
-    var musicAvailable: Bool { categoryEnabled(.music) && client != nil }
-    var podcastsAvailable: Bool { podcastBackend != .none }
-    var audiobooksAvailable: Bool { categoryEnabled(.audiobooks) && abs != nil }
+    /// Libraries discovered on the connected servers, persisted so the picker
+    /// works before the next refresh.
+    private(set) var libraries: [MediaLibrary] = []
+    @ObservationIgnored private var librariesLoaded = false
+
+    private static let librariesKey = "navideck.libraries.v1"
+
+    func libraries(for category: Category) -> [MediaLibrary] {
+        let type: String
+        switch category {
+        case .music: type = "music"
+        case .podcasts: type = "podcast"
+        case .audiobooks: type = "book"
+        }
+        return libraries
+            .filter { $0.mediaType == type }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Reads music folders and Audiobookshelf libraries from every connection.
+    func refreshLibraries() async {
+        var found: [MediaLibrary] = []
+
+        for profile in servers.profiles {
+            switch profile.kind {
+            case .subsonic:
+                guard let client = servers.makeClient(for: profile) else { continue }
+                let folders = (try? await client.musicFolders()) ?? []
+                for folder in folders where !folder.id.isEmpty {
+                    found.append(MediaLibrary(
+                        serverID: profile.id,
+                        id: folder.id,
+                        name: folder.name.isEmpty ? profile.displayName : folder.name,
+                        mediaType: "music"
+                    ))
+                }
+                // Subsonic podcasts are server-wide, not per folder.
+                found.append(MediaLibrary(
+                    serverID: profile.id,
+                    id: "__server__",
+                    name: "Podcasts",
+                    mediaType: "podcast"
+                ))
+            case .audiobookshelf:
+                guard let client = servers.makeAudiobookshelfClient(for: profile) else { continue }
+                let libs = (try? await client.libraries()) ?? []
+                for library in libs {
+                    guard library.mediaType == "book" || library.mediaType == "podcast" else { continue }
+                    found.append(MediaLibrary(
+                        serverID: profile.id,
+                        id: library.id,
+                        name: library.name,
+                        mediaType: library.mediaType == "book" ? "book" : "podcast"
+                    ))
+                }
+            }
+        }
+
+        libraries = found
+        librariesLoaded = true
+        persistLibraries()
+        applySelection()
+    }
+
+    private func persistLibraries() {
+        guard let data = try? JSONEncoder().encode(libraries) else { return }
+        UserDefaults.standard.set(data, forKey: Self.librariesKey)
+    }
+
+    private func loadStoredLibraries() {
+        guard let data = UserDefaults.standard.data(forKey: Self.librariesKey),
+              let stored = try? JSONDecoder().decode([MediaLibrary].self, from: data) else { return }
+        libraries = stored
+        librariesLoaded = true
+    }
+
+    // MARK: Category resolution
+
+    struct CategorySelection {
+        var off: Bool = false
+        var library: MediaLibrary?
+        var profile: ServerProfile?
+    }
+
+    func selection(for category: Category) -> CategorySelection {
+        let raw = sourceValue(for: category)
+        if raw == "off" { return CategorySelection(off: true) }
+
+        if let library = libraries.first(where: { $0.key == raw }),
+           let profile = servers.profiles.first(where: { $0.id == library.serverID }) {
+            return CategorySelection(library: library, profile: profile)
+        }
+
+        // Automatic: first matching library on a connected server.
+        if let library = libraries(for: category).first(where: { candidate in
+            guard let profile = servers.profiles.first(where: { $0.id == candidate.serverID }) else { return false }
+            return profile.kind == .audiobookshelf ? abs != nil : client != nil
+        }), let profile = servers.profiles.first(where: { $0.id == library.serverID }) {
+            return CategorySelection(library: library, profile: profile)
+        }
+
+        return CategorySelection()
+    }
+
+    var musicAvailable: Bool {
+        let selection = selection(for: .music)
+        return !selection.off && selection.profile?.kind == .subsonic && client != nil
+    }
+
+    var audiobooksAvailable: Bool {
+        let selection = selection(for: .audiobooks)
+        return !selection.off && selection.profile?.kind == .audiobookshelf && abs != nil
+    }
 
     enum PodcastBackend { case subsonic, audiobookshelf, none }
 
-    /// Podcasts can come from the Subsonic server or from Audiobookshelf.
     var podcastBackend: PodcastBackend {
-        guard categoryEnabled(.podcasts) else { return .none }
-
-        let raw = sourceValue(for: .podcasts)
-        if let id = UUID(uuidString: raw),
-           let profile = servers.profiles.first(where: { $0.id == id }) {
-            if profile.kind == .audiobookshelf {
-                return abs != nil ? .audiobookshelf : .none
-            }
-            return client != nil ? .subsonic : .none
+        let selection = selection(for: .podcasts)
+        if selection.off { return .none }
+        switch selection.profile?.kind {
+        case .audiobookshelf: return abs != nil ? .audiobookshelf : .none
+        case .subsonic: return client != nil ? .subsonic : .none
+        case nil: return .none
         }
-        if client != nil { return .subsonic }
-        if abs != nil { return .audiobookshelf }
-        return .none
     }
 
-    private func categoryEnabled(_ category: Category) -> Bool {
-        sourceValue(for: category) != "off"
+    var podcastsAvailable: Bool { podcastBackend != .none }
+
+    /// Music folder the active Subsonic client has to restrict itself to.
+    var selectedMusicFolderID: String? {
+        let selection = selection(for: .music)
+        guard let library = selection.library,
+              library.mediaType == "music",
+              library.id != "__server__",
+              selection.profile?.id == servers.activeID else { return nil }
+        return library.id
+    }
+
+    /// Audiobookshelf libraries assigned to a category (all matching on auto).
+    func absLibraryIDs(for category: Category) -> [String] {
+        let selection = selection(for: category)
+        if let library = selection.library, selection.profile?.kind == .audiobookshelf {
+            return [library.id]
+        }
+        if selection.off { return [] }
+        return libraries(for: category)
+            .filter { library in
+                servers.profiles.first(where: { $0.id == library.serverID })?.kind == .audiobookshelf
+            }
+            .map(\.id)
+    }
+
+    /// Applies the music-library choice to the connected Subsonic client.
+    func applySelection() {
+        guard let profile = servers.active, let base = servers.makeClient(for: profile) else { return }
+        var updated = base
+        updated.musicFolderId = selectedMusicFolderID
+        if client?.musicFolderId != updated.musicFolderId || client == nil {
+            client = updated
+            player.configure(client: updated, profileID: profile.id)
+        }
     }
 
     // MARK: - Audiobookshelf
+
+    /// One entry point for the guided "add connection" flow.
+    func addConnection(
+        flavor: ServerFlavor,
+        name: String,
+        urlText: String,
+        username: String,
+        secret: String
+    ) async throws {
+        guard let url = Format.serverURL(urlText) else {
+            throw SubsonicFailure(code: -1, message: "Bitte eine gültige Server-Adresse eingeben.")
+        }
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch flavor {
+        case .navidrome, .subsonic, .subsonicLegacy:
+            let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !user.isEmpty, !secret.isEmpty else {
+                throw SubsonicFailure(code: -1, message: "Bitte Benutzername und Passwort eingeben.")
+            }
+            let candidate = SubsonicClient(
+                baseURL: url,
+                username: user,
+                password: secret,
+                auth: flavor.auth
+            )
+            try await candidate.ping()
+            let profile = servers.save(
+                baseURL: url,
+                username: user,
+                password: secret,
+                auth: flavor.auth,
+                name: trimmedName,
+                flavor: flavor
+            )
+            activate(profile, client: candidate)
+
+        case .audiobookshelf:
+            let token = secret.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else {
+                throw AudiobookshelfFailure(message: "Bitte den API-Token eingeben.")
+            }
+            let candidate = AudiobookshelfClient(baseURL: url, token: token)
+            _ = try await candidate.libraries()
+            let profile = servers.saveAudiobookshelf(baseURL: url, token: token, name: trimmedName)
+            activateAudiobookshelf(profile, client: candidate)
+        }
+    }
+
+    /// Audiobookshelf with account login instead of a token.
+    func addAudiobookshelfLogin(
+        name: String,
+        urlText: String,
+        username: String,
+        password: String
+    ) async throws {
+        guard let url = Format.serverURL(urlText) else {
+            throw AudiobookshelfFailure(message: "Bitte eine gültige Server-Adresse eingeben.")
+        }
+        let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !user.isEmpty, !password.isEmpty else {
+            throw AudiobookshelfFailure(message: "Bitte Benutzername und Passwort eingeben.")
+        }
+        let token = try await AudiobookshelfClient(baseURL: url, token: "").login(
+            username: user,
+            password: password
+        )
+        let client = AudiobookshelfClient(baseURL: url, token: token)
+        _ = try await client.libraries()
+        let profile = servers.saveAudiobookshelf(
+            baseURL: url,
+            token: token,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        activateAudiobookshelf(profile, client: client)
+    }
 
     func connectAudiobookshelf(urlText: String, token: String) async throws {
         guard let url = Format.serverURL(urlText) else {
@@ -730,8 +952,10 @@ final class AppModel {
         absError = nil
         do {
             let libraries = try await abs.libraries()
+            let selected = Set(absLibraryIDs(for: .audiobooks))
             var items: [AbsBook] = []
-            for library in libraries where library.mediaType == "book" {
+            for library in libraries where library.mediaType == "book"
+                && (selected.isEmpty || selected.contains(library.id)) {
                 if let page = try? await abs.books(libraryID: library.id, page: 0, limit: 150) {
                     items.append(contentsOf: page)
                 }
@@ -766,8 +990,10 @@ final class AppModel {
         }
         do {
             let libraries = try await abs.libraries()
+            let selected = Set(absLibraryIDs(for: .podcasts))
             var shows: [AbsBook] = []
-            for library in libraries where library.mediaType == "podcast" {
+            for library in libraries where library.mediaType == "podcast"
+                && (selected.isEmpty || selected.contains(library.id)) {
                 if let page = try? await abs.books(libraryID: library.id, page: 0, limit: 100) {
                     shows.append(contentsOf: page)
                 }
