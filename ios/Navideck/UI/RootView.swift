@@ -39,6 +39,10 @@ enum LibraryRoute: Hashable {
     case settings
     case radio
     case downloads
+    case audiobooks
+    case audiobook(AbsBook)
+    case audioSeries(String)
+    case audioAuthor(String)
 }
 
 struct MainTabs: View {
@@ -47,13 +51,13 @@ struct MainTabs: View {
     @State private var selection: Int = {
         #if DEBUG
         if let raw = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_TAB"],
-           let tab = Int(raw), (0...3).contains(tab) {
+           let tab = Int(raw), (0...4).contains(tab) {
             return tab
         }
         #endif
         return 0
     }()
-    @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 4)
+    @State private var paths: [NavigationPath] = Array(repeating: NavigationPath(), count: 5)
     /// Tabs that have been opened at least once. Their stacks stay mounted so
     /// scroll positions survive, but a tab is not loaded before its first visit.
     @State private var visitedTabs: Set<Int> = []
@@ -72,7 +76,7 @@ struct MainTabs: View {
         // and left a remnant capsule behind our custom bar. A plain switcher
         // keeps every stack alive after its first visit.
         ZStack {
-            ForEach(0..<4, id: \.self) { index in
+            ForEach(0..<5, id: \.self) { index in
                 if visitedTabs.contains(index) || selection == index {
                     stack(index) { screen(index) }
                         .opacity(selection == index ? 1 : 0)
@@ -155,6 +159,15 @@ struct MainTabs: View {
             }
             return
         }
+        if raw == "audiobook" {
+            Task {
+                await app.loadAudiobooks()
+                if let first = app.absBooks.first {
+                    paths[selection].append(LibraryRoute.audiobook(first))
+                }
+            }
+            return
+        }
         if raw == "mix" {
             Task {
                 await app.startInstantMix()
@@ -180,7 +193,8 @@ struct MainTabs: View {
         switch raw {
         case "musik": selection = 1
         case "podcasts": selection = 2
-        case "settings": selection = 3
+        case "audiobooks": selection = 3
+        case "settings": selection = 4
         case "albums": paths[selection].append(LibraryRoute.albums)
         case "artists": paths[selection].append(LibraryRoute.artists)
         case "newest": paths[selection].append(LibraryRoute.albumCollection(.newest))
@@ -201,7 +215,7 @@ struct MainTabs: View {
     private var bottomBar: some View {
         VStack(alignment: .leading, spacing: 6) {
             if navExpanded {
-                FloatingTabBar(selection: $selection) {
+                FloatingTabBar(items: menuItems, selection: $selection) {
                     closeNavigation()
                 }
                 // Grows straight up out of the Start button.
@@ -337,8 +351,19 @@ struct MainTabs: View {
         case 0: HomeView()
         case 1: MusikView()
         case 2: PodcastsView()
+        case 3: AudiobooksView()
         default: SettingsView()
         }
+    }
+
+    /// Only categories with a connected source appear in the menu.
+    private var menuItems: [(title: String, icon: String, tab: Int)] {
+        var items: [(String, String, Int)] = [("Start", "house", 0)]
+        if app.musicAvailable { items.append(("Musik", "music.note", 1)) }
+        if app.podcastsAvailable { items.append(("Podcast", "waveform", 2)) }
+        if app.audiobooksAvailable { items.append(("Hörbücher", "books.vertical", 3)) }
+        items.append(("Optionen", "slider.horizontal.3", 4))
+        return items
     }
 
     private func stack<Content: View>(
@@ -383,6 +408,14 @@ struct MainTabs: View {
             RadioView()
         case .downloads:
             DownloadsView()
+        case .audiobooks:
+            AudiobooksView()
+        case .audiobook(let book):
+            AudiobookDetailView(book: book)
+        case .audioSeries(let name):
+            AudiobookCollectionView(title: name, filter: .series(name))
+        case .audioAuthor(let name):
+            AudiobookCollectionView(title: name, filter: .author(name))
         }
     }
 }

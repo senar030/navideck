@@ -47,6 +47,11 @@ enum Keychain {
     }
 }
 
+enum ServerKind: String, Codable, Hashable, Sendable {
+    case subsonic
+    case audiobookshelf
+}
+
 struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var name: String
@@ -54,6 +59,41 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
     var username: String
     var auth: SubsonicAuth
     var addedAt: Date
+    /// Older entries have no kind and are Subsonic servers.
+    var kind: ServerKind
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, baseURL, username, auth, addedAt, kind
+    }
+
+    init(
+        id: UUID,
+        name: String,
+        baseURL: String,
+        username: String,
+        auth: SubsonicAuth,
+        addedAt: Date,
+        kind: ServerKind = .subsonic
+    ) {
+        self.id = id
+        self.name = name
+        self.baseURL = baseURL
+        self.username = username
+        self.auth = auth
+        self.addedAt = addedAt
+        self.kind = kind
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        baseURL = try c.decode(String.self, forKey: .baseURL)
+        username = try c.decode(String.self, forKey: .username)
+        auth = try c.decode(SubsonicAuth.self, forKey: .auth)
+        addedAt = try c.decode(Date.self, forKey: .addedAt)
+        kind = (try? c.decodeIfPresent(ServerKind.self, forKey: .kind)) ?? .subsonic
+    }
 
     var url: URL? { URL(string: baseURL) }
 
@@ -69,12 +109,22 @@ struct ServerProfile: Identifiable, Codable, Hashable, Sendable {
 final class ServerStore {
     private static let profilesKey = "navideck.servers.v1"
     private static let activeKey = "navideck.servers.active.v1"
+    private static let absActiveKey = "navideck.servers.abs.v1"
 
     private(set) var profiles: [ServerProfile] = []
     private(set) var activeID: UUID?
+    private(set) var absID: UUID?
 
     var active: ServerProfile? {
-        profiles.first { $0.id == activeID }
+        profiles.first { $0.id == activeID && $0.kind == .subsonic }
+    }
+
+    var activeABS: ServerProfile? {
+        profiles.first { $0.id == absID && $0.kind == .audiobookshelf }
+    }
+
+    var audiobookServers: [ServerProfile] {
+        profiles.filter { $0.kind == .audiobookshelf }
     }
 
     init() {
@@ -87,10 +137,18 @@ final class ServerStore {
            let decoded = try? JSONDecoder().decode([ServerProfile].self, from: data) {
             profiles = decoded
         }
-        if let raw = defaults.string(forKey: Self.activeKey), let id = UUID(uuidString: raw) {
-            activeID = profiles.contains(where: { $0.id == id }) ? id : profiles.first?.id
+        let subsonic = profiles.filter { $0.kind == .subsonic }
+        if let raw = defaults.string(forKey: Self.activeKey), let id = UUID(uuidString: raw),
+           subsonic.contains(where: { $0.id == id }) {
+            activeID = id
         } else {
-            activeID = profiles.first?.id
+            activeID = subsonic.first?.id
+        }
+        if let raw = defaults.string(forKey: Self.absActiveKey), let id = UUID(uuidString: raw),
+           profiles.contains(where: { $0.id == id && $0.kind == .audiobookshelf }) {
+            absID = id
+        } else {
+            absID = profiles.first(where: { $0.kind == .audiobookshelf })?.id
         }
     }
 
@@ -100,12 +158,13 @@ final class ServerStore {
             defaults.set(data, forKey: Self.profilesKey)
         }
         defaults.set(activeID?.uuidString, forKey: Self.activeKey)
+        defaults.set(absID?.uuidString, forKey: Self.absActiveKey)
     }
 
     /// Adds or updates the server for this host/account pair and returns it.
     func save(baseURL: URL, username: String, password: String, auth: SubsonicAuth) -> ServerProfile {
         let id = profiles.first {
-            $0.baseURL == baseURL.absoluteString && $0.username == username
+            $0.kind == .subsonic && $0.baseURL == baseURL.absoluteString && $0.username == username
         }?.id ?? UUID()
 
         let profile = ServerProfile(
@@ -132,6 +191,49 @@ final class ServerStore {
         Keychain.value(account: profile.id.uuidString)
     }
 
+    /// Adds or updates an Audiobookshelf server. The API token is stored in the
+    /// keychain, like a password.
+    func saveAudiobookshelf(baseURL: URL, token: String) -> ServerProfile {
+        let id = profiles.first {
+            $0.kind == .audiobookshelf && $0.baseURL == baseURL.absoluteString
+        }?.id ?? UUID()
+
+        let profile = ServerProfile(
+            id: id,
+            name: Format.host(baseURL),
+            baseURL: baseURL.absoluteString,
+            username: "audiobookshelf",
+            auth: .token,
+            addedAt: Date(),
+            kind: .audiobookshelf
+        )
+
+        if let index = profiles.firstIndex(where: { $0.id == id }) {
+            profiles[index] = profile
+        } else {
+            profiles.append(profile)
+        }
+        absID = id
+        Keychain.set(token, account: id.uuidString)
+        persist()
+        return profile
+    }
+
+    func makeAudiobookshelfClient(for profile: ServerProfile) -> AudiobookshelfClient? {
+        guard let url = profile.url, let token = password(for: profile) else { return nil }
+        return AudiobookshelfClient(baseURL: url, token: token)
+    }
+
+    func setActiveABS(_ profile: ServerProfile) {
+        absID = profile.id
+        persist()
+    }
+
+    func deactivateABS() {
+        absID = nil
+        persist()
+    }
+
     func makeClient(for profile: ServerProfile) -> SubsonicClient? {
         guard let url = profile.url, let password = password(for: profile) else { return nil }
         return SubsonicClient(
@@ -156,7 +258,10 @@ final class ServerStore {
         profiles.removeAll { $0.id == profile.id }
         Keychain.delete(account: profile.id.uuidString)
         if activeID == profile.id {
-            activeID = profiles.first?.id
+            activeID = profiles.first(where: { $0.kind == .subsonic })?.id
+        }
+        if absID == profile.id {
+            absID = profiles.first(where: { $0.kind == .audiobookshelf })?.id
         }
         persist()
     }

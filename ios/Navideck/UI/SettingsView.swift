@@ -4,6 +4,11 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var app
 
     @State private var showDisconnectConfirm = false
+    @State private var showABSAdd = false
+    @State private var absURL = ""
+    @State private var absToken = ""
+    @State private var absError: String?
+    @State private var absConnecting = false
     @State private var removeCandidate: ServerProfile?
     @State private var showDeleteDownloads = false
 
@@ -16,6 +21,8 @@ struct SettingsView: View {
             }
 
             serversSection
+            audiobookServersSection
+            sourcesSection
 
             Section("Sofortmix") {
                 Stepper(value: $prefs.mixSize, in: 5...200, step: 5) {
@@ -136,7 +143,7 @@ struct SettingsView: View {
 
     private var serversSection: some View {
         Section("Server") {
-            ForEach(app.servers.profiles) { profile in
+            ForEach(app.servers.profiles.filter { $0.kind == .subsonic }) { profile in
                 Button {
                     app.activate(profile)
                 } label: {
@@ -172,6 +179,164 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.accent)
             }
             .listRowBackground(Theme.surface)
+        }
+    }
+
+    private var audiobookServersSection: some View {
+        Section("Hörbuch-Server") {
+            if let active = app.servers.activeABS {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(active.displayName)
+                            .font(.headline)
+                            .foregroundStyle(Theme.text)
+                        Spacer()
+                        Text("Verbunden")
+                            .font(.caption)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    Text(active.baseURL)
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+                .padding(.vertical, 4)
+                .listRowBackground(Theme.surface)
+            }
+
+            ForEach(app.servers.audiobookServers) { profile in
+                Button {
+                    app.activateAudiobookshelf(profile)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.displayName)
+                                .foregroundStyle(Theme.text)
+                            Text("Audiobookshelf")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        Spacer()
+                        if profile.id == app.servers.absID {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        app.removeAudiobookshelf(profile)
+                    } label: {
+                        Label("Entfernen", systemImage: "trash")
+                    }
+                }
+            }
+            .listRowBackground(Theme.surface)
+
+            Button {
+                absURL = ""
+                absToken = ""
+                absError = nil
+                showABSAdd = true
+            } label: {
+                Label("Audiobookshelf hinzufügen", systemImage: "plus")
+                    .foregroundStyle(Theme.accent)
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .sheet(isPresented: $showABSAdd) { audiobookshelfSheet }
+    }
+
+    private var sourcesSection: some View {
+        Section("Quellen") {
+            sourceRow("Musik", category: .music, options: [.auto, .subsonic, .off])
+            sourceRow("Podcasts", category: .podcasts, options: [.auto, .subsonic, .off])
+            sourceRow("Hörbücher", category: .audiobooks, options: [.auto, .audiobookshelf, .off])
+
+            Text("Automatisch nutzt den verbundenen Server der passenden Art. Kategorien ohne Quelle werden ausgeblendet.")
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+                .listRowBackground(Theme.surface)
+        }
+    }
+
+    private func sourceRow(
+        _ title: String,
+        category: AppModel.Category,
+        options: [CategorySource]
+    ) -> some View {
+        Picker(title, selection: Binding(
+            get: { app.preference(for: category) },
+            set: { app.setPreference($0, for: category) }
+        )) {
+            ForEach(options) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    private var audiobookshelfSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Server") {
+                    TextField("https://books.example.com", text: $absURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+
+                    SecureField("API-Token", text: $absToken)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                if let absError {
+                    Section {
+                        Text(absError)
+                            .font(.caption)
+                            .foregroundStyle(Theme.danger)
+                    }
+                }
+
+                Section {
+                    Text("Den Token erzeugst du in Audiobookshelf unter Einstellungen → Benutzer → API-Token.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .navigationTitle("Audiobookshelf")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { showABSAdd = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        connectABS()
+                    } label: {
+                        if absConnecting {
+                            ProgressView()
+                        } else {
+                            Text("Verbinden")
+                        }
+                    }
+                    .disabled(absConnecting || absURL.isEmpty || absToken.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func connectABS() {
+        absConnecting = true
+        absError = nil
+        Task {
+            do {
+                try await app.connectAudiobookshelf(urlText: absURL, token: absToken)
+                await app.loadAudiobooks(force: true)
+                showABSAdd = false
+            } catch {
+                absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+            absConnecting = false
         }
     }
 

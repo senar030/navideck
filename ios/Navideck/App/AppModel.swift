@@ -15,6 +15,18 @@ final class AppModel {
     let episodeProgress = EpisodeProgressStore()
 
     private(set) var client: SubsonicClient?
+    /// Audiobookshelf connection, independent from the Subsonic server.
+    private(set) var abs: AudiobookshelfClient?
+
+    // Audiobook library cache
+    private(set) var absBooks: [AbsBook] = []
+    private(set) var absProgress: [String: AbsProgress] = [:]
+    private(set) var absLoading = false
+    var absError: String?
+    @ObservationIgnored private var absLoadedAt: Date?
+    @ObservationIgnored private var absTrackURLs: [String: URL] = [:]
+    @ObservationIgnored private var absTrackBooks: [String: (bookID: String, offset: Double, duration: Double)] = [:]
+    @ObservationIgnored private var lastABSSync = Date.distantPast
 
     /// Set by the player's menu so the active tab can push the destination.
     var pendingRoute: LibraryRoute?
@@ -53,13 +65,25 @@ final class AppModel {
             prefs?.maxBitRate ?? 0
         }
         player.progressSink = { [weak self] song, position, duration in
-            guard let self, self.episodeIDs.contains(song.id) else { return }
-            self.episodeProgress.record(id: song.id, position: position, duration: duration)
+            guard let self else { return }
+            if self.episodeIDs.contains(song.id) {
+                self.episodeProgress.record(id: song.id, position: position, duration: duration)
+                return
+            }
+            self.handleAudiobookProgress(song: song, position: position)
         }
 
         if let profile = servers.active, let client = servers.makeClient(for: profile) {
             self.client = client
             player.configure(client: client, profileID: profile.id)
+        }
+        if let profile = servers.activeABS, let client = servers.makeAudiobookshelfClient(for: profile) {
+            self.abs = client
+            player.configureAudiobookshelf()
+        }
+
+        player.externalURLResolver = { [weak self] song in
+            self?.absTrackURLs[song.id]
         }
 
         #if DEBUG
@@ -82,6 +106,27 @@ final class AppModel {
 
         if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_OFFLINE"] == "1" {
             prefs.offlineMode = true
+        }
+
+        if let absURL = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_URL"],
+           let url = URL(string: absURL) {
+            let profile = servers.saveAudiobookshelf(
+                baseURL: url,
+                token: ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_TOKEN"] ?? "demo-token"
+            )
+            if let client = servers.makeAudiobookshelfClient(for: profile) {
+                self.abs = client
+            }
+        }
+
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PLAYABS"] == "1" {
+            Task { @MainActor in
+                await loadAudiobooks()
+                if let first = absBooks.first {
+                    playAudiobook(first)
+                    player.showNowPlaying = true
+                }
+            }
         }
 
         if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SEED_DOWNLOADS"] == "1" {
@@ -497,6 +542,235 @@ final class AppModel {
         }
     }
 
+    // MARK: - Sources
+
+    enum Category: String, CaseIterable, Sendable {
+        case music
+        case podcasts
+        case audiobooks
+
+        var title: String {
+            switch self {
+            case .music: return "Musik"
+            case .podcasts: return "Podcasts"
+            case .audiobooks: return "Hörbücher"
+            }
+        }
+    }
+
+    func preference(for category: Category) -> CategorySource {
+        switch category {
+        case .music: return CategorySource(rawValue: prefs.musicSource) ?? .auto
+        case .podcasts: return CategorySource(rawValue: prefs.podcastSource) ?? .auto
+        case .audiobooks: return CategorySource(rawValue: prefs.audiobookSource) ?? .auto
+        }
+    }
+
+    func setPreference(_ source: CategorySource, for category: Category) {
+        switch category {
+        case .music: prefs.musicSource = source.rawValue
+        case .podcasts: prefs.podcastSource = source.rawValue
+        case .audiobooks: prefs.audiobookSource = source.rawValue
+        }
+    }
+
+    /// Resolves the configured preference against what is actually connected.
+    func resolvedSource(for category: Category) -> CategorySource {
+        let wants = preference(for: category)
+        switch wants {
+        case .off:
+            return .off
+        case .subsonic:
+            return client != nil ? .subsonic : .off
+        case .audiobookshelf:
+            return abs != nil ? .audiobookshelf : .off
+        case .auto:
+            switch category {
+            case .music, .podcasts:
+                return client != nil ? .subsonic : .off
+            case .audiobooks:
+                return abs != nil ? .audiobookshelf : .off
+            }
+        }
+    }
+
+    var musicAvailable: Bool { resolvedSource(for: .music) != .off }
+    var podcastsAvailable: Bool { resolvedSource(for: .podcasts) != .off }
+    var audiobooksAvailable: Bool { resolvedSource(for: .audiobooks) != .off }
+
+    // MARK: - Audiobookshelf
+
+    func connectAudiobookshelf(urlText: String, token: String) async throws {
+        guard let url = Format.serverURL(urlText) else {
+            throw AudiobookshelfFailure(message: "Bitte eine gültige Server-Adresse eingeben.")
+        }
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw AudiobookshelfFailure(message: "Bitte den API-Token eingeben.")
+        }
+        let candidate = AudiobookshelfClient(baseURL: url, token: trimmed)
+        _ = try await candidate.libraries()
+
+        let profile = servers.saveAudiobookshelf(baseURL: url, token: trimmed)
+        activateAudiobookshelf(profile, client: candidate)
+    }
+
+    func activateAudiobookshelf(_ profile: ServerProfile) {
+        guard let client = servers.makeAudiobookshelfClient(for: profile) else { return }
+        activateAudiobookshelf(profile, client: client)
+    }
+
+    private func activateAudiobookshelf(_ profile: ServerProfile, client: AudiobookshelfClient) {
+        servers.setActiveABS(profile)
+        abs = client
+        absBooks = []
+        absProgress = [:]
+        absLoadedAt = nil
+        player.configureAudiobookshelf()
+    }
+
+    func disconnectAudiobookshelf() {
+        servers.deactivateABS()
+        abs = nil
+        absBooks = []
+        absProgress = [:]
+        absLoadedAt = nil
+    }
+
+    func removeAudiobookshelf(_ profile: ServerProfile) {
+        servers.remove(profile)
+        if servers.activeABS == nil {
+            abs = nil
+            absBooks = []
+            absProgress = [:]
+        }
+    }
+
+    /// Loads all book libraries, their items and the listening progress.
+    func loadAudiobooks(force: Bool = false) async {
+        guard let abs else { return }
+        if !force, let loaded = absLoadedAt,
+           Date().timeIntervalSince(loaded) < 300, !absBooks.isEmpty {
+            return
+        }
+        absLoading = true
+        absError = nil
+        do {
+            let libraries = try await abs.libraries()
+            var items: [AbsBook] = []
+            for library in libraries where library.mediaType == "book" {
+                if let page = try? await abs.books(libraryID: library.id, page: 0, limit: 150) {
+                    items.append(contentsOf: page)
+                }
+            }
+            var seen = Set<String>()
+            absBooks = items
+                .filter { seen.insert($0.id).inserted }
+                .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+
+            let progress = (try? await abs.progress()) ?? []
+            absProgress = Dictionary(
+                progress.map { ($0.libraryItemId, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            absLoadedAt = Date()
+        } catch {
+            absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        absLoading = false
+    }
+
+    var audiobooksInProgress: [AbsBook] {
+        absBooks
+            .filter {
+                guard let progress = absProgress[$0.id] else { return false }
+                return progress.isFinished != true && progress.currentTime > 5
+            }
+            .sorted {
+                (absProgress[$0.id]?.currentTime ?? 0) > (absProgress[$1.id]?.currentTime ?? 0)
+            }
+    }
+
+    func absCoverURL(_ book: AbsBook, width: Int = 300) -> URL? {
+        abs?.coverURL(itemID: book.id, width: width)
+    }
+
+    func audiobookProgress(_ book: AbsBook) -> Double {
+        guard let progress = absProgress[book.id], progress.duration > 0 else { return 0 }
+        return min(1, max(0, progress.currentTime / progress.duration))
+    }
+
+    /// Plays a book from the saved position, or from the given time.
+    func playAudiobook(_ book: AbsBook, from time: Double? = nil) {
+        guard let abs else { return }
+        let tracks = book.media.tracks
+        guard !tracks.isEmpty else { return }
+
+        let startTime = time ?? absProgress[book.id]?.currentTime ?? 0
+        var songs: [Song] = []
+        for (index, track) in tracks.enumerated() {
+            guard let url = abs.streamURL(contentUrl: track.contentUrl) else { continue }
+            let title = tracks.count > 1
+                ? "\(book.media.metadata.title) · Teil \(index + 1)"
+                : book.media.metadata.title
+            let song = Song(
+                id: "abs:\(book.id):\(track.ino)",
+                title: title,
+                album: book.media.metadata.title,
+                artist: book.media.metadata.authorName,
+                duration: Int(track.duration.rounded()),
+                track: index + 1,
+                coverArt: "abs:\(book.id)"
+            )
+            absTrackURLs[song.id] = url
+            absTrackBooks[song.id] = (book.id, track.startOffset, track.duration)
+            songs.append(song)
+        }
+        guard !songs.isEmpty else { return }
+
+        var index = 0
+        var offset = 0.0
+        for (position, song) in songs.enumerated() {
+            guard let meta = absTrackBooks[song.id] else { continue }
+            if startTime >= meta.offset, startTime < meta.offset + meta.duration {
+                index = position
+                offset = startTime - meta.offset
+                break
+            }
+            if startTime >= meta.offset + meta.duration {
+                index = min(position + 1, songs.count - 1)
+            }
+        }
+        player.play(songs, startingAt: index, resumeAt: offset)
+    }
+
+    private func handleAudiobookProgress(song: Song, position: Double) {
+        guard let meta = absTrackBooks[song.id], let abs else { return }
+        let absolute = meta.offset + position
+        let total = absBooks.first(where: { $0.id == meta.bookID })?.media.duration ?? 0
+
+        let now = Date()
+        guard now.timeIntervalSince(lastABSSync) > 10 else { return }
+        lastABSSync = now
+
+        let finished = total > 0 && absolute >= total - 5
+        absProgress[meta.bookID] = AbsProgress(
+            libraryItemId: meta.bookID,
+            currentTime: absolute,
+            duration: total,
+            progress: total > 0 ? min(1, absolute / total) : 0,
+            isFinished: finished
+        )
+        Task {
+            await abs.pushProgress(
+                itemID: meta.bookID,
+                currentTime: absolute,
+                duration: total,
+                finished: finished
+            )
+        }
+    }
+
     // MARK: - Offline library
 
     /// Global offline switch: only downloaded content is shown while it is on.
@@ -600,6 +874,10 @@ final class AppModel {
     /// their covers without a connection.
     func artworkURL(_ id: String?, size: Int = 300) -> URL? {
         guard let id, !id.isEmpty else { return nil }
+        if id.hasPrefix("abs:") {
+            let bookID = id.split(separator: ":").dropFirst().first.map(String.init)
+            return bookID.flatMap { abs?.coverURL(itemID: $0, width: size) }
+        }
         // Offline covers are checked first (cheap) so a finished download wins
         // over a previously cached server URL.
         if let local = downloads.localCoverURL(coverArt: id) { return local }

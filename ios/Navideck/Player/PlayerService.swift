@@ -42,6 +42,8 @@ final class PlayerService {
 
     /// Lokale Dateien aus dem Download-Speicher; gesetzt vom AppModel.
     @ObservationIgnored var localURL: ((String) -> URL?)?
+    /// Direct stream URLs for sources without a Subsonic client (audiobooks).
+    @ObservationIgnored var externalURLResolver: ((Song) -> URL?)?
     /// Obergrenze fürs Streaming in kbit/s (0 = Originaldatei).
     @ObservationIgnored var streamBitRate: () -> Int = { 0 }
     /// Reports playback position so podcast episodes can be continued later.
@@ -130,6 +132,10 @@ final class PlayerService {
 
         configureRemoteCommands()
     }
+
+    /// Keeps the Subsonic queue intact; audiobooks are played through the
+    /// external URL resolver and do not need a client.
+    func configureAudiobookshelf() {}
 
     func configure(client: SubsonicClient, profileID: UUID) {
         self.client = client
@@ -390,9 +396,11 @@ final class PlayerService {
 
     /// Stream URL for a queue entry, preferring the offline file.
     private func playbackURL(for queueIndex: Int) -> URL? {
-        guard queue.indices.contains(queueIndex), let client else { return nil }
+        guard queue.indices.contains(queueIndex) else { return nil }
         let song = queue[queueIndex]
+        if let external = externalURLResolver?(song) { return external }
         if let local = localURL?(song.id) { return local }
+        guard let client else { return nil }
         return client.streamURL(id: song.id, maxBitRate: streamBitRate())
     }
 
@@ -509,7 +517,7 @@ final class PlayerService {
     }
 
     private func announceStart(to client: SubsonicClient?, song: Song) {
-        guard let client, !song.id.isEmpty else { return }
+        guard let client, !song.id.isEmpty, !song.id.hasPrefix("abs:") else { return }
         Task {
             await client.scrobble(id: song.id, submission: false)
         }
