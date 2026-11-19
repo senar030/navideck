@@ -359,11 +359,16 @@ final class PlayerService {
     }
 
     func toggleStarCurrent() {
-        guard let song = current, let client else { return }
+        toggleStar(at: index)
+    }
+
+    /// Stars or unstars one entry of the queue.
+    func toggleStar(at queueIndex: Int) {
+        guard queue.indices.contains(queueIndex), let client else { return }
+        let song = queue[queueIndex]
         let willStar = song.starred == nil
-        if queue.indices.contains(index) {
-            queue[index].starred = willStar ? ISO8601DateFormatter().string(from: Date()) : nil
-        }
+        queue[queueIndex].starred = willStar ? ISO8601DateFormatter().string(from: Date()) : nil
+
         Task {
             do {
                 if willStar {
@@ -374,8 +379,8 @@ final class PlayerService {
                 await MainActor.run { self.onFavoriteChange?() }
             } catch {
                 await MainActor.run {
-                    if self.queue.indices.contains(self.index) {
-                        self.queue[self.index].starred = willStar ? nil : song.starred
+                    if self.queue.indices.contains(queueIndex) {
+                        self.queue[queueIndex].starred = willStar ? nil : song.starred
                     }
                     self.errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 }
