@@ -237,9 +237,25 @@ struct HomeView: View {
 
     @ViewBuilder
     private func widgetView(_ widget: HomeWidget) -> some View {
+        // Offline only music downloads exist; hide the network widgets.
+        if app.offlineMode {
+            switch widget {
+            case .musicRecent, .musicNewest, .musicFrequent, .musicRandom, .downloads:
+                let albums = app.downloadedAlbums
+                if !albums.isEmpty {
+                    WidgetSection(title: widget.title, icon: widget.icon) {
+                        albumRow(albums)
+                    }
+                }
+            default:
+                EmptyView()
+            }
+        } else {
         switch widget {
         case .shortcuts:
-            WidgetSection(title: widget.title, icon: widget.icon) { shortcuts }
+            WidgetSection(title: widget.title, icon: widget.icon) {
+                QuickAccessBand()
+            }
 
         case .musicRecent:
             if !recent.isEmpty {
@@ -332,6 +348,7 @@ struct HomeView: View {
                 }
             }
         }
+        }
     }
 
     private func albumRow(_ albums: [Album]) -> some View {
@@ -421,6 +438,9 @@ struct HomeView: View {
             }
             app.homeSnapshot = snapshot
             await prefetch(snapshot)
+        } catch is CancellationError {
+            // Pull-to-refresh can cancel the previous request; not an error.
+        } catch let error as URLError where error.code == .cancelled {
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

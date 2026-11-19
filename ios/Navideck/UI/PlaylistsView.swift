@@ -67,7 +67,7 @@ struct PlaylistsView: View {
         .navigationTitle(embedded ? "" : "Playlists")
         .navideckScreen()
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarLeading) {
                 sortMenu
             }
         }

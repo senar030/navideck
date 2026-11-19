@@ -32,6 +32,8 @@ final class AppModel {
 
     /// Set by the player's menu so the active tab can push the destination.
     var pendingRoute: LibraryRoute?
+    /// Switches the visible tab, e.g. from a quick-access link on Start.
+    var pendingTab: Int?
     /// Cached home rows keep the start screen instant between visits.
     var homeSnapshot: HomeSnapshot?
     /// Podcast channels survive tab switches; without this every visit waited
@@ -138,8 +140,8 @@ final class AppModel {
             UserDefaults.standard.set(Int(section) ?? 0, forKey: "navideck.musik-section")
         }
 
-        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_OFFLINE"] == "1" {
-            prefs.offlineMode = true
+        if let offline = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_OFFLINE"] {
+            prefs.offlineMode = offline == "1"
         }
 
         if let absURL = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_ABS_URL"],
@@ -986,6 +988,8 @@ final class AppModel {
                 uniquingKeysWith: { first, _ in first }
             )
             absLoadedAt = Date()
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
         } catch {
             absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -1018,6 +1022,8 @@ final class AppModel {
                 .filter { seen.insert($0.id).inserted }
                 .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
             absPodcastsLoadedAt = Date()
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
         } catch {
             absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -1249,17 +1255,47 @@ final class AppModel {
         }
     }
 
-    /// Artists that were downloaded as a whole.
+    /// Artists the device can play offline: downloaded artist collections plus
+    /// everyone who appears on a downloaded album, playlist or song.
     var downloadedArtists: [Artist] {
-        downloads.items.compactMap { item in
-            guard item.kind == .artist else { return nil }
-            return Artist(
-                id: item.sourceID,
-                name: item.title,
-                albumCount: Set(item.songs.compactMap(\.albumId)).count,
-                coverArt: item.coverArt
-            )
+        var order: [String] = []
+        var artists: [String: Artist] = [:]
+        var albumIDs: [String: Set<String>] = [:]
+
+        func add(id: String, name: String, coverArt: String?, albumID: String?) {
+            guard !name.isEmpty else { return }
+            let key = id.isEmpty ? name.lowercased() : id
+            if artists[key] == nil {
+                artists[key] = Artist(id: key, name: name, coverArt: coverArt)
+                order.append(key)
+                albumIDs[key] = []
+            }
+            if artists[key]?.coverArt == nil, let coverArt {
+                artists[key]?.coverArt = coverArt
+            }
+            if let albumID { albumIDs[key]?.insert(albumID) }
         }
+
+        for item in downloads.items {
+            if item.kind == .artist {
+                add(id: item.sourceID, name: item.title, coverArt: item.coverArt, albumID: nil)
+            }
+            for song in item.songs {
+                add(
+                    id: song.artistId ?? "",
+                    name: song.artist ?? "",
+                    coverArt: song.coverArt ?? item.coverArt,
+                    albumID: song.albumId
+                )
+            }
+        }
+
+        return order.compactMap { key in
+            guard var artist = artists[key] else { return nil }
+            artist.albumCount = albumIDs[key]?.count ?? 0
+            return artist
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     var downloadedPlaylists: [Playlist] {

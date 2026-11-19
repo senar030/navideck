@@ -5,12 +5,33 @@ struct ArtistsView: View {
     var embedded = false
     @Environment(AppModel.self) private var app
 
+    @AppStorage("navideck.artists-layout") private var layout = "list"
+    @AppStorage("navideck.artists-ascending") private var ascending = true
     @State private var indexes: [ArtistIndex] = []
     @State private var loading = false
     @State private var errorMessage: String?
 
     var body: some View {
         ScrollView {
+            if layout == "grid" {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 16)], spacing: 20) {
+                    ForEach(sections.flatMap(\.artists)) { artist in
+                        NavigationLink(value: LibraryRoute.artist(artist)) {
+                            VStack(spacing: 8) {
+                                PersonAvatar(url: app.artworkURL(artist.coverArt, size: 240), size: 92)
+                                Text(artist.name)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(sections, id: \.name) { section in
                     Text(section.name ?? "#")
@@ -34,6 +55,7 @@ struct ArtistsView: View {
                 }
             }
             .padding(.bottom, 12)
+            }
 
             if let errorMessage {
                 ErrorBanner(message: errorMessage)
@@ -47,16 +69,43 @@ struct ArtistsView: View {
         }
         .navigationTitle(embedded ? "" : "Interpreten")
         .navideckScreen()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarLeading) {
+                Button {
+                    ascending.toggle()
+                } label: {
+                    Image(systemName: ascending ? "arrow.up" : "arrow.down")
+                }
+                .accessibilityLabel(ascending ? "A–Z" : "Z–A")
+
+                Button {
+                    layout = layout == "list" ? "grid" : "list"
+                } label: {
+                    Image(systemName: layout == "list" ? "square.grid.2x2" : "list.bullet")
+                }
+                .accessibilityLabel(layout == "list" ? "Kachelansicht" : "Listenansicht")
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
     }
 
     private var sections: [ArtistIndex] {
+        let source: [ArtistIndex]
         if app.offlineMode {
             let artists = app.downloadedArtists
-            return artists.isEmpty ? [] : [ArtistIndex(artists: artists)]
+            source = artists.isEmpty ? [] : [ArtistIndex(artists: artists)]
+        } else {
+            source = indexes
         }
-        return indexes.filter { !$0.artists.isEmpty }
+        return source
+            .filter { !$0.artists.isEmpty }
+            .map { index in
+                var sorted = index.artists.sorted {
+                    $0.name.localizedCaseInsensitiveCompare($1.name) == (ascending ? .orderedAscending : .orderedDescending)
+                }
+                return ArtistIndex(name: index.name, artists: sorted)
+            }
     }
 
     private func load() async {

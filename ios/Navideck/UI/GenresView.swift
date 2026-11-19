@@ -5,6 +5,7 @@ struct GenresView: View {
     var embedded = false
     @Environment(AppModel.self) private var app
 
+    @AppStorage("navideck.genres-ascending") private var ascending = true
     @State private var genres: [Genre] = []
     @State private var loading = false
     @State private var errorMessage: String?
@@ -74,7 +75,10 @@ struct GenresView: View {
     }
 
     private var shownGenres: [Genre] {
-        app.offlineMode ? app.downloadedGenres : genres
+        let source = app.offlineMode ? app.downloadedGenres : genres
+        return source.sorted {
+            $0.value.localizedCaseInsensitiveCompare($1.value) == (ascending ? .orderedAscending : .orderedDescending)
+        }
     }
 
     private func load() async {

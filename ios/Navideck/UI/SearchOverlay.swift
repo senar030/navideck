@@ -202,15 +202,18 @@ struct SearchOverlay: View {
             Color.clear.frame(height: 1)
         } else {
             VStack(alignment: .leading, spacing: 20) {
-                if !results.songs.isEmpty {
-                    section("Titel", count: results.songs.count, key: "songs") {
-                        let limit = expanded.contains("songs") ? results.songs.count : min(8, results.songs.count)
-                        ForEach(Array(results.songs.prefix(limit).enumerated()), id: \.element.id) { offset, song in
-                            songRow(song) {
+                if !results.artists.isEmpty {
+                    section("Künstler", count: results.artists.count, key: "artists") {
+                        let limit = expanded.contains("artists") ? results.artists.count : min(6, results.artists.count)
+                        ForEach(results.artists.prefix(limit)) { artist in
+                            Button {
                                 remember(trimmed)
-                                app.player.play(results.songs, startingAt: offset)
-                                onClose()
+                                open(.artist(artist))
+                            } label: {
+                                artistRow(artist)
+                                    .padding(.horizontal, 20)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -231,18 +234,20 @@ struct SearchOverlay: View {
                     }
                 }
 
-                if !results.artists.isEmpty {
-                    section("Interpreten", count: results.artists.count, key: "artists") {
-                        let limit = expanded.contains("artists") ? results.artists.count : min(6, results.artists.count)
-                        ForEach(results.artists.prefix(limit)) { artist in
-                            Button {
+                if !results.songs.isEmpty {
+                    section("Titel", count: results.songs.count, key: "songs") {
+                        let limit = expanded.contains("songs") ? results.songs.count : min(8, results.songs.count)
+                        ForEach(Array(results.songs.prefix(limit).enumerated()), id: \.element.id) { offset, song in
+                            songRow(song) {
                                 remember(trimmed)
-                                open(.artist(artist))
-                            } label: {
-                                artistRow(artist)
-                                    .padding(.horizontal, 20)
+                                app.player.play(results.songs, startingAt: offset)
+                                // Songs open their album as well.
+                                if let albumID = song.albumId, !albumID.isEmpty {
+                                    open(.album(Album(id: albumID, name: song.album ?? song.title, artist: song.artist)))
+                                } else {
+                                    onClose()
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -344,8 +349,7 @@ struct SearchOverlay: View {
 
     private func artistRow(_ artist: Artist) -> some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(artist.coverArt, size: 120))
-                .frame(width: 44, height: 44)
+            PersonAvatar(url: app.artworkURL(artist.coverArt, size: 160))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(artist.name)

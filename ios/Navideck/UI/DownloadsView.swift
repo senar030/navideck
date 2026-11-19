@@ -7,6 +7,7 @@ struct DownloadsView: View {
     var embedded = false
     @Environment(AppModel.self) private var app
 
+    @AppStorage("navideck.downloads-sort") private var sortRaw = "date"
     @State private var filter: DownloadKind?
     @State private var confirmDeleteAll = false
 
@@ -69,6 +70,20 @@ struct DownloadsView: View {
         .navigationTitle(embedded ? "" : "Downloads")
         .navideckScreen()
         .toolbar {
+            ToolbarItemGroup(placement: .topBarLeading) {
+                Menu {
+                    Picker("Sortierung", selection: $sortRaw) {
+                        Text("Zuletzt geladen").tag("date")
+                        Text("Name").tag("name")
+                        Text("Größe").tag("size")
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .foregroundStyle(Theme.text)
+                }
+                .accessibilityLabel("Sortierung")
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     confirmDeleteAll = true
@@ -288,7 +303,14 @@ struct DownloadsView: View {
     }
 
     private var filtered: [DownloadItem] {
-        guard let filter else { return app.downloads.items }
-        return app.downloads.items.filter { $0.kind == filter }
+        let base = filter.map { kind in app.downloads.items.filter { $0.kind == kind } } ?? app.downloads.items
+        switch sortRaw {
+        case "name":
+            return base.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case "size":
+            return base.sorted { $0.bytes > $1.bytes }
+        default:
+            return base
+        }
     }
 }

@@ -112,6 +112,12 @@ struct MainTabs: View {
         .fullScreenCover(isPresented: $player.showNowPlaying) {
             NowPlayingView()
         }
+        .onChange(of: app.pendingTab) { _, tab in
+            guard let tab else { return }
+            app.pendingTab = nil
+            closeNavigation()
+            selection = tab
+        }
         .onChange(of: app.pendingRoute) { _, route in
             guard let route else { return }
             app.pendingRoute = nil

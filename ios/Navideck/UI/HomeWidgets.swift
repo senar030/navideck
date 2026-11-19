@@ -103,6 +103,13 @@ struct HomeWidgetSettingsView: View {
                 }
 
                 Section {
+                    NavigationLink("Schnellzugriff bearbeiten") {
+                        QuickAccessSettingsView()
+                    }
+                    .listRowBackground(Theme.surface)
+                }
+
+                Section {
                     Button("Reihenfolge zurücksetzen") {
                         orderRaw = ""
                         hiddenRaw = ""

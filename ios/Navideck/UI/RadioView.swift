@@ -7,6 +7,7 @@ struct RadioView: View {
     var embedded = false
     @Environment(AppModel.self) private var app
 
+    @AppStorage("navideck.radio-ascending") private var ascending = true
     @State private var stations: [RadioStation] = []
     @State private var loading = false
     @State private var errorMessage: String?
@@ -20,7 +21,7 @@ struct RadioView: View {
                         .padding(.bottom, 8)
                 }
 
-                ForEach(Array(stations.enumerated()), id: \.element.id) { offset, station in
+                ForEach(Array(sortedStations.enumerated()), id: \.element.id) { offset, station in
                     row(station)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 6)
@@ -48,6 +49,12 @@ struct RadioView: View {
         .navideckScreen()
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private var sortedStations: [RadioStation] {
+        stations.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == (ascending ? .orderedAscending : .orderedDescending)
+        }
     }
 
     private func row(_ station: RadioStation) -> some View {

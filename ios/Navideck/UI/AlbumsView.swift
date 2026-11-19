@@ -104,7 +104,7 @@ struct AlbumsView: View {
         .navigationTitle(embedded ? "" : "Alben")
         .navideckScreen()
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarLeading) {
                 Button {
                     withAnimation(.easeOut(duration: 0.18)) {
                         layout = layout == "grid" ? "list" : "grid"

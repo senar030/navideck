@@ -169,6 +169,8 @@ struct MusikCategoryView: View {
 struct HörbücherCategoryView: View {
     @Environment(AppModel.self) private var app
     @AppStorage("navideck.hoerbuch-section") private var section = 0
+    @AppStorage("navideck.hoerbuch-sort") private var sortRaw = "added"
+    @AppStorage("navideck.hoerbuch-layout") private var layout = "grid"
     @State private var showConfig = false
 
     private let items: [CategoryBand.Item] = [
@@ -223,6 +225,27 @@ struct HörbücherCategoryView: View {
                     }
                     .accessibilityLabel("Widgets anpassen")
                 }
+            } else {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    Menu {
+                        Picker("Sortierung", selection: $sortRaw) {
+                            Text("Neu hinzugefügt").tag("added")
+                            Text("Titel").tag("title")
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .foregroundStyle(Theme.text)
+                    }
+                    .accessibilityLabel("Sortierung")
+
+                    Button {
+                        layout = layout == "grid" ? "list" : "grid"
+                    } label: {
+                        Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
+                            .foregroundStyle(Theme.text)
+                    }
+                    .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+                }
             }
         }
         .sheet(isPresented: $showConfig) {
@@ -257,9 +280,9 @@ struct HörbücherCategoryView: View {
         case 4:
             chips(values: unique(\.authorName), icon: "person") { LibraryRoute.audioAuthor($0) }
         case 5:
-            grid(Array(app.absBooks.prefix(18)))
+            grid(Array(sortedBooks.prefix(18)))
         default:
-            grid(app.absBooks)
+            grid(sortedBooks)
         }
     }
 
@@ -355,14 +378,58 @@ struct HörbücherCategoryView: View {
         }
     }
 
+    private var sortedBooks: [AbsBook] {
+        let books = app.absBooks
+        return sortRaw == "title"
+            ? books.sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
+            : books
+    }
+
+    @ViewBuilder
     private func grid(_ books: [AbsBook]) -> some View {
-        LazyVGrid(columns: columns, spacing: 22) {
-            ForEach(books) { book in
-                AudiobookCard(book: book, width: nil)
+        if layout == "list" {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
+                    NavigationLink(value: LibraryRoute.audiobook(book)) {
+                        HStack(spacing: 12) {
+                            CoverArtView(url: app.absCoverURL(book, width: 200), radius: Theme.artworkRadius)
+                                .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(book.media.metadata.title)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                Text(book.media.metadata.authorName ?? " ")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.muted)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.muted.opacity(0.7))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if offset < books.count - 1 {
+                        Divider().overlay(Theme.hairline).padding(.leading, 88)
+                    }
+                }
             }
+            .padding(.vertical, 8)
+        } else {
+            LazyVGrid(columns: columns, spacing: 22) {
+                ForEach(books) { book in
+                    AudiobookCard(book: book, width: nil)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
     }
 
     private func unique(_ key: KeyPath<AbsMetadata, String?>) -> [String] {
