@@ -1056,18 +1056,12 @@ final class AppModel {
                 }
             }
             var seen = Set<String>()
-            var unique = shows.filter { seen.insert($0.id).inserted }
-
-            // Episode lists are often missing from the collection response.
-            for index in unique.indices where unique[index].media.episodes.isEmpty {
-                if let full = try? await abs.item(id: unique[index].id),
-                   !full.media.episodes.isEmpty {
-                    unique[index] = full
-                }
-            }
-
+            let unique = shows.filter { seen.insert($0.id).inserted }
             absPodcasts = unique.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
             absPodcastsLoadedAt = Date()
+            if let progress = try? await abs.progress() {
+                seedPlayedEpisodes(from: progress)
+            }
         } catch is CancellationError {
         } catch let error as URLError where error.code == .cancelled {
         } catch {
@@ -1078,6 +1072,43 @@ final class AppModel {
     /// Episode count for list rows, even when the list omitted the episodes.
     func episodeCount(_ show: AbsBook) -> Int {
         show.media.episodes.isEmpty ? (show.media.numEpisodes ?? 0) : show.media.episodes.count
+    }
+
+    /// Loads missing episode lists with limited concurrency instead of one
+    /// request after another. `limit` caps how many shows are fetched.
+    func loadPodcastEpisodes(limit: Int? = nil) async {
+        guard let abs else { return }
+        var pending = absPodcasts.indices.filter { absPodcasts[$0].media.episodes.isEmpty }
+        if let limit { pending = Array(pending.prefix(limit)) }
+        guard !pending.isEmpty else { return }
+
+        await withTaskGroup(of: (Int, AbsBook?).self) { group in
+            var iterator = pending.makeIterator()
+            let width = min(4, pending.count)
+            for _ in 0..<width {
+                guard let index = iterator.next() else { break }
+                let showID = absPodcasts[index].id
+                group.addTask {
+                    (index, try? await abs.item(id: showID))
+                }
+            }
+            while let (index, full) = await group.next() {
+                if let full, !full.media.episodes.isEmpty,
+                   absPodcasts.indices.contains(index) {
+                    absPodcasts[index] = full
+                }
+                if let next = iterator.next() {
+                    let showID = absPodcasts[next].id
+                    group.addTask {
+                        (next, try? await abs.item(id: showID))
+                    }
+                }
+            }
+        }
+
+        if let progress = try? await abs.progress() {
+            seedPlayedEpisodes(from: progress)
+        }
     }
 
     /// Full show with episodes; list responses often omit them.
@@ -1091,6 +1122,48 @@ final class AppModel {
             absPodcasts[index] = full
         }
         return full
+    }
+
+    /// Seeds "Weiterhören" from the server progress so episodes heard on other
+    /// devices show up too.
+    private func seedPlayedEpisodes(from progress: [AbsProgress]) {
+        var changed = false
+        for entry in progress {
+            guard let episodeID = entry.episodeId,
+                  entry.isFinished != true,
+                  entry.currentTime > 3,
+                  let show = absPodcasts.first(where: { $0.id == entry.libraryItemId }),
+                  let episode = show.media.episodes.first(where: { $0.id == episodeID }),
+                  let ino = episode.audioFile?.ino, !ino.isEmpty else { continue }
+
+            let songID = "abs:\(show.id):\(ino)"
+            if let index = playedEpisodes.firstIndex(where: { $0.id == songID }) {
+                if playedEpisodes[index].position < entry.currentTime {
+                    playedEpisodes[index].position = entry.currentTime
+                    changed = true
+                }
+            } else {
+                playedEpisodes.append(
+                    PlayedEpisode(
+                        id: songID,
+                        episodeID: episode.id,
+                        showID: show.id,
+                        title: episode.title,
+                        showTitle: show.media.metadata.title,
+                        coverArt: "abs:\(show.id)",
+                        duration: entry.duration > 0 ? entry.duration : (episode.runtime ?? 0),
+                        position: entry.currentTime,
+                        updated: Date()
+                    )
+                )
+                absEpisodeIDs.insert(songID)
+                changed = true
+            }
+        }
+        if changed {
+            playedEpisodes.sort { $0.updated > $1.updated }
+            persistPlayedEpisodes()
+        }
     }
 
     // MARK: Played episodes
@@ -1349,6 +1422,7 @@ final class AppModel {
         let finished = total > 0 && absolute >= total - 5
         absProgress[meta.bookID] = AbsProgress(
             libraryItemId: meta.bookID,
+            episodeId: nil,
             currentTime: absolute,
             duration: total,
             progress: total > 0 ? min(1, absolute / total) : 0,

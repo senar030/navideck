@@ -201,8 +201,8 @@ extension WidgetConfig {
 
     static var podcasts: WidgetConfig {
         WidgetConfig(
-            orderKey: "navideck.widgets.podcasts",
-            hiddenKey: "navideck.widgets.podcasts.hidden",
+            orderKey: "navideck.widgets.podcasts.v2",
+            hiddenKey: "navideck.widgets.podcasts.v2.hidden",
             all: [
                 .init(id: "continue", title: "Weiterhören", icon: "play.circle"),
                 .init(id: "newest", title: "Neueste Folgen", icon: "sparkles"),

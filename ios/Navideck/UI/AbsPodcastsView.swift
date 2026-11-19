@@ -156,7 +156,7 @@ struct AbsPodcastShowView: View {
                     showTitle: nil,
                     summary: episode.description ?? episode.subtitle,
                     dateText: episode.publishedText,
-                    duration: episode.duration,
+                    duration: episode.runtime,
                     isCurrent: isCurrent,
                     isPlaying: app.player.isPlaying
                )

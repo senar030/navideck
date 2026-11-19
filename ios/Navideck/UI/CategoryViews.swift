@@ -653,6 +653,7 @@ struct PodcastCategoryView: View {
     private func reload() async {
         if isABS {
             await app.loadPodcasts(force: true)
+            await app.loadPodcastEpisodes(limit: 8)
         } else {
             do {
                 _ = try await app.podcasts(force: true)
@@ -729,7 +730,7 @@ struct PodcastCategoryView: View {
                                 id: item.episode.id,
                                 title: item.episode.title,
                                 subtitle: item.show.media.metadata.title,
-                                duration: item.episode.duration,
+                                duration: item.episode.runtime,
                                 coverURL: app.absCoverURL(item.show, width: 400),
                                 play: { app.playAbsEpisode(item.episode, from: item.show) }
                             )

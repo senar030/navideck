@@ -146,6 +146,7 @@ struct PodcastLatestView: View {
     private func reload() async {
         if app.podcastBackend == .audiobookshelf {
             await app.loadPodcasts(force: true)
+            await app.loadPodcastEpisodes()
         } else {
             _ = try? await app.podcasts(force: true)
         }
@@ -164,7 +165,7 @@ struct PodcastLatestView: View {
                     showTitle: show.media.metadata.title,
                     summary: episode.description ?? episode.subtitle,
                     dateText: episode.publishedText,
-                    duration: episode.duration,
+                    duration: episode.runtime,
                     isCurrent: isCurrent,
                     isPlaying: app.player.isPlaying
                )

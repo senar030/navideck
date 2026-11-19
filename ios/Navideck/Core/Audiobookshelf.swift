@@ -157,8 +157,9 @@ struct AbsAudioFile: Decodable, Hashable, Sendable {
 
 struct AbsEpisodeFile: Decodable, Hashable, Sendable {
     var ino: String
+    var duration: Double?
 
-    enum CodingKeys: String, CodingKey { case ino }
+    enum CodingKeys: String, CodingKey { case ino, duration }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -169,6 +170,7 @@ struct AbsEpisodeFile: Decodable, Hashable, Sendable {
         } else {
             ino = ""
         }
+        duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
     }
 }
 
@@ -194,6 +196,12 @@ struct AbsEpisode: Decodable, Hashable, Sendable, Identifiable {
         publishedAt = try? c.decodeIfPresent(Double.self, forKey: .publishedAt)
         duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
         audioFile = try? c.decodeIfPresent(AbsEpisodeFile.self, forKey: .audioFile)
+    }
+
+    /// Podcast episodes sometimes carry the runtime on the audio file only.
+    var runtime: Double? {
+        if let duration, duration > 0 { return duration }
+        return audioFile?.duration
     }
 
     var publishedText: String? {
@@ -269,13 +277,14 @@ private struct AbsItemsResponse: Decodable {
 
 struct AbsProgress: Decodable, Hashable, Sendable {
     var libraryItemId: String
+    var episodeId: String?
     var currentTime: Double
     var duration: Double
     var progress: Double
     var isFinished: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case libraryItemId, currentTime, duration, progress, isFinished
+        case libraryItemId, episodeId, currentTime, duration, progress, isFinished
     }
 }
 
