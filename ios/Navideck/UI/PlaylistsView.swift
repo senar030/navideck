@@ -384,24 +384,18 @@ struct PlaylistDetailView: View {
         // Sort once per body, not once per row.
         let entries = orderedEntries
 
-        return LazyVStack(spacing: 0) {
-            // Song ids repeat inside playlists, so the position is the identity.
+        return LazyVStack(spacing: 4) {
             ForEach(Array(entries.enumerated()), id: \.offset) { offset, song in
-                Button {
-                    app.player.play(entries, startingAt: offset)
-                } label: {
-                    TrackRow(
-                        song: song,
-                        number: offset + 1,
-                        isCurrent: app.player.current?.id == song.id,
-                        subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · "),
-                        downloaded: app.downloads.contains(songID: song.id),
-                        progress: app.downloads.songProgress[song.id]
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.plain)
+                SongRow(
+                    song: song,
+                    number: offset + 1,
+                    isCurrent: app.player.current?.id == song.id,
+                    subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · "),
+                    progress: app.downloads.songProgress[song.id],
+                    downloaded: app.downloads.contains(songID: song.id),
+                    onPlay: { app.player.play(entries, startingAt: offset) },
+                    onStar: { toggleStar(song: song) }
+                )
                 .contextMenu {
                     Button {
                         app.player.playNext([song])
@@ -418,24 +412,10 @@ struct PlaylistDetailView: View {
                     } label: {
                         Label("Titel herunterladen", systemImage: "arrow.down")
                     }
-                    Button {
-                        toggleStar(song: song)
-                    } label: {
-                        Label(
-                            song.starred == nil ? "Zu Favoriten" : "Aus Favoriten",
-                            systemImage: "star"
-                        )
-                    }
-                }
-
-                if offset < entries.count - 1 {
-                    Divider()
-                        .overlay(Theme.hairline)
-                        .padding(.leading, 56)
-                        .padding(.trailing, 20)
                 }
             }
         }
+        .padding(.vertical, 6)
     }
 
     private var orderedEntries: [Song] {

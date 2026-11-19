@@ -188,22 +188,18 @@ struct AlbumDetailView: View {
         // to `sortedSongs` was noticeably slow.
         let songs = sortedSongs
 
-        return LazyVStack(spacing: 0) {
+        return LazyVStack(spacing: 4) {
             ForEach(Array(songs.enumerated()), id: \.element.id) { offset, song in
-                Button {
-                    app.player.play(songs, startingAt: offset)
-                } label: {
-                    TrackRow(
-                        song: song,
-                        number: song.track ?? offset + 1,
-                        isCurrent: app.player.current?.id == song.id,
-                        downloaded: app.downloads.contains(songID: song.id),
-                        progress: app.downloads.songProgress[song.id]
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.plain)
+                SongRow(
+                    song: song,
+                    number: song.track ?? offset + 1,
+                    isCurrent: app.player.current?.id == song.id,
+                    subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · "),
+                    progress: app.downloads.songProgress[song.id],
+                    downloaded: app.downloads.contains(songID: song.id),
+                    onPlay: { app.player.play(songs, startingAt: offset) },
+                    onStar: { toggleStar(song: song) }
+                )
                 .contextMenu {
                     Button {
                         app.player.playNext([song])
@@ -229,21 +225,10 @@ struct AlbumDetailView: View {
                             systemImage: app.downloads.contains(songID: song.id) ? "trash" : "arrow.down"
                         )
                     }
-                    Button {
-                        toggleStar(song: song)
-                    } label: {
-                        Label(song.starred == nil ? "Zu Favoriten" : "Aus Favoriten", systemImage: "star")
-                    }
-                }
-
-                if offset < songs.count - 1 {
-                    Divider()
-                        .overlay(Theme.hairline)
-                        .padding(.leading, 56)
-                        .padding(.trailing, 20)
                 }
             }
         }
+        .padding(.vertical, 6)
     }
 
     private var sortedSongs: [Song] {

@@ -188,6 +188,101 @@ struct TrackRow: View {
     }
 }
 
+/// Standard song row used by album and playlist track lists (and the queue):
+/// no dividers, inset rounded highlight for the current track, a star for each
+/// entry and the same proportions everywhere.
+struct SongRow: View {
+    let song: Song
+    var number: Int?
+    var isCurrent: Bool = false
+    var subtitle: String?
+    /// Download progress ring while the song is being saved.
+    var progress: Double?
+    var downloaded: Bool = false
+    var showsCover: Bool = false
+    var coverURL: URL?
+    var onPlay: () -> Void
+    var onStar: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: onPlay) {
+                HStack(spacing: 12) {
+                    if showsCover, let coverURL {
+                        CoverArtView(url: coverURL, radius: 8)
+                            .frame(width: 44, height: 44)
+                    } else {
+                        ZStack {
+                            if isCurrent {
+                                Image(systemName: "waveform")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(Theme.accent)
+                            } else if let number {
+                                Text("\(number)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+                        .frame(width: 26)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(song.title)
+                            .font(.body.weight(isCurrent ? .semibold : .regular))
+                            .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
+                            .lineLimit(1)
+                        if let subtitle, !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    Spacer(minLength: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if let progress, progress < 0.999 {
+                DownloadRing(progress: progress)
+                    .frame(width: 20, height: 20)
+                    .frame(width: 32, height: 36)
+            } else if downloaded || progress != nil {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 32, height: 36)
+            }
+
+            Button(action: onStar) {
+                Image(systemName: song.starred != nil ? "star.fill" : "star")
+                    .font(.system(size: 15))
+                    .foregroundStyle(song.starred != nil ? Theme.accent : Theme.muted)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(song.starred != nil ? "Aus Favoriten" : "Zu Favoriten")
+
+            Text(song.durationText)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(Theme.muted)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background {
+            if isCurrent {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Theme.surface)
+            }
+        }
+        .padding(.horizontal, 14)
+        .contentShape(Rectangle())
+    }
+}
+
 struct AlbumCard: View {
     let album: Album
     @Environment(AppModel.self) private var app
