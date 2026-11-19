@@ -195,7 +195,7 @@ struct AlbumCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.album(album)) {
             VStack(alignment: .leading, spacing: 6) {
-                CoverArtView(url: app.artworkURL(album.coverArt), radius: Theme.artworkRadius)
+                CoverArtView(url: app.artworkURL(album.coverArt))
                     .aspectRatio(1, contentMode: .fit)
                     .overlay(alignment: .bottomTrailing) {
                         if app.downloads.item(kind: .album, sourceID: album.id) != nil {
@@ -243,7 +243,7 @@ struct AlbumRowContent: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(album.coverArt, size: 200), radius: Theme.artworkRadius)
+            CoverArtView(url: app.artworkURL(album.coverArt, size: 200))
                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -324,7 +324,7 @@ struct PlaylistRow: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.playlist(playlist)) {
             HStack(spacing: 12) {
-                CoverArtView(url: app.artworkURL(playlist.coverArt, size: 200), radius: Theme.artworkRadius)
+                CoverArtView(url: app.artworkURL(playlist.coverArt, size: 200))
                     .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                 VStack(alignment: .leading, spacing: 3) {

@@ -238,7 +238,7 @@ struct PlaylistDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.artworkURL(playlist.coverArt, size: 700), radius: 16, maxPixel: 1000)
+            CoverArtView(url: app.artworkURL(playlist.coverArt, size: 700), maxPixel: 1000)
                 .frame(width: 200, height: 200)
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
 
@@ -416,6 +416,14 @@ struct PlaylistDetailView: View {
                     } label: {
                         Label("Titel herunterladen", systemImage: "arrow.down")
                     }
+                    Button {
+                        toggleStar(song: song)
+                    } label: {
+                        Label(
+                            song.starred == nil ? "Zu Favoriten" : "Aus Favoriten",
+                            systemImage: "star"
+                        )
+                    }
                 }
 
                 if offset < entries.count - 1 {
@@ -450,6 +458,21 @@ struct PlaylistDetailView: View {
     private var isPlaying: Bool {
         guard let current = app.player.current else { return false }
         return app.player.isPlaying && playlist.entries.contains { $0.id == current.id }
+    }
+
+    /// Song favourites also work from playlist rows.
+    private func toggleStar(song: Song) {
+        guard let client = app.client,
+              let index = playlist.entries.firstIndex(where: { $0.id == song.id }) else { return }
+        let willStar = song.starred == nil
+        playlist.entries[index].starred = willStar ? ISO8601DateFormatter().string(from: Date()) : nil
+        Task {
+            if willStar {
+                try? await client.star(id: song.id)
+            } else {
+                try? await client.unstar(id: song.id)
+            }
+        }
     }
 
     private func load() async {

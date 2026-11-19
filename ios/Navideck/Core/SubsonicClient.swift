@@ -120,9 +120,18 @@ struct SubsonicClient: Sendable {
         }
     }
 
+    /// Endpoints that accept a music folder filter. Sending it elsewhere made
+    /// some servers reject requests (e.g. starring a song).
+    private static let folderScopedMethods: Set<String> = [
+        "getAlbumList", "getAlbumList2", "getArtists", "getIndexes",
+        "getGenres", "getSongsByGenre", "getRandomSongs", "search2", "search3",
+        "getStarred", "getStarred2", "getMusicDirectory",
+    ]
+
     private func request(_ method: String, _ extra: [String: String] = [:]) async throws -> SubsonicResponse {
         var parameters = extra
-        if let musicFolderId, parameters["musicFolderId"] == nil {
+        if let musicFolderId, Self.folderScopedMethods.contains(method),
+           parameters["musicFolderId"] == nil {
             parameters["musicFolderId"] = musicFolderId
         }
         guard let url = url(for: method, extra: parameters) else {
