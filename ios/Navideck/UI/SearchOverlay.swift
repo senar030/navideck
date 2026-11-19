@@ -295,12 +295,12 @@ struct SearchOverlay: View {
 
         return Button(action: play) {
             HStack(spacing: 12) {
-                CoverArtView(url: app.artworkURL(song.coverArt, size: 160))
-                    .frame(width: 44, height: 44)
+                CoverArtView(url: app.artworkURL(song.coverArt, size: 200), radius: Theme.artworkRadius)
+                    .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
-                        .font(.subheadline.weight(isCurrent ? .semibold : .regular))
+                        .font(.body.weight(isCurrent ? .semibold : .regular))
                         .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
                         .lineLimit(1)
                     Text([song.artist, song.album]

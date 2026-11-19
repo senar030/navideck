@@ -221,8 +221,11 @@ struct DownloadsView: View {
 
     private func rowContent(_ item: DownloadItem) -> some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
-                .frame(width: 52, height: 52)
+            CoverArtView(
+                url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt),
+                radius: Theme.artworkRadius
+            )
+            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: item.kind.symbol)
                         .font(.system(size: 8, weight: .semibold))

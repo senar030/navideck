@@ -148,13 +148,13 @@ struct AbsPodcastShowView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(episode.title)
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     Text(meta(episode))
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(Theme.muted)
                         .lineLimit(1)
                 }

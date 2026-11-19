@@ -428,33 +428,37 @@ struct AudiobookDetailView: View {
                             Text("\(offset + 1)")
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(Theme.muted)
-                                .frame(width: 24, alignment: .trailing)
+                                .frame(width: 26, alignment: .trailing)
 
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 3) {
                                 Text(chapter.title)
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundStyle(Theme.text)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                 Text(Format.duration(chapter.start))
-                                    .font(.caption2.monospacedDigit())
+                                    .font(.caption.monospacedDigit())
                                     .foregroundStyle(Theme.muted)
                             }
 
                             Spacer(minLength: 8)
+
+                            Text(Format.duration(max(0, chapter.end - chapter.start)))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Theme.muted)
 
                             Image(systemName: "play.fill")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.muted)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 6)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
 
                     if offset < chapters.count - 1 {
-                        Divider().overlay(Theme.hairline).padding(.leading, 56)
+                        Divider().overlay(Theme.hairline).padding(.leading, 54)
                     }
                 }
             }
