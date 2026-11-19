@@ -138,6 +138,7 @@ struct SubsonicClient: Sendable {
         do {
             (data, response) = try await Self.session.data(for: request)
         } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
             throw SubsonicFailure(code: -1, message: Self.message(for: error))
         } catch {
             throw SubsonicFailure(code: -1, message: error.localizedDescription)

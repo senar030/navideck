@@ -384,6 +384,7 @@ struct HomeView: View {
     // MARK: - Loading
 
     private func load(force: Bool = false) async {
+        errorMessage = nil
         if app.offlineMode {
             let downloaded = app.downloadedAlbums
             let ids = Set(downloaded.map(\.id))

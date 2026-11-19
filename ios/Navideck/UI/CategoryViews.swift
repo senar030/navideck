@@ -52,6 +52,7 @@ struct MusikCategoryView: View {
     @State private var newest: [Album] = []
     @State private var frequent: [Album] = []
     @State private var random: [Album] = []
+    @State private var overviewLoading = false
     @State private var showConfig = false
 
     private let items: [CategoryBand.Item] = [
@@ -121,7 +122,7 @@ struct MusikCategoryView: View {
             )
             .padding(.vertical, 10)
 
-            if recent.isEmpty && newest.isEmpty && frequent.isEmpty && random.isEmpty {
+            if overviewLoading && recent.isEmpty && newest.isEmpty && frequent.isEmpty && random.isEmpty {
                 ProgressView("Bibliothek wird geladen …")
                     .tint(Theme.accent)
                     .foregroundStyle(Theme.muted)
@@ -132,15 +133,19 @@ struct MusikCategoryView: View {
     }
 
     private func loadOverview(force: Bool = false) async {
-        guard !app.offlineMode, let client = app.client else {
-            apply(app.homeSnapshot)
+        if app.offlineMode {
+            // Offline the downloads widget already lists what is available.
+            apply(nil)
             return
         }
+        guard let client = app.client else { return }
         if !force, let snapshot = app.homeSnapshot, snapshot.isFresh {
             apply(snapshot)
             return
         }
-        guard recent.isEmpty, newest.isEmpty, frequent.isEmpty, random.isEmpty else { return }
+        guard !overviewLoading else { return }
+        overviewLoading = true
+        defer { overviewLoading = false }
         do {
             async let r = client.albumList(.recent, size: 12)
             async let n = client.albumList(.newest, size: 12)
@@ -150,13 +155,21 @@ struct MusikCategoryView: View {
             let snapshot = HomeSnapshot(newest: result.1, recent: result.0, frequent: result.2, random: result.3)
             app.homeSnapshot = snapshot
             apply(snapshot)
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
         } catch {
             // Widgets stay empty; the sections below still work.
         }
     }
 
     private func apply(_ snapshot: HomeSnapshot?) {
-        guard let snapshot else { return }
+        guard let snapshot else {
+            recent = []
+            newest = []
+            frequent = []
+            random = []
+            return
+        }
         recent = snapshot.recent
         newest = snapshot.newest
         frequent = snapshot.frequent

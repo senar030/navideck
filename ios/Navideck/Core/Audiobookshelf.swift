@@ -345,6 +345,7 @@ struct AudiobookshelfClient: Sendable {
         do {
             (data, response) = try await Self.session.data(for: request)
         } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
             throw AudiobookshelfFailure(message: Self.message(for: error, url: baseURL))
         } catch {
             throw AudiobookshelfFailure(message: error.localizedDescription)
@@ -436,6 +437,7 @@ struct AudiobookshelfClient: Sendable {
         do {
             (data, response) = try await Self.session.data(for: request)
         } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
             throw AudiobookshelfFailure(message: Self.message(for: error, url: baseURL))
         } catch {
             throw AudiobookshelfFailure(message: error.localizedDescription)
