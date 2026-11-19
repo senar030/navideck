@@ -548,7 +548,7 @@ struct HörbücherCategoryView: View {
 struct PodcastCategoryView: View {
     @Environment(AppModel.self) private var app
     @AppStorage("navideck.podcast-section") private var section = 0
-    @AppStorage("navideck.podcast-sort") private var sortRaw = "newest"
+    @AppStorage("navideck.podcast-sort") private var sortRaw = "title"
     @State private var showConfig = false
     @State private var loadError: String?
 
@@ -655,33 +655,236 @@ struct PodcastCategoryView: View {
     private var overview: some View {
         VStack(alignment: .leading, spacing: 26) {
             ForEach(WidgetConfig.podcasts.visible(defaults: [])) { entry in
-                if entry.id == "shows" {
-                    let shows = isABS ? Array(app.absPodcasts.prefix(12)) : []
-                    if !shows.isEmpty {
-                        WidgetSection(title: entry.title, icon: entry.icon) {
-                            showsRow(shows)
-                        }
-                    }
-                } else if entry.id == "newest" {
-                    if isABS {
-                        let shows = Array(app.absPodcasts.prefix(12))
-                        if !shows.isEmpty {
-                            WidgetSection(title: entry.title, icon: entry.icon) {
-                                showsRow(shows)
-                            }
-                        }
-                    } else {
-                        let episodes = Array((app.podcastSnapshot?.newest ?? []).prefix(8))
-                        if !episodes.isEmpty {
-                            WidgetSection(title: entry.title, icon: entry.icon) {
-                                episodesRow(episodes)
-                            }
-                        }
-                    }
+                switch entry.id {
+                case "continue":
+                    continueWidget(entry)
+                case "newest":
+                    latestWidget(entry)
+                default:
+                    showsWidget(entry)
                 }
             }
         }
         .padding(.vertical, 10)
+    }
+
+    // MARK: Widgets
+
+    @ViewBuilder
+    private func continueWidget(_ entry: WidgetConfigView.Entry) -> some View {
+        let rows = continueItems
+        if !rows.isEmpty {
+            WidgetSection(title: entry.title, icon: entry.icon) {
+                VStack(spacing: 0) {
+                    ForEach(rows) { row in
+                        Button {
+                            if let played = row.played {
+                                app.resumePodcastEpisode(played)
+                            } else if let episode = row.episode {
+                                app.playEpisodes([episode])
+                            }
+                        } label: {
+                            EpisodeRowContent(
+                                title: row.title,
+                                showTitle: row.showTitle,
+                                summary: row.summary,
+                                dateText: row.dateText,
+                                duration: row.duration,
+                                progress: row.progress,
+                                isCurrent: row.isCurrent,
+                                isPlaying: app.player.isPlaying
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func latestWidget(_ entry: WidgetConfigView.Entry) -> some View {
+        if isABS {
+            let rows = Array(app.podcastLatest.prefix(6))
+            if !rows.isEmpty {
+                WidgetSection(title: entry.title, icon: entry.icon) {
+                    VStack(spacing: 0) {
+                        ForEach(rows, id: \.episode.id) { item in
+                            Button {
+                                app.playAbsEpisode(item.episode, from: item.show)
+                            } label: {
+                                EpisodeRowContent(
+                                    title: item.episode.title,
+                                    showTitle: item.show.media.metadata.title,
+                                    summary: item.episode.description ?? item.episode.subtitle,
+                                    dateText: item.episode.publishedText,
+                                    duration: item.episode.duration
+                                )
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        NavigationLink(value: LibraryRoute.podcastLatest) {
+                            Text("Alle neuen Folgen")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        } else {
+            let episodes = Array((app.podcastSnapshot?.newest ?? []).prefix(6))
+            if !episodes.isEmpty {
+                WidgetSection(title: entry.title, icon: entry.icon) {
+                    VStack(spacing: 0) {
+                        ForEach(episodes) { episode in
+                            Button {
+                                app.playEpisodes([episode])
+                            } label: {
+                                EpisodeRowContent(
+                                    title: episode.title,
+                                    showTitle: episode.artist,
+                                    summary: episode.description,
+                                    dateText: episode.publishedText,
+                                    duration: episode.duration.map(Double.init),
+                                    progress: app.episodeProgress.progress(for: episode.playableID).map {
+                                        $0.duration > 0 ? $0.position / $0.duration : 0
+                                    }
+                                )
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        NavigationLink(value: LibraryRoute.podcastLatest) {
+                            Text("Alle neuen Folgen")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func showsWidget(_ entry: WidgetConfigView.Entry) -> some View {
+        if isABS {
+            let shows = app.absPodcasts.sorted {
+                $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
+            }
+            if !shows.isEmpty {
+                WidgetSection(title: entry.title, icon: entry.icon) {
+                    showsRow(Array(shows.prefix(12)))
+                }
+            }
+        } else {
+            let channels = sortedChannels
+            if !channels.isEmpty {
+                WidgetSection(title: entry.title, icon: entry.icon) {
+                    channelsRow(Array(channels.prefix(12)))
+                }
+            }
+        }
+    }
+
+    private struct ContinueRow: Identifiable {
+        let id: String
+        let title: String
+        let showTitle: String?
+        let summary: String?
+        let dateText: String?
+        let duration: Double?
+        let progress: Double?
+        let isCurrent: Bool
+        let played: PlayedEpisode?
+        let episode: PodcastEpisode?
+    }
+
+    private var continueItems: [ContinueRow] {
+        if isABS {
+            return app.podcastContinue.prefix(6).map { played in
+                let show = app.absPodcasts.first { $0.id == played.showID }
+                let episode = show?.media.episodes.first { $0.id == played.episodeID }
+                return ContinueRow(
+                    id: played.id,
+                    title: played.title,
+                    showTitle: played.showTitle,
+                    summary: episode?.description ?? episode?.subtitle,
+                    dateText: episode?.publishedText,
+                    duration: played.duration,
+                    progress: played.progress,
+                    isCurrent: app.player.current?.id == played.id,
+                    played: played,
+                    episode: nil
+                )
+            }
+        }
+
+        let episodes = (app.podcastSnapshot?.channels ?? [])
+            .flatMap(\.episodes)
+            .filter { episode in
+                guard let progress = app.episodeProgress.progress(for: episode.playableID) else { return false }
+                return progress.duration > 0 && progress.position < progress.duration - 5
+            }
+            .sorted { left, right in
+                (app.episodeProgress.progress(for: left.playableID)?.updated ?? .distantPast)
+                    > (app.episodeProgress.progress(for: right.playableID)?.updated ?? .distantPast)
+            }
+        return episodes.prefix(6).map { episode in
+            let progress = app.episodeProgress.progress(for: episode.playableID)
+            return ContinueRow(
+                id: episode.playableID,
+                title: episode.title,
+                showTitle: episode.artist,
+                summary: episode.description,
+                dateText: episode.publishedText,
+                duration: episode.duration.map(Double.init),
+                progress: progress.map { $0.duration > 0 ? $0.position / $0.duration : 0 },
+                isCurrent: app.player.current?.id == episode.playableID,
+                played: nil,
+                episode: episode
+            )
+        }
+    }
+
+    private func channelsRow(_ channels: [PodcastChannel]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(channels) { channel in
+                    NavigationLink {
+                        PodcastChannelView(channel: channel)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            CoverArtView(url: app.artworkURL(channel.coverArt, size: 300), radius: Theme.artworkRadius)
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(width: Theme.cardWidth)
+                            Text(channel.title)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(2)
+                            Text("\(channel.episodes.count) Folgen")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .frame(width: Theme.cardWidth, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
     }
 
     private func showsRow(_ shows: [AbsBook]) -> some View {

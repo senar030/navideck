@@ -50,6 +50,11 @@ final class AppModel {
     var mixError: String?
     /// Bumped whenever a favourite changed, so lists can refresh themselves.
     var favoritesRevision = 0
+    /// Episodes played from Audiobookshelf, newest first.
+    private(set) var playedEpisodes: [PlayedEpisode] = []
+    @ObservationIgnored private var absEpisodeIDs: Set<String> = []
+    @ObservationIgnored private var lastEpisodeSync = Date.distantPast
+    private static let playedEpisodesKey = "navideck.played-episodes.v1"
 
     var isConnected: Bool { client != nil }
 
@@ -80,6 +85,10 @@ final class AppModel {
                 self.episodeProgress.record(id: song.id, position: position, duration: duration)
                 return
             }
+            if self.absEpisodeIDs.contains(song.id) {
+                self.updatePlayedEpisode(song: song, position: position, duration: duration)
+                return
+            }
             self.handleAudiobookProgress(song: song, position: position)
         }
 
@@ -101,6 +110,7 @@ final class AppModel {
 
         loadStoredLibraries()
         applySelection()
+        loadPlayedEpisodes()
 
         if libraries.isEmpty, !servers.profiles.isEmpty {
             Task { @MainActor in
@@ -1046,9 +1056,17 @@ final class AppModel {
                 }
             }
             var seen = Set<String>()
-            absPodcasts = shows
-                .filter { seen.insert($0.id).inserted }
-                .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+            var unique = shows.filter { seen.insert($0.id).inserted }
+
+            // Episode lists are often missing from the collection response.
+            for index in unique.indices where unique[index].media.episodes.isEmpty {
+                if let full = try? await abs.item(id: unique[index].id),
+                   !full.media.episodes.isEmpty {
+                    unique[index] = full
+                }
+            }
+
+            absPodcasts = unique.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
             absPodcastsLoadedAt = Date()
         } catch is CancellationError {
         } catch let error as URLError where error.code == .cancelled {
@@ -1075,6 +1093,91 @@ final class AppModel {
         return full
     }
 
+    // MARK: Played episodes
+
+    private func loadPlayedEpisodes() {
+        guard let data = UserDefaults.standard.data(forKey: Self.playedEpisodesKey),
+              let stored = try? JSONDecoder().decode([PlayedEpisode].self, from: data) else { return }
+        playedEpisodes = stored
+        absEpisodeIDs = Set(stored.map(\.id))
+    }
+
+    private func persistPlayedEpisodes() {
+        guard let data = try? JSONEncoder().encode(playedEpisodes) else { return }
+        UserDefaults.standard.set(data, forKey: Self.playedEpisodesKey)
+    }
+
+    private func markEpisodePlayed(_ episode: AbsEpisode, show: AbsBook, songID: String) {
+        absEpisodeIDs.insert(songID)
+        if let index = playedEpisodes.firstIndex(where: { $0.id == songID }) {
+            playedEpisodes[index].updated = Date()
+        } else {
+            playedEpisodes.insert(
+                PlayedEpisode(
+                    id: songID,
+                    episodeID: episode.id,
+                    showID: show.id,
+                    title: episode.title,
+                    showTitle: show.media.metadata.title,
+                    coverArt: "abs:\(show.id)",
+                    duration: episode.duration ?? 0,
+                    position: 0,
+                    updated: Date()
+                ),
+                at: 0
+            )
+        }
+        playedEpisodes.sort { $0.updated > $1.updated }
+        persistPlayedEpisodes()
+    }
+
+    private func updatePlayedEpisode(song: Song, position: Double, duration: Double) {
+        guard let index = playedEpisodes.firstIndex(where: { $0.id == song.id }) else { return }
+        playedEpisodes[index].position = position
+        playedEpisodes[index].duration = max(playedEpisodes[index].duration, duration)
+        playedEpisodes[index].updated = Date()
+        persistPlayedEpisodes()
+
+        let now = Date()
+        guard now.timeIntervalSince(lastEpisodeSync) > 10 else { return }
+        lastEpisodeSync = now
+        guard let abs else { return }
+        let entry = playedEpisodes[index]
+        Task {
+            await abs.pushProgress(
+                itemID: entry.showID,
+                currentTime: position,
+                duration: entry.duration,
+                finished: entry.isFinished,
+                episodeID: entry.episodeID
+            )
+        }
+    }
+
+    /// Episodes that were started but not finished, most recent first.
+    var podcastContinue: [PlayedEpisode] {
+        playedEpisodes.filter { !$0.isFinished && $0.position > 3 }
+    }
+
+    /// All Audiobookshelf episodes, newest first.
+    var podcastLatest: [(show: AbsBook, episode: AbsEpisode)] {
+        absPodcasts
+            .flatMap { show in show.media.episodes.map { (show, $0) } }
+            .sorted { ($0.1.publishedAt ?? 0) > ($1.1.publishedAt ?? 0) }
+    }
+
+    /// Resumes an episode from the local continue list.
+    func resumePodcastEpisode(_ entry: PlayedEpisode) {
+        guard let show = absPodcasts.first(where: { $0.id == entry.showID }),
+              let episode = show.media.episodes.first(where: { $0.id == entry.episodeID }) else {
+            return
+        }
+        playAbsEpisode(episode, from: show)
+        if entry.position > 3 {
+            player.seek(to: entry.position)
+        }
+    }
+
     /// Plays one Audiobookshelf podcast episode.
     func playAbsEpisode(_ episode: AbsEpisode, from show: AbsBook) {
         guard let abs, let ino = episode.audioFile?.ino, !ino.isEmpty else {
@@ -1099,6 +1202,7 @@ final class AppModel {
             duration: episode.duration.map { Int($0.rounded()) },
             coverArt: "abs:\(show.id)"
         )
+        markEpisodePlayed(episode, show: show, songID: songID)
         player.play([song])
     }
 
@@ -1535,6 +1639,22 @@ final class AppModel {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
         return "\(version ?? "1.0") (\(build ?? "1"))"
     }
+}
+
+/// A podcast episode that was played on this device, used for "Weiterhören".
+struct PlayedEpisode: Codable, Hashable, Identifiable {
+    var id: String          // player song id
+    var episodeID: String
+    var showID: String
+    var title: String
+    var showTitle: String
+    var coverArt: String?
+    var duration: Double
+    var position: Double
+    var updated: Date
+
+    var isFinished: Bool { duration > 0 && position >= duration - 5 }
+    var progress: Double { duration > 0 ? min(1, position / duration) : 0 }
 }
 
 /// The start screen rows, kept so returning to it does not reload everything.

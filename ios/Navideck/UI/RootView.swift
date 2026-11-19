@@ -40,6 +40,8 @@ enum LibraryRoute: Hashable {
     case radio
     case downloads
     case audiobooks
+    case podcastLatest
+    case podcastDownloads
     case audiobook(AbsBook)
     case audioSeries(String)
     case audioAuthor(String)
@@ -416,6 +418,10 @@ struct MainTabs: View {
             DownloadsView()
         case .audiobooks:
             AudiobooksView()
+        case .podcastLatest:
+            PodcastLatestView()
+        case .podcastDownloads:
+            PodcastDownloadsView()
         case .audiobook(let book):
             AudiobookDetailView(book: book)
         case .audioSeries(let name):

@@ -45,6 +45,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
         subtitle = try? c.decodeIfPresent(String.self, forKey: .subtitle)
+        description = try? c.decodeIfPresent(String.self, forKey: .description)
         authorName = try? c.decodeIfPresent(String.self, forKey: .authorName)
         narratorName = try? c.decodeIfPresent(String.self, forKey: .narratorName)
         seriesName = try? c.decodeIfPresent(String.self, forKey: .seriesName)
@@ -175,12 +176,13 @@ struct AbsEpisode: Decodable, Hashable, Sendable, Identifiable {
     var id: String
     var title: String
     var subtitle: String?
+    var description: String?
     var publishedAt: Double?
     var duration: Double?
     var audioFile: AbsEpisodeFile?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, subtitle, publishedAt, duration, audioFile
+        case id, title, subtitle, description, publishedAt, duration, audioFile
     }
 
     init(from decoder: Decoder) throws {
@@ -188,6 +190,7 @@ struct AbsEpisode: Decodable, Hashable, Sendable, Identifiable {
         id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
         subtitle = try? c.decodeIfPresent(String.self, forKey: .subtitle)
+        description = try? c.decodeIfPresent(String.self, forKey: .description)
         publishedAt = try? c.decodeIfPresent(Double.self, forKey: .publishedAt)
         duration = try? c.decodeIfPresent(Double.self, forKey: .duration)
         audioFile = try? c.decodeIfPresent(AbsEpisodeFile.self, forKey: .audioFile)
@@ -470,19 +473,26 @@ struct AudiobookshelfClient: Sendable {
         return response.mediaProgress ?? []
     }
 
-    func pushProgress(itemID: String, currentTime: Double, duration: Double, finished: Bool) async {
+    func pushProgress(
+        itemID: String,
+        currentTime: Double,
+        duration: Double,
+        finished: Bool,
+        episodeID: String? = nil
+    ) async {
         guard let url = url("api/me/progress/\(itemID)") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let progress = duration > 0 ? min(1, max(0, currentTime / duration)) : 0
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "currentTime": currentTime,
             "duration": duration,
             "progress": progress,
             "isFinished": finished,
         ]
+        if let episodeID { body["episodeId"] = episodeID }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         _ = try? await Self.session.data(for: request)
     }

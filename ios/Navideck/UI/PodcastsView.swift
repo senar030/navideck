@@ -475,6 +475,14 @@ struct PodcastChannelView: View {
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
+                        if let description = episode.description, !description.isEmpty {
+                            Text(description)
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+
                         Text(metaText(episode))
                             .font(.caption2)
                             .foregroundStyle(Theme.muted)

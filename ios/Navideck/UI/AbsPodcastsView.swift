@@ -147,41 +147,25 @@ struct AbsPodcastShowView: View {
         let songID = "abs:\(show.id):\(episode.audioFile?.ino ?? "")"
         let isCurrent = app.player.current?.id == songID
 
-        return Button {
-            app.playAbsEpisode(episode, from: show)
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: isCurrent && app.player.isPlaying ? "waveform" : "play.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isCurrent ? Theme.accent : Theme.muted.opacity(0.8))
-                    .frame(width: 22, height: 22)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(episode.title)
-                        .font(.body)
-                        .foregroundStyle(isCurrent ? Theme.accent : Theme.text)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    Text(meta(episode))
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                if let duration = episode.duration, duration > 0 {
-                    Text(Format.duration(duration))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(Theme.muted)
-                }
-
-                episodeDownloadButton(episode)
+        return HStack(spacing: 10) {
+            Button {
+                app.playAbsEpisode(episode, from: show)
+            } label: {
+                EpisodeRowContent(
+                    title: episode.title,
+                    showTitle: nil,
+                    summary: episode.description ?? episode.subtitle,
+                    dateText: episode.publishedText,
+                    duration: episode.duration,
+                    isCurrent: isCurrent,
+                    isPlaying: app.player.isPlaying
+                )
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            episodeDownloadButton(episode)
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

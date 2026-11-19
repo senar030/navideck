@@ -3,7 +3,7 @@ import SwiftUI
 /// All sub-sections of all categories, as a configurable band on the Start page.
 enum QuickLink: String, CaseIterable, Identifiable {
     case albums, artists, genres, playlists, favorites, radio, downloads
-    case audiobooks, series, authors, podcasts, newestPodcasts
+    case audiobooks, series, authors, podcasts, newestPodcasts, podcastDownloads
 
     var id: String { rawValue }
 
@@ -21,6 +21,7 @@ enum QuickLink: String, CaseIterable, Identifiable {
         case .authors: return "Autoren"
         case .podcasts: return "Podcasts"
         case .newestPodcasts: return "Neueste Folgen"
+        case .podcastDownloads: return "Podcast-Downloads"
         }
     }
 
@@ -38,6 +39,7 @@ enum QuickLink: String, CaseIterable, Identifiable {
         case .authors: return "person"
         case .podcasts: return "waveform"
         case .newestPodcasts: return "sparkles"
+        case .podcastDownloads: return "arrow.down.circle"
         }
     }
 
@@ -50,6 +52,8 @@ enum QuickLink: String, CaseIterable, Identifiable {
         case .favorites: return .favorites
         case .radio: return .radio
         case .downloads: return .downloads
+        case .newestPodcasts: return .podcastLatest
+        case .podcastDownloads: return .podcastDownloads
         default: return nil
         }
     }
@@ -57,14 +61,14 @@ enum QuickLink: String, CaseIterable, Identifiable {
     var tab: Int? {
         switch self {
         case .audiobooks, .series, .authors: return 3
-        case .podcasts, .newestPodcasts: return 2
+        case .podcasts: return 2
         default: return nil
         }
     }
 
     static let defaults: [QuickLink] = [
         .albums, .artists, .playlists, .favorites, .genres, .downloads,
-        .audiobooks, .podcasts,
+        .audiobooks, .podcasts, .newestPodcasts, .podcastDownloads,
     ]
 }
 
@@ -96,6 +100,9 @@ struct QuickAccessBand: View {
     /// Offline a link only makes sense when the matching section has local
     /// content; audiobooks and podcasts have none yet.
     private func available(_ link: QuickLink) -> Bool {
+        if link == .podcastDownloads {
+            return !app.downloadedPodcastEpisodes.isEmpty
+        }
         if app.offlineMode {
             switch link {
             case .albums, .downloads:
@@ -110,11 +117,16 @@ struct QuickAccessBand: View {
                 return !app.downloadedSongs.isEmpty
             case .audiobooks, .series, .authors:
                 return !app.downloadedAudiobooks.isEmpty
-            case .podcasts, .newestPodcasts:
+            case .podcasts:
                 return !app.downloadedPodcastEpisodes.isEmpty
-            case .radio:
+            case .newestPodcasts:
+                return false
+            case .radio, .podcastDownloads:
                 return false
             }
+        }
+        if link == .newestPodcasts {
+            return app.podcastsAvailable
         }
         if let tab = link.tab {
             return tab == 3 ? app.audiobooksAvailable : app.podcastsAvailable
