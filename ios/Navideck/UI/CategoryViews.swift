@@ -550,6 +550,7 @@ struct PodcastCategoryView: View {
     @AppStorage("navideck.podcast-section") private var section = 0
     @AppStorage("navideck.podcast-sort") private var sortRaw = "newest"
     @State private var showConfig = false
+    @State private var loadError: String?
 
     private var isABS: Bool { app.podcastBackend == .audiobookshelf }
 
@@ -568,6 +569,11 @@ struct PodcastCategoryView: View {
             CategoryBand(items: items, selection: $section)
 
             ScrollView {
+                if let loadError {
+                    ErrorBanner(message: loadError)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                }
                 if app.offlineMode {
                     if app.downloadedPodcastEpisodes.isEmpty {
                         EmptyStateView(
@@ -635,7 +641,13 @@ struct PodcastCategoryView: View {
         if isABS {
             await app.loadPodcasts(force: true)
         } else {
-            _ = try? await app.podcasts(force: true)
+            do {
+                _ = try await app.podcasts(force: true)
+            } catch {
+                if !Format.isCancellation(error) {
+                    loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
         }
     }
 
@@ -687,7 +699,7 @@ struct PodcastCategoryView: View {
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(Theme.text)
                                 .lineLimit(2)
-                            Text("\(show.media.episodes.count) Folgen")
+                            Text("\(app.episodeCount(show)) Folgen")
                                 .font(.caption)
                                 .foregroundStyle(Theme.muted)
                         }
@@ -809,7 +821,7 @@ struct PodcastCategoryView: View {
                                     .font(.body.weight(.medium))
                                     .foregroundStyle(Theme.text)
                                     .lineLimit(1)
-                                Text("\(show.media.episodes.count) Folgen")
+                                Text("\(app.episodeCount(show)) Folgen")
                                     .font(.caption)
                                     .foregroundStyle(Theme.muted)
                             }

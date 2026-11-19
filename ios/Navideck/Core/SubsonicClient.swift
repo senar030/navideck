@@ -312,6 +312,17 @@ struct SubsonicClient: Sendable {
         return response.podcasts?.channel ?? []
     }
 
+    /// One channel including its episodes. Servers may omit episodes in the
+    /// list response, so channels are completed this way when needed.
+    func podcastChannel(id: String, count: Int = 60) async throws -> PodcastChannel? {
+        let response = try await request("getPodcasts", [
+            "id": id,
+            "includeEpisodes": "true",
+            "count": String(count),
+        ])
+        return response.podcasts?.channel.first { $0.id == id }
+    }
+
     func newestPodcasts(count: Int = 24) async throws -> [PodcastEpisode] {
         let response = try await request("getNewestPodcasts", ["count": String(count)])
         return response.newestPodcasts?.episode ?? []

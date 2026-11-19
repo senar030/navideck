@@ -322,7 +322,7 @@ struct HomeView: View {
                                             .font(.body.weight(.semibold))
                                             .foregroundStyle(Theme.text)
                                             .lineLimit(2)
-                                        Text("\(show.media.episodes.count) Folgen")
+                                        Text("\(app.episodeCount(show)) Folgen")
                                             .font(.caption)
                                             .foregroundStyle(Theme.muted)
                                     }

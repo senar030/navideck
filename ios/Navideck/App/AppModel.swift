@@ -436,14 +436,27 @@ final class AppModel {
             async let channelsTask = client.podcasts()
             async let newestTask = client.newestPodcasts(count: 12)
 
-            let channels: [PodcastChannel]
+            var channels: [PodcastChannel]
             do {
                 channels = try await channelsTask
             } catch let failure as SubsonicFailure where failure.code == 30 || failure.code == 0 {
                 channels = []
             }
-            let newest = (try? await newestTask) ?? []
-            return PodcastSnapshot(channels: channels, newest: newest)
+
+            // Fill in episodes the list response left out.
+            for index in channels.indices where channels[index].episodes.isEmpty {
+                if let full = try? await client.podcastChannel(id: channels[index].id) {
+                    channels[index] = full
+                }
+            }
+
+            var newest = (try? await newestTask) ?? []
+            if newest.isEmpty {
+                newest = channels
+                    .flatMap(\.episodes)
+                    .sorted { ($0.publishDate ?? "") > ($1.publishDate ?? "") }
+            }
+            return PodcastSnapshot(channels: channels, newest: Array(newest.prefix(24)))
         }
         podcastTask = task
 
@@ -1042,6 +1055,24 @@ final class AppModel {
         } catch {
             absError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    /// Episode count for list rows, even when the list omitted the episodes.
+    func episodeCount(_ show: AbsBook) -> Int {
+        show.media.episodes.isEmpty ? (show.media.numEpisodes ?? 0) : show.media.episodes.count
+    }
+
+    /// Full show with episodes; list responses often omit them.
+    func fullShow(_ show: AbsBook) async -> AbsBook? {
+        guard let abs else { return nil }
+        if !show.media.episodes.isEmpty { return show }
+        guard let full = try? await abs.item(id: show.id), !full.media.episodes.isEmpty else {
+            return show
+        }
+        if let index = absPodcasts.firstIndex(where: { $0.id == full.id }) {
+            absPodcasts[index] = full
+        }
+        return full
     }
 
     /// Plays one Audiobookshelf podcast episode.

@@ -53,7 +53,7 @@ struct AbsPodcastsView: View {
                     .font(.body.weight(.medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
-                Text("\(show.media.episodes.count) Folgen")
+                Text("\(app.episodeCount(show)) Folgen")
                     .font(.caption)
                     .foregroundStyle(Theme.muted)
             }
@@ -70,7 +70,11 @@ struct AbsPodcastsView: View {
 
 struct AbsPodcastShowView: View {
     @Environment(AppModel.self) private var app
-    let show: AbsBook
+    @State private var show: AbsBook
+
+    init(show: AbsBook) {
+        _show = State(initialValue: show)
+    }
 
     var body: some View {
         ScrollView {
@@ -108,6 +112,12 @@ struct AbsPodcastShowView: View {
         .navigationTitle(show.media.metadata.title)
         .navigationBarTitleDisplayMode(.inline)
         .navideckScreen()
+        .task {
+            // Episodes are often missing from the library list response.
+            if let full = await app.fullShow(show) {
+                show = full
+            }
+        }
     }
 
     private var header: some View {
@@ -124,7 +134,7 @@ struct AbsPodcastShowView: View {
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
-                Text("\(show.media.episodes.count) Folgen")
+                Text("\(app.episodeCount(show)) Folgen")
                     .font(.caption)
                     .foregroundStyle(Theme.muted)
             }
