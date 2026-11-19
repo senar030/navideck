@@ -71,6 +71,7 @@ struct AbsPodcastsView: View {
 struct AbsPodcastShowView: View {
     @Environment(AppModel.self) private var app
     @State private var show: AbsBook
+    @State private var visibleEpisodes = 15
 
     init(show: AbsBook) {
         _show = State(initialValue: show)
@@ -88,8 +89,9 @@ struct AbsPodcastShowView: View {
                         .padding(.horizontal, 20)
                 }
 
-                let episodes = show.media.episodes
-                if episodes.isEmpty {
+                let allEpisodes = show.media.episodes
+                let episodes = Array(allEpisodes.prefix(visibleEpisodes))
+                if allEpisodes.isEmpty {
                     EmptyStateView(
                         icon: "waveform",
                         title: "Keine Folgen",
@@ -104,6 +106,19 @@ struct AbsPodcastShowView: View {
                         if offset < episodes.count - 1 {
                             Divider().overlay(Theme.hairline).padding(.leading, 76)
                         }
+                    }
+
+                    if episodes.count < allEpisodes.count {
+                        Button {
+                            visibleEpisodes = min(allEpisodes.count, visibleEpisodes + 15)
+                        } label: {
+                            Text("Weitere Folgen (\(allEpisodes.count - episodes.count))")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.accent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

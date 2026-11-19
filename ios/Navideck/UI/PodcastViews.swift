@@ -75,6 +75,7 @@ struct EpisodeRowContent: View {
 struct PodcastLatestView: View {
     @Environment(AppModel.self) private var app
     var embedded = false
+    @State private var visibleEpisodes = 15
 
     private var absEpisodes: [(show: AbsBook, episode: AbsEpisode)] { app.podcastLatest }
     private var subsonicEpisodes: [PodcastEpisode] {
@@ -85,11 +86,35 @@ struct PodcastLatestView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if app.podcastBackend == .audiobookshelf {
-                    ForEach(Array(absEpisodes.enumerated()), id: \.element.episode.id) { offset, item in
+                    ForEach(Array(absEpisodes.prefix(visibleEpisodes).enumerated()), id: \.element.episode.id) { offset, item in
                         row(show: item.show, episode: item.episode)
-                        if offset < absEpisodes.count - 1 {
+                            .onAppear {
+                                if offset >= visibleEpisodes - 3 {
+                                    Task {
+                                        await app.loadPodcastEpisodes(limit: 4)
+                                        visibleEpisodes += 15
+                                    }
+                                }
+                            }
+                        if offset < min(absEpisodes.count, visibleEpisodes) - 1 {
                             Divider().overlay(Theme.hairline).padding(.leading, 20)
                         }
+                    }
+
+                    if visibleEpisodes < absEpisodes.count {
+                        Button {
+                            Task {
+                                await app.loadPodcastEpisodes(limit: 4)
+                                visibleEpisodes += 15
+                            }
+                        } label: {
+                            Text("Weitere Folgen")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.accent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.plain)
                     }
                     if absEpisodes.isEmpty {
                         EmptyStateView(

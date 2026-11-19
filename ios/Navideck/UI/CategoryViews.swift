@@ -653,7 +653,7 @@ struct PodcastCategoryView: View {
     private func reload() async {
         if isABS {
             await app.loadPodcasts(force: true)
-            await app.loadPodcastEpisodes(limit: 8)
+            await app.loadPodcastEpisodes(limit: 4)
         } else {
             do {
                 _ = try await app.podcasts(force: true)
@@ -689,30 +689,53 @@ struct PodcastCategoryView: View {
         let rows = continueItems
         if !rows.isEmpty {
             WidgetSection(title: entry.title, icon: entry.icon) {
-                VStack(spacing: 0) {
-                    ForEach(rows) { row in
-                        Button {
-                            if let played = row.played {
-                                app.resumePodcastEpisode(played)
-                            } else if let episode = row.episode {
-                                app.playEpisodes([episode])
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(rows) { row in
+                            Button {
+                                if let played = row.played {
+                                    app.resumePodcastEpisode(played)
+                                } else if let episode = row.episode {
+                                    app.playEpisodes([episode])
+                                }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    CoverArtView(url: row.coverURL)
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .frame(width: Theme.cardWidth)
+                                        .overlay(alignment: .bottom) {
+                                            if let progress = row.progress {
+                                                DownloadProgressView(progress: progress)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.bottom, 6)
+                                            }
+                                        }
+
+                                    Text(row.title)
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(row.isCurrent ? Theme.accent : Theme.text)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+
+                                    if let showTitle = row.showTitle, !showTitle.isEmpty {
+                                        Text(showTitle)
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.accent.opacity(0.85))
+                                            .lineLimit(1)
+                                    }
+
+                                    if let remaining = row.remainingText {
+                                        Text(remaining)
+                                            .font(.caption2.monospacedDigit())
+                                            .foregroundStyle(Theme.muted)
+                                    }
+                                }
+                                .frame(width: Theme.cardWidth, alignment: .leading)
                             }
-                        } label: {
-                            EpisodeRowContent(
-                                title: row.title,
-                                showTitle: row.showTitle,
-                                summary: row.summary,
-                                dateText: row.dateText,
-                                duration: row.duration,
-                                progress: row.progress,
-                                isCurrent: row.isCurrent,
-                                isPlaying: app.player.isPlaying
-                           )
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 20)
                 }
             }
         }
@@ -843,9 +866,24 @@ struct PodcastCategoryView: View {
         let dateText: String?
         let duration: Double?
         let progress: Double?
+        let coverURL: URL?
         let isCurrent: Bool
         let played: PlayedEpisode?
         let episode: PodcastEpisode?
+
+        var remainingText: String? {
+            if let played {
+                return "Noch \(Format.longDuration(Int(max(0, played.duration - played.position))) ?? "")"
+            }
+            if let episode, let progress = episodeProgressValue {
+                return "Noch \(Format.longDuration(Int(max(0, progress.duration - progress.position))) ?? "")"
+            }
+            return nil
+        }
+
+        var episodeProgressValue: (position: Double, duration: Double)? {
+            nil
+        }
     }
 
     private var continueItems: [ContinueRow] {
@@ -861,6 +899,7 @@ struct PodcastCategoryView: View {
                     dateText: episode?.publishedText,
                     duration: played.duration,
                     progress: played.progress,
+                    coverURL: show.flatMap { app.absCoverURL($0, width: 300) },
                     isCurrent: app.player.current?.id == played.id,
                     played: played,
                     episode: nil
@@ -888,6 +927,7 @@ struct PodcastCategoryView: View {
                 dateText: episode.publishedText,
                 duration: episode.duration.map(Double.init),
                 progress: progress.map { $0.duration > 0 ? $0.position / $0.duration : 0 },
+                coverURL: app.artworkURL(episode.coverArt, size: 300),
                 isCurrent: app.player.current?.id == episode.playableID,
                 played: nil,
                 episode: episode
