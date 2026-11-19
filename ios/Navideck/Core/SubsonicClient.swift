@@ -142,6 +142,9 @@ struct SubsonicClient: Sendable {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
+        // Library responses must never come from the HTTP cache, otherwise a
+        // freshly favourited song would not appear in the lists.
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let data: Data
@@ -401,6 +404,7 @@ struct SubsonicClient: Sendable {
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let data: Data
