@@ -89,11 +89,33 @@ struct QuickAccessBand: View {
         let hiddenIDs = hidden
         return order.filter { link in
             guard !hiddenIDs.contains(link) else { return false }
-            if let tab = link.tab {
-                return tab == 3 ? app.audiobooksAvailable : app.podcastsAvailable
-            }
-            return app.musicAvailable
+            return available(link)
         }
+    }
+
+    /// Offline a link only makes sense when the matching section has local
+    /// content; audiobooks and podcasts have none yet.
+    private func available(_ link: QuickLink) -> Bool {
+        if app.offlineMode {
+            switch link {
+            case .albums, .downloads:
+                return !app.downloadedAlbums.isEmpty
+            case .artists:
+                return !app.downloadedArtists.isEmpty
+            case .genres:
+                return !app.downloadedGenres.isEmpty
+            case .playlists:
+                return !app.downloadedPlaylists.isEmpty
+            case .favorites:
+                return !app.downloadedSongs.isEmpty
+            case .radio, .audiobooks, .series, .authors, .podcasts, .newestPodcasts:
+                return false
+            }
+        }
+        if let tab = link.tab {
+            return tab == 3 ? app.audiobooksAvailable : app.podcastsAvailable
+        }
+        return app.musicAvailable
     }
 
     var body: some View {

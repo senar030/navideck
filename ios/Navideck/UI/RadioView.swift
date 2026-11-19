@@ -47,6 +47,16 @@ struct RadioView: View {
         }
         .navigationTitle(embedded ? "" : "Radio")
         .navideckScreen()
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    ascending.toggle()
+                } label: {
+                    Image(systemName: ascending ? "arrow.up" : "arrow.down")
+                }
+                .accessibilityLabel(ascending ? "A–Z" : "Z–A")
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
     }

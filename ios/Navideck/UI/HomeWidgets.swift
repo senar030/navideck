@@ -54,6 +54,7 @@ struct HomeWidgetSettingsView: View {
 
     @AppStorage("navideck.home-widgets") private var orderRaw = ""
     @AppStorage("navideck.home-widgets-hidden") private var hiddenRaw = ""
+    @State private var showQuickLinks = false
 
     private var order: [HomeWidget] {
         let stored = orderRaw.split(separator: ",").compactMap { HomeWidget(rawValue: String($0)) }
@@ -103,10 +104,14 @@ struct HomeWidgetSettingsView: View {
                 }
 
                 Section {
-                    NavigationLink("Schnellzugriff bearbeiten") {
-                        QuickAccessSettingsView()
+                    Button("Schnellzugriff bearbeiten") {
+                        showQuickLinks = true
                     }
+                    .foregroundStyle(Theme.accent)
                     .listRowBackground(Theme.surface)
+                }
+                .sheet(isPresented: $showQuickLinks) {
+                    NavigationStack { QuickAccessSettingsView() }
                 }
 
                 Section {

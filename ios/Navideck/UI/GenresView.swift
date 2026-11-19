@@ -6,12 +6,41 @@ struct GenresView: View {
     @Environment(AppModel.self) private var app
 
     @AppStorage("navideck.genres-ascending") private var ascending = true
+    @AppStorage("navideck.genres-layout") private var layout = "list"
     @State private var genres: [Genre] = []
     @State private var loading = false
     @State private var errorMessage: String?
 
     var body: some View {
         ScrollView {
+            if layout == "grid" {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14)], spacing: 16) {
+                    ForEach(shownGenres) { genre in
+                        NavigationLink(value: LibraryRoute.genre(genre)) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Image(systemName: "guitars")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Theme.accent)
+                                Text(genre.value)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(2)
+                                if let count = genre.songCount {
+                                    Text("\(count) Titel")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.muted)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.artworkRadius, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(shownGenres) { genre in
                     NavigationLink(value: LibraryRoute.genre(genre)) {
@@ -51,6 +80,7 @@ struct GenresView: View {
                 }
             }
             .padding(.vertical, 8)
+            }
 
             if let errorMessage {
                 ErrorBanner(message: errorMessage).padding(.horizontal, 20)
@@ -70,6 +100,23 @@ struct GenresView: View {
         }
         .navigationTitle(embedded ? "" : "Genres")
         .navideckScreen()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarLeading) {
+                Button {
+                    ascending.toggle()
+                } label: {
+                    Image(systemName: ascending ? "arrow.up" : "arrow.down")
+                }
+                .accessibilityLabel(ascending ? "A–Z" : "Z–A")
+
+                Button {
+                    layout = layout == "list" ? "grid" : "list"
+                } label: {
+                    Image(systemName: layout == "list" ? "square.grid.2x2" : "list.bullet")
+                }
+                .accessibilityLabel(layout == "list" ? "Kachelansicht" : "Listenansicht")
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
     }

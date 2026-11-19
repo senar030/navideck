@@ -11,6 +11,7 @@ struct FavoritesView: View {
 
     @Environment(AppModel.self) private var app
 
+    @AppStorage("navideck.favorites-layout") private var layout = "grid"
     @State private var result = SearchResult()
     @State private var mode: Mode = .albums
     @State private var loading = false
@@ -49,6 +50,18 @@ struct FavoritesView: View {
         }
         .navigationTitle(embedded ? "" : "Favoriten")
         .navideckScreen()
+        .toolbar {
+            if mode == .albums {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        layout = layout == "grid" ? "list" : "grid"
+                    } label: {
+                        Image(systemName: layout == "grid" ? "list.bullet" : "square.grid.2x2")
+                    }
+                    .accessibilityLabel(layout == "grid" ? "Listenansicht" : "Kachelansicht")
+                }
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
     }
@@ -67,15 +80,28 @@ struct FavoritesView: View {
     private var content: some View {
         switch mode {
         case .albums:
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
-                spacing: 20
-            ) {
-                ForEach(shown.albums) { album in
-                    AlbumCard(album: album)
+            if layout == "list" {
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(shown.albums.enumerated()), id: \.element.id) { offset, album in
+                        AlbumRow(album: album)
+                            .padding(.horizontal, 20)
+                        if offset < shown.albums.count - 1 {
+                            Divider().overlay(Theme.hairline).padding(.leading, 88)
+                        }
+                    }
                 }
+                .padding(.vertical, 8)
+            } else {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
+                    spacing: 20
+                ) {
+                    ForEach(shown.albums) { album in
+                        AlbumCard(album: album)
+                    }
+                }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
 
         case .songs:
             if !shown.songs.isEmpty {

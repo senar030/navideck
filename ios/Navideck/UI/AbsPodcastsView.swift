@@ -112,7 +112,7 @@ struct AbsPodcastShowView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            CoverArtView(url: app.absCoverURL(show, width: 400))
+            CoverArtView(url: app.absCoverURL(show, width: 400), radius: Theme.artworkRadius)
                 .frame(width: 96, height: 96)
 
             VStack(alignment: .leading, spacing: 4) {

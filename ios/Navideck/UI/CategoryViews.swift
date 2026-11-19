@@ -92,7 +92,7 @@ struct MusikCategoryView: View {
                     Button {
                         showConfig = true
                     } label: {
-                        Image(systemName: "square.grid.2x2")
+                        Image(systemName: "wand.and.stars")
                             .foregroundStyle(Theme.text)
                     }
                     .accessibilityLabel("Widgets anpassen")
@@ -220,7 +220,7 @@ struct HörbücherCategoryView: View {
                     Button {
                         showConfig = true
                     } label: {
-                        Image(systemName: "square.grid.2x2")
+                        Image(systemName: "wand.and.stars")
                             .foregroundStyle(Theme.text)
                     }
                     .accessibilityLabel("Widgets anpassen")
@@ -490,6 +490,7 @@ struct HörbücherCategoryView: View {
 struct PodcastCategoryView: View {
     @Environment(AppModel.self) private var app
     @AppStorage("navideck.podcast-section") private var section = 0
+    @AppStorage("navideck.podcast-sort") private var sortRaw = "newest"
     @State private var showConfig = false
 
     private var isABS: Bool { app.podcastBackend == .audiobookshelf }
@@ -537,10 +538,23 @@ struct PodcastCategoryView: View {
                     Button {
                         showConfig = true
                     } label: {
-                        Image(systemName: "square.grid.2x2")
+                        Image(systemName: "wand.and.stars")
                             .foregroundStyle(Theme.text)
                     }
                     .accessibilityLabel("Widgets anpassen")
+                }
+            } else {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Picker("Sortierung", selection: $sortRaw) {
+                            Text("Neueste").tag("newest")
+                            Text("Titel").tag("title")
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .foregroundStyle(Theme.text)
+                    }
+                    .accessibilityLabel("Sortierung")
                 }
             }
         }
@@ -654,6 +668,20 @@ struct PodcastCategoryView: View {
         }
     }
 
+    private var sortedAbsShows: [AbsBook] {
+        app.absPodcasts.sorted {
+            sortRaw == "title"
+                ? $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
+                : ($0.addedAt ?? 0) > ($1.addedAt ?? 0)
+        }
+    }
+
+    private var sortedChannels: [PodcastChannel] {
+        (app.podcastSnapshot?.channels ?? []).sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
     private var absShows: some View {
         VStack(alignment: .leading, spacing: 0) {
             if app.absPodcasts.isEmpty {
@@ -664,7 +692,7 @@ struct PodcastCategoryView: View {
                 )
                 .padding(.top, 30)
             } else {
-                ForEach(Array(app.absPodcasts.enumerated()), id: \.element.id) { offset, show in
+                ForEach(Array(sortedAbsShows.enumerated()), id: \.element.id) { offset, show in
                     NavigationLink {
                         AbsPodcastShowView(show: show)
                     } label: {
@@ -694,7 +722,7 @@ struct PodcastCategoryView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if offset < app.absPodcasts.count - 1 {
+                    if offset < sortedAbsShows.count - 1 {
                         Divider().overlay(Theme.hairline).padding(.leading, 88)
                     }
                 }
@@ -760,7 +788,7 @@ struct PodcastCategoryView: View {
 
     @ViewBuilder
     private var subsonicChannels: some View {
-        let channels = app.podcastSnapshot?.channels ?? []
+        let channels = sortedChannels
         VStack(alignment: .leading, spacing: 0) {
             if channels.isEmpty {
                 EmptyStateView(

@@ -40,7 +40,7 @@ struct HomeView: View {
                     Button {
                         showWidgetSettings = true
                     } label: {
-                        Image(systemName: "square.grid.2x2")
+                        Image(systemName: "wand.and.stars")
                             .foregroundStyle(Theme.text)
                     }
                     .accessibilityLabel("Start anpassen")
@@ -99,17 +99,8 @@ struct HomeView: View {
                         .padding(.vertical, 40)
                 }
 
-                if app.offlineMode {
-                    // Rendered straight from the download store, so the rows
-                    // appear as soon as the manifest is read.
-                    let downloaded = app.downloadedAlbums
-                    if !downloaded.isEmpty {
-                        albumSection("Deine Downloads", albums: downloaded)
-                    }
-                } else {
-                    ForEach(visibleWidgets) { widget in
-                        widgetView(widget)
-                    }
+                ForEach(visibleWidgets) { widget in
+                    widgetView(widget)
                 }
             }
             .padding(.vertical, 12)
@@ -240,7 +231,11 @@ struct HomeView: View {
         // Offline only music downloads exist; hide the network widgets.
         if app.offlineMode {
             switch widget {
-            case .musicRecent, .musicNewest, .musicFrequent, .musicRandom, .downloads:
+            case .shortcuts:
+                WidgetSection(title: widget.title, icon: widget.icon) {
+                    QuickAccessBand()
+                }
+            case .downloads:
                 let albums = app.downloadedAlbums
                 if !albums.isEmpty {
                     WidgetSection(title: widget.title, icon: widget.icon) {
