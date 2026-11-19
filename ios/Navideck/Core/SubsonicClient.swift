@@ -125,7 +125,9 @@ struct SubsonicClient: Sendable {
     private static let folderScopedMethods: Set<String> = [
         "getAlbumList", "getAlbumList2", "getArtists", "getIndexes",
         "getGenres", "getSongsByGenre", "getRandomSongs", "search2", "search3",
-        "getStarred", "getStarred2", "getMusicDirectory",
+        "getMusicDirectory",
+        // Favourites are intentionally not folder-filtered: a starred song
+        // from another library must still show up in the list.
     ]
 
     private func request(_ method: String, _ extra: [String: String] = [:]) async throws -> SubsonicResponse {
@@ -373,11 +375,56 @@ struct SubsonicClient: Sendable {
     }
 
     func star(id: String, kind: String = "id") async throws {
-        _ = try await request("star", [kind: id])
+        try await mutate("star", [kind: id])
     }
 
     func unstar(id: String, kind: String = "id") async throws {
-        _ = try await request("unstar", [kind: id])
+        try await mutate("unstar", [kind: id])
+    }
+
+    /// Subsonic servers differ: some accept GET, others only POST. Try the
+    /// simple GET first and fall back to a POST with the same query.
+    private func mutate(_ method: String, _ extra: [String: String]) async throws {
+        do {
+            _ = try await request(method, extra)
+        } catch let failure as SubsonicFailure where failure.code == 405 {
+            _ = try await post(method, extra)
+        } catch {
+            // Retry once as POST; many servers only persist mutations that way.
+            _ = try await post(method, extra)
+        }
+    }
+
+    private func post(_ method: String, _ extra: [String: String]) async throws -> SubsonicResponse {
+        guard let url = url(for: method, extra: extra) else {
+            throw SubsonicFailure(code: -1, message: "Ungültige Server-Adresse.")
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await Self.session.data(for: request)
+        } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
+            throw SubsonicFailure(code: -1, message: Self.message(for: error))
+        } catch {
+            throw SubsonicFailure(code: -1, message: error.localizedDescription)
+        }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            throw SubsonicFailure(code: http.statusCode, message: "Server antwortete mit HTTP \(http.statusCode).")
+        }
+        guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else {
+            throw SubsonicFailure(code: -2, message: "Unerwartete Server-Antwort.")
+        }
+        if envelope.response.status == "failed" {
+            let code = envelope.response.error?.code ?? 0
+            let message = envelope.response.error?.message ?? "Anfrage fehlgeschlagen."
+            throw SubsonicFailure(code: code, message: message)
+        }
+        return envelope.response
     }
 
     // MARK: - Playback bookkeeping

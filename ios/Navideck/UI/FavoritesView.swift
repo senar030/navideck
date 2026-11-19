@@ -64,6 +64,9 @@ struct FavoritesView: View {
         }
         .task { await load() }
         .refreshable { await load() }
+        .onChange(of: app.favoritesRevision) { _, _ in
+            Task { await load() }
+        }
     }
 
     /// Offline the page shows the downloaded part of the favorites.

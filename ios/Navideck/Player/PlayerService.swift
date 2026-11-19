@@ -50,6 +50,8 @@ final class PlayerService {
     @ObservationIgnored var streamBitRate: () -> Int = { 0 }
     /// Reports playback position so podcast episodes can be continued later.
     @ObservationIgnored var progressSink: ((Song, Double, Double) -> Void)?
+    /// Lets the library refresh when a song was starred from the player.
+    @ObservationIgnored var onFavoriteChange: (() -> Void)?
     @ObservationIgnored private var lastProgressReport = Date.distantPast
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
@@ -363,10 +365,20 @@ final class PlayerService {
             queue[index].starred = willStar ? ISO8601DateFormatter().string(from: Date()) : nil
         }
         Task {
-            if willStar {
-                try? await client.star(id: song.id)
-            } else {
-                try? await client.unstar(id: song.id)
+            do {
+                if willStar {
+                    try await client.star(id: song.id)
+                } else {
+                    try await client.unstar(id: song.id)
+                }
+                await MainActor.run { self.onFavoriteChange?() }
+            } catch {
+                await MainActor.run {
+                    if self.queue.indices.contains(self.index) {
+                        self.queue[self.index].starred = willStar ? nil : song.starred
+                    }
+                    self.errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
             }
         }
     }

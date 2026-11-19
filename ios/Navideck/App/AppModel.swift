@@ -48,6 +48,8 @@ final class AppModel {
 
     var mixLoading = false
     var mixError: String?
+    /// Bumped whenever a favourite changed, so lists can refresh themselves.
+    var favoritesRevision = 0
 
     var isConnected: Bool { client != nil }
 
@@ -61,6 +63,10 @@ final class AppModel {
         self.prefs = prefs
         self.downloads = downloads
         self.player = player
+
+        player.onFavoriteChange = { [weak self] in
+            self?.favoritesRevision += 1
+        }
 
         player.localURL = { [weak downloads] songID in
             downloads?.localURL(songID: songID)

@@ -469,10 +469,18 @@ struct PlaylistDetailView: View {
         let willStar = song.starred == nil
         playlist.entries[index].starred = willStar ? ISO8601DateFormatter().string(from: Date()) : nil
         Task {
-            if willStar {
-                try? await client.star(id: song.id)
-            } else {
-                try? await client.unstar(id: song.id)
+            do {
+                if willStar {
+                    try await client.star(id: song.id)
+                } else {
+                    try await client.unstar(id: song.id)
+                }
+                app.favoritesRevision += 1
+            } catch {
+                if let idx = playlist.entries.firstIndex(where: { $0.id == song.id }) {
+                    playlist.entries[idx].starred = willStar ? nil : song.starred
+                }
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
         }
     }
