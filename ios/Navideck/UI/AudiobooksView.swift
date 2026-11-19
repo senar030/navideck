@@ -374,6 +374,7 @@ struct AudiobookDetailView: View {
     private var actions: some View {
         ZStack {
             HStack(spacing: 6) {
+                downloadControl
                 Spacer(minLength: 0)
                 if let progress, progress.currentTime > 5, progress.isFinished != true {
                     Button {
@@ -396,6 +397,23 @@ struct AudiobookDetailView: View {
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private var downloadControl: some View {
+        if app.isAudiobookDownloaded(book) {
+            SquareIconButton(systemName: "trash", accessibilityTitle: "Hörbuch-Download löschen") {
+                app.removeAudiobookDownload(book)
+            }
+        } else if let progress = app.audiobookDownloadProgress(book) {
+            DownloadRing(progress: progress)
+                .frame(width: 26, height: 26)
+                .padding(.horizontal, 10)
+        } else {
+            SquareIconButton(systemName: "arrow.down", accessibilityTitle: "Hörbuch herunterladen") {
+                app.downloadAudiobook(book)
+            }
+        }
     }
 
     private func resumeLine(_ progress: AbsProgress) -> some View {

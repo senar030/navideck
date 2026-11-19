@@ -166,10 +166,45 @@ struct AbsPodcastShowView: View {
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(Theme.muted)
                 }
+
+                episodeDownloadButton(episode)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func episodeDownloadButton(_ episode: AbsEpisode) -> some View {
+        if app.absEpisodeDownloaded(episode) {
+            Button {
+                app.removeAbsEpisodeDownload(episode)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Download entfernen")
+        } else if let progress = app.absEpisodeDownloadProgress(episode) {
+            DownloadRing(progress: progress)
+                .frame(width: 20, height: 20)
+                .frame(width: 36, height: 36)
+        } else {
+            Button {
+                app.downloadAbsEpisode(episode, from: show)
+            } label: {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Folge herunterladen")
+        }
     }
 
     private func meta(_ episode: AbsEpisode) -> String {

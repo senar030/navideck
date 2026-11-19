@@ -188,6 +188,15 @@ final class AppModel {
             }
         }
 
+        if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_DL_ABS"] == "1" {
+            Task { @MainActor in
+                await loadAudiobooks()
+                if let first = absBooks.first {
+                    downloadAudiobook(first)
+                }
+            }
+        }
+
         if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_SEED_DOWNLOADS"] == "1" {
             Task { @MainActor in
                 guard let client else { return }
@@ -1212,6 +1221,129 @@ final class AppModel {
                 finished: finished
             )
         }
+    }
+
+    // MARK: - Audiobook downloads
+
+    var downloadedAudiobooks: [DownloadItem] {
+        downloads.items.filter { $0.kind == .audiobook }
+    }
+
+    var downloadedPodcastEpisodes: [DownloadItem] {
+        downloads.items.filter { $0.kind == .podcast }
+    }
+
+    func isAudiobookDownloaded(_ book: AbsBook) -> Bool {
+        downloads.item(kind: .audiobook, sourceID: book.id) != nil
+    }
+
+    func audiobookDownloadProgress(_ book: AbsBook) -> Double? {
+        downloads.progressValue(kind: .audiobook, sourceID: book.id)
+    }
+
+    func downloadAudiobook(_ book: AbsBook) {
+        guard let abs else { return }
+        Task { @MainActor in
+            let full = await fullBook(book) ?? book
+            let tracks = tracks(of: full)
+            guard !tracks.isEmpty else {
+                player.errorMessage = "Für dieses Hörbuch sind keine Audiodateien hinterlegt."
+                return
+            }
+            var songs: [Song] = []
+            var requests: [(song: Song, request: URLRequest)] = []
+            for (index, track) in tracks.enumerated() {
+                let contentUrl = track.contentUrl.isEmpty
+                    ? "/api/items/\(full.id)/file/\(track.ino)"
+                    : track.contentUrl
+                guard let url = abs.streamURL(contentUrl: contentUrl) else { continue }
+                let title = tracks.count > 1
+                    ? "\(full.media.metadata.title) · Teil \(index + 1)"
+                    : full.media.metadata.title
+                let song = Song(
+                    id: "abs:\(full.id):\(track.ino)",
+                    title: title,
+                    album: full.media.metadata.title,
+                    artist: full.media.metadata.authorName,
+                    duration: Int(track.duration.rounded()),
+                    track: index + 1,
+                    coverArt: "abs:\(full.id)"
+                )
+                songs.append(song)
+                requests.append((song, abs.authorizedRequest(url)))
+            }
+            guard !songs.isEmpty else { return }
+
+            var coverRequest: URLRequest?
+            if let cover = abs.coverURL(itemID: full.id, width: 700) {
+                coverRequest = abs.authorizedRequest(cover)
+            }
+
+            downloads.downloadExternal(
+                kind: .audiobook,
+                sourceID: full.id,
+                title: full.media.metadata.title,
+                subtitle: full.media.metadata.authorName,
+                coverArt: "abs:\(full.id)",
+                songs: songs,
+                requests: requests,
+                coverRequest: coverRequest
+            )
+        }
+    }
+
+    func removeAudiobookDownload(_ book: AbsBook) {
+        if let item = downloads.item(kind: .audiobook, sourceID: book.id) {
+            downloads.delete(item)
+        }
+    }
+
+    func downloadAbsEpisode(_ episode: AbsEpisode, from show: AbsBook) {
+        guard let abs, let ino = episode.audioFile?.ino, !ino.isEmpty else { return }
+        let contentUrl = "/api/items/\(show.id)/file/\(ino)"
+        guard let url = abs.streamURL(contentUrl: contentUrl) else { return }
+        let song = Song(
+            id: "abs:\(show.id):\(ino)",
+            title: episode.title,
+            album: show.media.metadata.title,
+            artist: show.media.metadata.authorName,
+            duration: episode.duration.map { Int($0.rounded()) },
+            coverArt: "abs:\(show.id)"
+        )
+        var coverRequest: URLRequest?
+        if let cover = abs.coverURL(itemID: show.id, width: 700) {
+            coverRequest = abs.authorizedRequest(cover)
+        }
+        downloads.downloadExternal(
+            kind: .podcast,
+            sourceID: episode.id,
+            title: episode.title,
+            subtitle: show.media.metadata.title,
+            coverArt: "abs:\(show.id)",
+            songs: [song],
+            requests: [(song, abs.authorizedRequest(url))],
+            coverRequest: coverRequest
+        )
+    }
+
+    func removeAbsEpisodeDownload(_ episode: AbsEpisode) {
+        if let item = downloads.item(kind: .podcast, sourceID: episode.id) {
+            downloads.delete(item)
+        }
+    }
+
+    func absEpisodeDownloaded(_ episode: AbsEpisode) -> Bool {
+        downloads.item(kind: .podcast, sourceID: episode.id) != nil
+    }
+
+    func absEpisodeDownloadProgress(_ episode: AbsEpisode) -> Double? {
+        downloads.progressValue(kind: .podcast, sourceID: episode.id)
+    }
+
+    /// Plays a downloaded book from the device.
+    func playDownloadedAudiobook(_ item: DownloadItem) {
+        guard !item.songs.isEmpty else { return }
+        player.play(item.songs)
     }
 
     // MARK: - Offline library

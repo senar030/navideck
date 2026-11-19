@@ -192,12 +192,16 @@ struct HörbücherCategoryView: View {
 
             ScrollView {
                 if app.offlineMode {
-                    EmptyStateView(
-                        icon: "books.vertical",
-                        title: "Hörbücher nur online",
-                        message: "Hörbuch-Downloads folgen in einem späteren Update."
-                    )
-                    .padding(.top, 30)
+                    if app.downloadedAudiobooks.isEmpty {
+                        EmptyStateView(
+                            icon: "books.vertical",
+                            title: "Keine Hörbücher offline",
+                            message: "Lade Hörbücher über ihren Detail-Download herunter."
+                        )
+                        .padding(.top, 30)
+                    } else {
+                        offlineDownloads
+                    }
                 } else if !app.audiobooksAvailable {
                     EmptyStateView(
                         icon: "books.vertical",
@@ -284,6 +288,47 @@ struct HörbücherCategoryView: View {
         default:
             grid(sortedBooks)
         }
+    }
+
+    private var offlineDownloads: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(app.downloadedAudiobooks.enumerated()), id: \.element.id) { offset, item in
+                Button {
+                    app.playDownloadedAudiobook(item)
+                } label: {
+                    HStack(spacing: 12) {
+                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt), radius: Theme.artworkRadius)
+                            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.title)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                            Text(item.metaText)
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Image(systemName: "play.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if offset < app.downloadedAudiobooks.count - 1 {
+                    Divider().overlay(Theme.hairline).padding(.leading, 88)
+                }
+            }
+        }
+        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -511,12 +556,16 @@ struct PodcastCategoryView: View {
 
             ScrollView {
                 if app.offlineMode {
-                    EmptyStateView(
-                        icon: "waveform",
-                        title: "Podcasts nur online",
-                        message: "Im Offline-Modus stehen nur heruntergeladene Folgen zur Verfügung."
-                    )
-                    .padding(.top, 30)
+                    if app.downloadedPodcastEpisodes.isEmpty {
+                        EmptyStateView(
+                            icon: "waveform",
+                            title: "Keine Folgen offline",
+                            message: "Lade einzelne Folgen über das Download-Symbol herunter."
+                        )
+                        .padding(.top, 30)
+                    } else {
+                        offlineEpisodes
+                    }
                 } else if section == 0 {
                     overview
                 } else if isABS {
@@ -666,6 +715,48 @@ struct PodcastCategoryView: View {
             }
             .padding(.horizontal, 20)
         }
+    }
+
+    private var offlineEpisodes: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(app.downloadedPodcastEpisodes.enumerated()), id: \.element.id) { offset, item in
+                Button {
+                    app.player.play(item.songs)
+                } label: {
+                    HStack(spacing: 12) {
+                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt), radius: Theme.artworkRadius)
+                            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.title)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                            Text(item.subtitle ?? item.metaText)
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Image(systemName: "play.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if offset < app.downloadedPodcastEpisodes.count - 1 {
+                    Divider().overlay(Theme.hairline).padding(.leading, 88)
+                }
+            }
+        }
+        .padding(.vertical, 10)
     }
 
     private var sortedAbsShows: [AbsBook] {

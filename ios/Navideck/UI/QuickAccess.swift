@@ -108,7 +108,11 @@ struct QuickAccessBand: View {
                 return !app.downloadedPlaylists.isEmpty
             case .favorites:
                 return !app.downloadedSongs.isEmpty
-            case .radio, .audiobooks, .series, .authors, .podcasts, .newestPodcasts:
+            case .audiobooks, .series, .authors:
+                return !app.downloadedAudiobooks.isEmpty
+            case .podcasts, .newestPodcasts:
+                return !app.downloadedPodcastEpisodes.isEmpty
+            case .radio:
                 return false
             }
         }

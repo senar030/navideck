@@ -484,6 +484,13 @@ struct AudiobookshelfClient: Sendable {
 
     // MARK: Media URLs
 
+    /// URLRequest with the auth header, for downloads and covers.
+    func authorizedRequest(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return request
+    }
+
     func coverURL(itemID: String, width: Int = 400) -> URL? {
         url("api/items/\(itemID)/cover", query: [
             URLQueryItem(name: "width", value: String(width)),

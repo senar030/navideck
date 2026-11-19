@@ -290,7 +290,7 @@ struct DownloadsView: View {
                     entries: item.songs
                 )
             )
-        case .song, .podcast:
+        case .audiobook, .song, .podcast:
             let song = item.songs.first
             return .album(
                 Album(

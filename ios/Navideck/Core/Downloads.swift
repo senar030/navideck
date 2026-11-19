@@ -7,6 +7,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
     case artist
     case song
     case podcast
+    case audiobook
 
     var label: String {
         switch self {
@@ -15,6 +16,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
         case .artist: return "Interpret"
         case .song: return "Titel"
         case .podcast: return "Podcast"
+        case .audiobook: return "Hörbuch"
         }
     }
 
@@ -25,6 +27,7 @@ enum DownloadKind: String, Codable, CaseIterable, Sendable {
         case .artist: return "music.mic"
         case .song: return "music.note"
         case .podcast: return "waveform"
+        case .audiobook: return "books.vertical"
         }
     }
 }
@@ -349,6 +352,134 @@ final class DownloadStore {
         files = [:]
         covers = [:]
         verifiedCovers = []
+        persist()
+    }
+
+    /// Downloads prepared requests (e.g. with auth headers) and stores them
+    /// like any other collection.
+    func downloadExternal(
+        kind: DownloadKind,
+        sourceID: String,
+        title: String,
+        subtitle: String?,
+        coverArt: String?,
+        songs: [Song],
+        requests: [(song: Song, request: URLRequest)],
+        coverRequest: URLRequest?
+    ) {
+        let id = key(kind, sourceID)
+        guard !requests.isEmpty, tasks[id] == nil, !items.contains(where: { $0.id == id }) else { return }
+
+        failures[id] = nil
+        progress[id] = 0
+
+        tasks[id] = Task { [weak self] in
+            guard let self else { return }
+            await self.runExternal(
+                id: id,
+                kind: kind,
+                sourceID: sourceID,
+                title: title,
+                subtitle: subtitle,
+                coverArt: coverArt,
+                songs: songs,
+                requests: requests,
+                coverRequest: coverRequest
+            )
+        }
+    }
+
+    private func runExternal(
+        id: String,
+        kind: DownloadKind,
+        sourceID: String,
+        title: String,
+        subtitle: String?,
+        coverArt: String?,
+        songs: [Song],
+        requests: [(song: Song, request: URLRequest)],
+        coverRequest: URLRequest?
+    ) async {
+        let folder = id.replacingOccurrences(of: ":", with: "-")
+        let directory = root.appendingPathComponent(folder, isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        var written: [String: String] = [:]
+        var bytes = 0
+
+        func clearTrackProgress() {
+            for song in songs { songProgress[song.id] = nil }
+        }
+
+        defer {
+            tasks[id] = nil
+            clearTrackProgress()
+        }
+
+        for (offset, entry) in requests.enumerated() {
+            if Task.isCancelled {
+                cleanUp(directory: directory)
+                progress[id] = nil
+                return
+            }
+            songProgress[entry.song.id] = 0
+            do {
+                let (temporary, response) = try await session.download(for: entry.request)
+                if let http = response as? HTTPURLResponse, !(200...399).contains(http.statusCode) {
+                    throw SubsonicFailure(code: http.statusCode, message: "HTTP \(http.statusCode)")
+                }
+                let suffix = Self.fileSuffix(for: entry.song, response: response)
+                let name = "\(Self.safeName(entry.song.id)).\(suffix)"
+                let destination = directory.appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try? FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.moveItem(at: temporary, to: destination)
+                let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+                bytes += (attributes?[.size] as? NSNumber)?.intValue ?? 0
+                written[entry.song.id] = "\(folder)/\(name)"
+                songProgress[entry.song.id] = 1
+            } catch {
+                cleanUp(directory: directory)
+                for path in written.values {
+                    try? FileManager.default.removeItem(at: root.appendingPathComponent(path))
+                }
+                failures[id] = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                progress[id] = nil
+                return
+            }
+            progress[id] = Double(offset + 1) / Double(requests.count)
+        }
+
+        var coverPath: String?
+        if let coverRequest, let coverArt {
+            if let (data, _) = try? await session.data(for: coverRequest), !data.isEmpty {
+                let name = "cover-\(Self.safeName(coverArt)).jpg"
+                let destination = directory.appendingPathComponent(name)
+                try? data.write(to: destination, options: .atomic)
+                coverPath = "\(folder)/\(name)"
+            }
+        }
+
+        for (songID, path) in written { files[songID] = path }
+        if let coverArt, let coverPath { covers[coverArt] = coverPath }
+
+        items.removeAll { $0.id == id }
+        items.append(
+            DownloadItem(
+                id: id,
+                kind: kind,
+                sourceID: sourceID,
+                title: title,
+                subtitle: subtitle,
+                coverArt: coverArt,
+                songs: songs,
+                createdAt: Date(),
+                bytes: bytes
+            )
+        )
+        items.sort { $0.createdAt > $1.createdAt }
+        progress[id] = nil
         persist()
     }
 

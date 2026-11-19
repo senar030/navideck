@@ -400,8 +400,9 @@ final class PlayerService {
     private func playbackURL(for queueIndex: Int) -> URL? {
         guard queue.indices.contains(queueIndex) else { return nil }
         let song = queue[queueIndex]
-        if let external = externalURLResolver?(song) { return external }
+        // Downloaded files always win, even for sources with their own URLs.
         if let local = localURL?(song.id) { return local }
+        if let external = externalURLResolver?(song) { return external }
         guard let client else { return nil }
         return client.streamURL(id: song.id, maxBitRate: streamBitRate())
     }
