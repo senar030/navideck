@@ -89,6 +89,9 @@ struct MainTabs: View {
         }
         .onChange(of: selection) { _, tab in
             visitedTabs.insert(tab)
+            if tab == 2 {
+                NotificationCenter.default.post(name: .navideckPodcastOverview, object: nil)
+            }
         }
         .environment(\.bottomBarInset, barHeight)
         .tint(Theme.accent)
@@ -230,7 +233,7 @@ struct MainTabs: View {
                 .transition(
                     .scale(scale: 0.25, anchor: .bottomLeading)
                         .combined(with: .opacity)
-                )
+               )
             }
 
             HStack(spacing: 10) {
@@ -239,7 +242,7 @@ struct MainTabs: View {
                     icon: "line.3.horizontal",
                     active: navExpanded,
                     onLongPress: goHome
-                ) {
+               ) {
                     if suppressStartTap { return }
                     toggleNavigation()
                 }
@@ -276,7 +279,7 @@ struct MainTabs: View {
                 ],
                 startPoint: .top,
                 endPoint: .bottom
-            )
+           )
             .ignoresSafeArea(edges: .bottom)
             .allowsHitTesting(false)
         }
@@ -294,7 +297,7 @@ struct MainTabs: View {
         active: Bool = false,
         onLongPress: (() -> Void)? = nil,
         action: @escaping () -> Void
-    ) -> some View {
+   ) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .medium))
@@ -303,7 +306,7 @@ struct MainTabs: View {
                 .navideckGlass(
                     Circle(),
                     tint: active ? Theme.accent.opacity(0.3) : nil
-                )
+               )
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -318,7 +321,7 @@ struct MainTabs: View {
                         suppressStartTap = false
                     }
                 }
-        )
+       )
         .accessibilityLabel(title)
     }
 
@@ -377,7 +380,7 @@ struct MainTabs: View {
     private func stack<Content: View>(
         _ index: Int,
         @ViewBuilder content: () -> Content
-    ) -> some View {
+   ) -> some View {
         NavigationStack(path: $paths[index]) {
             content()
                 .navigationDestination(for: LibraryRoute.self) { route in

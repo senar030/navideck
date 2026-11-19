@@ -1,5 +1,10 @@
 import SwiftUI
 
+extension Notification.Name {
+    /// Sent when the Podcast tab is selected so it can jump to the overview.
+    static let navideckPodcastOverview = Notification.Name("navideck.podcast.overview")
+}
+
 /// Shared episode row: title, show, short description, date and runtime.
 struct EpisodeRowContent: View {
     let title: String
@@ -34,11 +39,11 @@ struct EpisodeRowContent: View {
                             .lineLimit(1)
                     }
 
-                    if let summary, !summary.isEmpty {
+                    if let summary = Format.plainText(summary) {
                         Text(summary)
                             .font(.caption)
                             .foregroundStyle(Theme.muted)
-                            .lineLimit(2)
+                            .lineLimit(3)
                             .multilineTextAlignment(.leading)
                     }
 
@@ -69,6 +74,7 @@ struct EpisodeRowContent: View {
 
 struct PodcastLatestView: View {
     @Environment(AppModel.self) private var app
+    var embedded = false
 
     private var absEpisodes: [(show: AbsBook, episode: AbsEpisode)] { app.podcastLatest }
     private var subsonicEpisodes: [PodcastEpisode] {
@@ -90,7 +96,7 @@ struct PodcastLatestView: View {
                             icon: "sparkles",
                             title: "Keine Folgen",
                             message: "Die zugeordnete Bibliothek enthält keine Episoden."
-                        )
+                       )
                         .padding(.top, 30)
                     }
                 } else {
@@ -109,7 +115,7 @@ struct PodcastLatestView: View {
                                 },
                                 isCurrent: app.player.current?.id == episode.playableID,
                                 isPlaying: app.player.isPlaying
-                            )
+                           )
                             .padding(.horizontal, 20)
                             .padding(.vertical, 8)
                         }
@@ -124,14 +130,14 @@ struct PodcastLatestView: View {
                             icon: "sparkles",
                             title: "Keine Folgen",
                             message: "Der Server liefert keine aktuellen Episoden."
-                        )
+                       )
                         .padding(.top, 30)
                     }
                 }
             }
             .padding(.vertical, 8)
         }
-        .navigationTitle("Neueste Folgen")
+        .navigationTitle(embedded ? "" : "Neueste Folgen")
         .navideckScreen()
         .task { await reload() }
         .refreshable { await reload() }
@@ -161,7 +167,7 @@ struct PodcastLatestView: View {
                     duration: episode.duration,
                     isCurrent: isCurrent,
                     isPlaying: app.player.isPlaying
-                )
+               )
             }
             .buttonStyle(.plain)
 
@@ -205,6 +211,7 @@ struct PodcastLatestView: View {
 
 struct PodcastDownloadsView: View {
     @Environment(AppModel.self) private var app
+    var embedded = false
 
     var body: some View {
         ScrollView {
@@ -215,7 +222,7 @@ struct PodcastDownloadsView: View {
                             app.player.play(item.songs)
                         } label: {
                             HStack(spacing: 12) {
-                                CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt), radius: 8)
+                                CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt))
                                     .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                                 VStack(alignment: .leading, spacing: 3) {
@@ -259,13 +266,13 @@ struct PodcastDownloadsView: View {
                         icon: "arrow.down.circle",
                         title: "Keine Folgen geladen",
                         message: "Lade einzelne Folgen über das Download-Symbol herunter."
-                    )
+                   )
                     .padding(.top, 30)
                 }
             }
             .padding(.vertical, 8)
         }
-        .navigationTitle("Podcast-Downloads")
+        .navigationTitle(embedded ? "" : "Podcast-Downloads")
         .navideckScreen()
     }
 }

@@ -106,7 +106,7 @@ struct MusikCategoryView: View {
                 all: WidgetConfig.musik.all,
                 orderKey: WidgetConfig.musik.orderKey,
                 hiddenKey: WidgetConfig.musik.hiddenKey
-            )
+           )
         }
         .task { await loadOverview() }
     }
@@ -119,7 +119,7 @@ struct MusikCategoryView: View {
                 newest: newest,
                 frequent: frequent,
                 random: random
-            )
+           )
             .padding(.vertical, 10)
 
             if overviewLoading && recent.isEmpty && newest.isEmpty && frequent.isEmpty && random.isEmpty {
@@ -210,7 +210,7 @@ struct HörbücherCategoryView: View {
                             icon: "books.vertical",
                             title: "Keine Hörbücher offline",
                             message: "Lade Hörbücher über ihren Detail-Download herunter."
-                        )
+                       )
                         .padding(.top, 30)
                     } else {
                         offlineDownloads
@@ -220,7 +220,7 @@ struct HörbücherCategoryView: View {
                         icon: "books.vertical",
                         title: "Keine Hörbuch-Quelle",
                         message: "Ordne in den Einstellungen eine Audiobookshelf-Bibliothek den Hörbüchern zu."
-                    )
+                   )
                     .padding(.top, 30)
                 } else {
                     content
@@ -271,7 +271,7 @@ struct HörbücherCategoryView: View {
                 all: WidgetConfig.books.all,
                 orderKey: WidgetConfig.books.orderKey,
                 hiddenKey: WidgetConfig.books.hiddenKey
-            )
+           )
         }
         .task { await app.loadAudiobooks() }
     }
@@ -287,7 +287,7 @@ struct HörbücherCategoryView: View {
                     icon: "play.circle",
                     title: "Nichts angefangen",
                     message: "Sobald du ein Hörbuch hörst, erscheint es hier."
-                )
+               )
                 .padding(.top, 30)
             } else {
                 grid(books)
@@ -310,7 +310,7 @@ struct HörbücherCategoryView: View {
                     app.playDownloadedAudiobook(item)
                 } label: {
                     HStack(spacing: 12) {
-                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt), radius: Theme.artworkRadius)
+                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt))
                             .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -415,7 +415,7 @@ struct HörbücherCategoryView: View {
         _ values: [String],
         icon: String,
         route: @escaping (String) -> LibraryRoute
-    ) -> some View {
+   ) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(values, id: \.self) { value in
@@ -450,7 +450,7 @@ struct HörbücherCategoryView: View {
                 ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
                     NavigationLink(value: LibraryRoute.audiobook(book)) {
                         HStack(spacing: 12) {
-                            CoverArtView(url: app.absCoverURL(book, width: 200), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.absCoverURL(book, width: 200))
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(book.media.metadata.title)
@@ -502,14 +502,14 @@ struct HörbücherCategoryView: View {
         values: [String],
         icon: String,
         route: @escaping (String) -> LibraryRoute
-    ) -> some View {
+   ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if values.isEmpty {
                 EmptyStateView(
                     icon: icon,
                     title: "Nichts vorhanden",
                     message: "Für diese Auswahl gibt es noch keine Einträge."
-                )
+               )
                 .padding(.top, 30)
             } else {
                 ForEach(values, id: \.self) { value in
@@ -555,13 +555,17 @@ struct PodcastCategoryView: View {
     private var isABS: Bool { app.podcastBackend == .audiobookshelf }
 
     private var items: [CategoryBand.Item] {
-        isABS
-            ? [overviewItem, .init(id: 1, title: "Sender", icon: "waveform")]
-            : [
-                overviewItem,
-                .init(id: 1, title: "Neueste", icon: "sparkles"),
-                .init(id: 2, title: "Sender", icon: "waveform"),
-            ]
+        [
+            overviewItem,
+            .init(id: 1, title: "Folgen", icon: "sparkles"),
+            .init(id: 2, title: "Sender", icon: "waveform"),
+            .init(id: 3, title: "Downloads", icon: "arrow.down.circle"),
+        ]
+    }
+
+    /// The band stays the same for both backends; only the content differs.
+    private var safeSection: Int {
+        items.contains(where: { $0.id == section }) ? section : 0
     }
 
     var body: some View {
@@ -580,19 +584,22 @@ struct PodcastCategoryView: View {
                             icon: "waveform",
                             title: "Keine Folgen offline",
                             message: "Lade einzelne Folgen über das Download-Symbol herunter."
-                        )
+                       )
                         .padding(.top, 30)
                     } else {
                         offlineEpisodes
                     }
-                } else if section == 0 {
-                    overview
-                } else if isABS {
-                    absShows
-                } else if section == 1 {
-                    subsonicEpisodes
                 } else {
-                    subsonicChannels
+                    switch safeSection {
+                    case 1:
+                        PodcastLatestView(embedded: true)
+                    case 2:
+                        isABS ? AnyView(absShows) : AnyView(subsonicChannels)
+                    case 3:
+                        PodcastDownloadsView(embedded: true)
+                    default:
+                        overview
+                    }
                 }
             }
             .refreshable { await reload() }
@@ -601,7 +608,7 @@ struct PodcastCategoryView: View {
         .navideckScreen()
         .offlineModeToolbar()
         .toolbar {
-            if section == 0 {
+            if safeSection == 0 {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         showConfig = true
@@ -611,7 +618,7 @@ struct PodcastCategoryView: View {
                     }
                     .accessibilityLabel("Widgets anpassen")
                 }
-            } else {
+            } else if safeSection == 2 {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
                         Picker("Sortierung", selection: $sortRaw) {
@@ -632,9 +639,15 @@ struct PodcastCategoryView: View {
                 all: WidgetConfig.podcasts.all,
                 orderKey: WidgetConfig.podcasts.orderKey,
                 hiddenKey: WidgetConfig.podcasts.hiddenKey
-            )
+           )
         }
         .task { await reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .navideckPodcastOverview)) { _ in
+            section = 0
+        }
+        .onChange(of: app.podcastBackend) { _, _ in
+            if !items.contains(where: { $0.id == section }) { section = 0 }
+        }
     }
 
     private func reload() async {
@@ -693,7 +706,7 @@ struct PodcastCategoryView: View {
                                 progress: row.progress,
                                 isCurrent: row.isCurrent,
                                 isPlaying: app.player.isPlaying
-                            )
+                           )
                             .padding(.horizontal, 20)
                             .padding(.vertical, 8)
                         }
@@ -707,74 +720,96 @@ struct PodcastCategoryView: View {
     @ViewBuilder
     private func latestWidget(_ entry: WidgetConfigView.Entry) -> some View {
         if isABS {
-            let rows = Array(app.podcastLatest.prefix(6))
-            if !rows.isEmpty {
+            let items = Array(app.podcastLatest.prefix(10))
+            if !items.isEmpty {
                 WidgetSection(title: entry.title, icon: entry.icon) {
-                    VStack(spacing: 0) {
-                        ForEach(rows, id: \.episode.id) { item in
-                            Button {
-                                app.playAbsEpisode(item.episode, from: item.show)
-                            } label: {
-                                EpisodeRowContent(
-                                    title: item.episode.title,
-                                    showTitle: item.show.media.metadata.title,
-                                    summary: item.episode.description ?? item.episode.subtitle,
-                                    dateText: item.episode.publishedText,
-                                    duration: item.episode.duration
-                                )
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.plain)
+                    latestCovers(
+                        items.map { item in
+                            LatestCover(
+                                id: item.episode.id,
+                                title: item.episode.title,
+                                subtitle: item.show.media.metadata.title,
+                                duration: item.episode.duration,
+                                coverURL: app.absCoverURL(item.show, width: 400),
+                                play: { app.playAbsEpisode(item.episode, from: item.show) }
+                            )
                         }
-
-                        NavigationLink(value: LibraryRoute.podcastLatest) {
-                            Text("Alle neuen Folgen")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Theme.accent)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    )
                 }
             }
         } else {
-            let episodes = Array((app.podcastSnapshot?.newest ?? []).prefix(6))
+            let episodes = Array((app.podcastSnapshot?.newest ?? []).prefix(10))
             if !episodes.isEmpty {
                 WidgetSection(title: entry.title, icon: entry.icon) {
-                    VStack(spacing: 0) {
-                        ForEach(episodes) { episode in
-                            Button {
-                                app.playEpisodes([episode])
-                            } label: {
-                                EpisodeRowContent(
-                                    title: episode.title,
-                                    showTitle: episode.artist,
-                                    summary: episode.description,
-                                    dateText: episode.publishedText,
-                                    duration: episode.duration.map(Double.init),
-                                    progress: app.episodeProgress.progress(for: episode.playableID).map {
-                                        $0.duration > 0 ? $0.position / $0.duration : 0
-                                    }
-                                )
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.plain)
+                    latestCovers(
+                        episodes.map { episode in
+                            LatestCover(
+                                id: episode.playableID,
+                                title: episode.title,
+                                subtitle: episode.artist,
+                                duration: episode.duration.map(Double.init),
+                                coverURL: app.artworkURL(episode.coverArt, size: 300),
+                                play: { app.playEpisodes([episode]) }
+                            )
                         }
-
-                        NavigationLink(value: LibraryRoute.podcastLatest) {
-                            Text("Alle neuen Folgen")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Theme.accent)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    )
                 }
             }
+        }
+
+        NavigationLink(value: LibraryRoute.podcastLatest) {
+            Text("Alle neuen Folgen")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, 20)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private struct LatestCover: Identifiable {
+        let id: String
+        let title: String
+        let subtitle: String?
+        let duration: Double?
+        let coverURL: URL?
+        let play: () -> Void
+    }
+
+    private func latestCovers(_ items: [LatestCover]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(items) { item in
+                    Button(action: item.play) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            CoverArtView(url: item.coverURL)
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(width: Theme.cardWidth)
+
+                            Text(item.title)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+
+                            if let subtitle = item.subtitle, !subtitle.isEmpty {
+                                Text(subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.accent.opacity(0.85))
+                                    .lineLimit(1)
+                            }
+
+                            if let duration = item.duration, duration > 0 {
+                                Text(Format.duration(duration))
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+                        .frame(width: Theme.cardWidth, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
         }
     }
 
@@ -828,7 +863,7 @@ struct PodcastCategoryView: View {
                     isCurrent: app.player.current?.id == played.id,
                     played: played,
                     episode: nil
-                )
+               )
             }
         }
 
@@ -855,7 +890,7 @@ struct PodcastCategoryView: View {
                 isCurrent: app.player.current?.id == episode.playableID,
                 played: nil,
                 episode: episode
-            )
+           )
         }
     }
 
@@ -867,7 +902,7 @@ struct PodcastCategoryView: View {
                         PodcastChannelView(channel: channel)
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            CoverArtView(url: app.artworkURL(channel.coverArt, size: 300), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.artworkURL(channel.coverArt, size: 300))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: Theme.cardWidth)
                             Text(channel.title)
@@ -895,7 +930,7 @@ struct PodcastCategoryView: View {
                         AbsPodcastShowView(show: show)
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            CoverArtView(url: app.absCoverURL(show, width: 300), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.absCoverURL(show, width: 300))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: Theme.cardWidth)
                             Text(show.media.metadata.title)
@@ -923,7 +958,7 @@ struct PodcastCategoryView: View {
                         app.playEpisodes([episode])
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            CoverArtView(url: app.artworkURL(episode.coverArt, size: 300), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.artworkURL(episode.coverArt, size: 300))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: Theme.cardWidth)
                             Text(episode.title)
@@ -952,7 +987,7 @@ struct PodcastCategoryView: View {
                     app.player.play(item.songs)
                 } label: {
                     HStack(spacing: 12) {
-                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt), radius: Theme.artworkRadius)
+                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt))
                             .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -1008,7 +1043,7 @@ struct PodcastCategoryView: View {
                     icon: "waveform",
                     title: "Keine Podcasts",
                     message: "Die zugeordnete Bibliothek enthält keine Podcasts."
-                )
+               )
                 .padding(.top, 30)
             } else {
                 ForEach(Array(sortedAbsShows.enumerated()), id: \.element.id) { offset, show in
@@ -1016,7 +1051,7 @@ struct PodcastCategoryView: View {
                         AbsPodcastShowView(show: show)
                     } label: {
                         HStack(spacing: 12) {
-                            CoverArtView(url: app.absCoverURL(show, width: 200), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.absCoverURL(show, width: 200))
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                             VStack(alignment: .leading, spacing: 3) {
@@ -1059,7 +1094,7 @@ struct PodcastCategoryView: View {
                     icon: "sparkles",
                     title: "Keine neuen Folgen",
                     message: "Der Server liefert derzeit keine aktuellen Episoden."
-                )
+               )
                 .padding(.top, 30)
             } else {
                 ForEach(Array(episodes.enumerated()), id: \.element.playableID) { offset, episode in
@@ -1067,7 +1102,7 @@ struct PodcastCategoryView: View {
                         app.playEpisodes([episode])
                     } label: {
                         HStack(spacing: 12) {
-                            CoverArtView(url: app.artworkURL(episode.coverArt, size: 200), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.artworkURL(episode.coverArt, size: 200))
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                             VStack(alignment: .leading, spacing: 3) {
@@ -1114,7 +1149,7 @@ struct PodcastCategoryView: View {
                     icon: "waveform",
                     title: "Keine Sender",
                     message: "Der Server meldet keine abonnierten Podcasts."
-                )
+               )
                 .padding(.top, 30)
             } else {
                 ForEach(Array(channels.enumerated()), id: \.element.id) { offset, channel in
@@ -1122,7 +1157,7 @@ struct PodcastCategoryView: View {
                         PodcastChannelView(channel: channel)
                     } label: {
                         HStack(spacing: 12) {
-                            CoverArtView(url: app.artworkURL(channel.coverArt, size: 200), radius: Theme.artworkRadius)
+                            CoverArtView(url: app.artworkURL(channel.coverArt, size: 200))
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                             VStack(alignment: .leading, spacing: 3) {

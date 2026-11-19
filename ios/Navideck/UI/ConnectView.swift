@@ -54,7 +54,7 @@ struct ConnectView: View {
             colors: [Theme.backgroundLift, Theme.background],
             startPoint: .top,
             endPoint: .bottom
-        )
+       )
         .ignoresSafeArea()
     }
 
@@ -217,7 +217,7 @@ struct ConnectView: View {
                     username: username,
                     password: password,
                     auth: usePasswordAuth ? .password : .token
-                )
+               )
                 password = ""
             } catch {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

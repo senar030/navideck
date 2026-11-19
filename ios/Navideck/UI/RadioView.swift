@@ -42,7 +42,7 @@ struct RadioView: View {
                     icon: "dot.radiowaves.left.and.right",
                     title: "Keine Radiosender",
                     message: "Auf diesem Server sind keine Internet-Radios hinterlegt."
-                )
+               )
             }
         }
         .navigationTitle(embedded ? "" : "Radio")

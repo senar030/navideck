@@ -43,7 +43,7 @@ struct FavoritesView: View {
                         icon: "star",
                         title: "Noch keine Favoriten",
                         message: "Markierte Alben, Titel und Interpreten erscheinen hier."
-                    )
+                   )
                 }
             }
             .padding(.vertical, 12)
@@ -76,7 +76,7 @@ struct FavoritesView: View {
             artists: app.downloadedArtists.filter { $0.starred != nil },
             albums: app.downloadedAlbums.filter { $0.starred != nil },
             songs: app.downloadedSongs.filter { $0.starred != nil }
-        )
+       )
     }
 
     @ViewBuilder
@@ -98,7 +98,7 @@ struct FavoritesView: View {
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
                     spacing: 20
-                ) {
+               ) {
                     ForEach(shown.albums) { album in
                         AlbumCard(album: album)
                     }
@@ -145,7 +145,7 @@ struct FavoritesView: View {
                         song: song,
                         isCurrent: app.player.current?.id == song.id,
                         subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · ")
-                    )
+                   )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
                 }

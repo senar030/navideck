@@ -57,7 +57,7 @@ struct AlbumCollectionView: View {
                     icon: collection.icon,
                     title: "Keine Alben",
                     message: "Für \(collection.title) gibt es noch keine Alben."
-                )
+               )
             }
         }
         .navigationTitle(collection.title)
@@ -97,7 +97,7 @@ struct AlbumCollectionView: View {
             await ImageStore.shared.prefetch(
                 page.prefix(24).compactMap { app.artworkURL($0.coverArt, size: 300) },
                 limit: 24
-            )
+           )
         } catch {
             if !Format.isCancellation(error) {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

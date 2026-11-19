@@ -33,7 +33,7 @@ struct AbsPodcastsView: View {
                         icon: "waveform",
                         title: "Keine Podcasts",
                         message: "Der Audiobookshelf-Server hat keine Podcast-Bibliothek oder sie ist leer."
-                    )
+                   )
                     .padding(.top, 30)
                 }
             }
@@ -45,7 +45,7 @@ struct AbsPodcastsView: View {
 
     private func row(_ show: AbsBook) -> some View {
         HStack(spacing: 12) {
-            CoverArtView(url: app.absCoverURL(show, width: 200), radius: Theme.artworkRadius)
+            CoverArtView(url: app.absCoverURL(show, width: 200))
                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -94,7 +94,7 @@ struct AbsPodcastShowView: View {
                         icon: "waveform",
                         title: "Keine Folgen",
                         message: "Für diesen Podcast liegen keine Folgen vor."
-                    )
+                   )
                 } else {
                     ForEach(Array(episodes.enumerated()), id: \.element.id) { offset, episode in
                         episodeRow(episode)
@@ -122,7 +122,7 @@ struct AbsPodcastShowView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            CoverArtView(url: app.absCoverURL(show, width: 400), radius: Theme.artworkRadius)
+            CoverArtView(url: app.absCoverURL(show, width: 400))
                 .frame(width: 96, height: 96)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -159,7 +159,7 @@ struct AbsPodcastShowView: View {
                     duration: episode.duration,
                     isCurrent: isCurrent,
                     isPlaying: app.player.isPlaying
-                )
+               )
             }
             .buttonStyle(.plain)
 

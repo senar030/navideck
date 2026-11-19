@@ -51,7 +51,7 @@ struct NowPlayingView: View {
                                 }
                             }
                         }
-                )
+               )
             } else {
                 EmptyStateView(icon: "music.note", title: "Nichts in der Warteschlange")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -72,7 +72,7 @@ struct NowPlayingView: View {
                 colors: [Theme.background.opacity(0.35), Theme.background.opacity(0.9), Theme.background],
                 startPoint: .top,
                 endPoint: .bottom
-            )
+           )
         }
         .ignoresSafeArea()
     }
@@ -157,7 +157,7 @@ struct NowPlayingView: View {
                 value: Binding(
                     get: { scrubTime ?? app.player.currentTime },
                     set: { scrubTime = $0 }
-                ),
+               ),
                 in: 0...max(app.player.duration, 1),
                 onEditingChanged: { editing in
                     if !editing, let time = scrubTime {
@@ -165,7 +165,7 @@ struct NowPlayingView: View {
                         scrubTime = nil
                     }
                 }
-            )
+           )
             .tint(Theme.accent)
             .controlSize(.mini)
             .frame(maxWidth: .infinity)

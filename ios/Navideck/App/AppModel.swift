@@ -803,7 +803,7 @@ final class AppModel {
         return !selection.off && selection.profile?.kind == .audiobookshelf && abs != nil
     }
 
-    enum PodcastBackend { case subsonic, audiobookshelf, none }
+    enum PodcastBackend: Equatable { case subsonic, audiobookshelf, none }
 
     var podcastBackend: PodcastBackend {
         let selection = selection(for: .podcasts)

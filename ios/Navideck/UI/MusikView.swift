@@ -90,7 +90,7 @@ struct MusikView: View {
                     icon: "eye.slash",
                     title: "Keine Bereiche",
                     message: "Tippe auf „Bearbeiten“, um Bereiche wieder einzublenden."
-                )
+               )
                 .padding(.top, 30)
             }
         }

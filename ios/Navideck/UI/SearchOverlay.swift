@@ -139,7 +139,7 @@ struct SearchOverlay: View {
                 icon: "magnifyingglass",
                 title: "Nichts gefunden",
                 message: "Kein Treffer für „\(trimmed)“."
-            )
+           )
             .padding(.top, 40)
         } else {
             resultList
@@ -153,7 +153,7 @@ struct SearchOverlay: View {
                     icon: "sparkle.magnifyingglass",
                     title: "Live suchen",
                     message: "Titel, Alben und Interpreten erscheinen schon beim Tippen."
-                )
+               )
                 .padding(.top, 40)
             } else {
                 HStack {
@@ -261,7 +261,7 @@ struct SearchOverlay: View {
         count: Int,
         key: String,
         @ViewBuilder content: () -> Content
-    ) -> some View {
+   ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
@@ -295,7 +295,7 @@ struct SearchOverlay: View {
 
         return Button(action: play) {
             HStack(spacing: 12) {
-                CoverArtView(url: app.artworkURL(song.coverArt, size: 200), radius: Theme.artworkRadius)
+                CoverArtView(url: app.artworkURL(song.coverArt, size: 200))
                     .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -400,7 +400,7 @@ struct SearchOverlay: View {
             artists: artists,
             albums: albums,
             songs: Array(songs.prefix(100))
-        )
+       )
         searched = true
         loading = false
         errorMessage = nil

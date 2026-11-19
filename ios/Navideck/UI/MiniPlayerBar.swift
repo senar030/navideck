@@ -11,7 +11,7 @@ struct MiniPlayerBar: View {
     var body: some View {
         if let song = app.player.current {
             HStack(spacing: 8) {
-                CoverArtView(url: app.artworkURL(song.coverArt, size: 160), radius: 8)
+                CoverArtView(url: app.artworkURL(song.coverArt, size: 160))
                     .frame(width: 38, height: 38)
 
                 VStack(alignment: .leading, spacing: 1) {

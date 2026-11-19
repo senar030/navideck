@@ -41,7 +41,7 @@ struct DownloadsView: View {
                         icon: "arrow.down.circle",
                         title: app.downloads.items.isEmpty ? "Noch keine Downloads" : "Nichts in diesem Filter",
                         message: "Lade Alben, Playlists oder Interpreten herunter, um sie ohne Verbindung zu hören."
-                    )
+                   )
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 } else {
@@ -99,7 +99,7 @@ struct DownloadsView: View {
             "Alle Downloads löschen?",
             isPresented: $confirmDeleteAll,
             titleVisibility: .visible
-        ) {
+       ) {
             Button("Alle löschen", role: .destructive) {
                 app.downloads.deleteEverything()
             }
@@ -223,8 +223,7 @@ struct DownloadsView: View {
         HStack(spacing: 12) {
             CoverArtView(
                 url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt),
-                radius: Theme.artworkRadius
-            )
+           )
             .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: item.kind.symbol)
@@ -275,8 +274,8 @@ struct DownloadsView: View {
                     coverArt: item.coverArt,
                     songCount: item.songs.count,
                     songs: item.songs
-                )
-            )
+               )
+           )
         case .artist:
             return .artist(Artist(id: item.sourceID, name: item.title, coverArt: item.coverArt))
         case .playlist:
@@ -288,8 +287,8 @@ struct DownloadsView: View {
                     coverArt: item.coverArt,
                     comment: item.subtitle,
                     entries: item.songs
-                )
-            )
+               )
+           )
         case .audiobook, .song, .podcast:
             let song = item.songs.first
             return .album(
@@ -300,8 +299,8 @@ struct DownloadsView: View {
                     coverArt: item.coverArt ?? song?.coverArt,
                     songCount: item.songs.count,
                     songs: item.songs
-                )
-            )
+               )
+           )
         }
     }
 

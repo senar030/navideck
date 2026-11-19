@@ -17,7 +17,7 @@ struct CoverArtView: View {
                 colors: [Theme.surfaceHigh, Theme.surface],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
-            )
+           )
             Image(systemName: "music.note")
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(Theme.muted.opacity(0.45))
@@ -209,7 +209,7 @@ struct SongRow: View {
             Button(action: onPlay) {
                 HStack(spacing: 12) {
                     if showsCover, let coverURL {
-                        CoverArtView(url: coverURL, radius: 8)
+                        CoverArtView(url: coverURL)
                             .frame(width: 44, height: 44)
                     } else {
                         ZStack {

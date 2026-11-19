@@ -56,7 +56,7 @@ struct OfflineEpisodesView: View {
                         icon: "waveform",
                         title: "Keine Folgen offline",
                         message: "Lade einzelne Folgen herunter, um sie ohne Verbindung zu hören."
-                    )
+                   )
                     .padding(.top, 24)
                 } else {
                     ForEach(Array(episodes.enumerated()), id: \.element.id) { offset, item in

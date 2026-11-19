@@ -199,7 +199,7 @@ struct AlbumDetailView: View {
                     downloaded: app.downloads.contains(songID: song.id),
                     onPlay: { app.player.play(songs, startingAt: offset) },
                     onStar: { toggleStar(song: song) }
-                )
+               )
                 .contextMenu {
                     Button {
                         app.player.playNext([song])
@@ -223,7 +223,7 @@ struct AlbumDetailView: View {
                         Label(
                             app.downloads.contains(songID: song.id) ? "Download entfernen" : "Titel herunterladen",
                             systemImage: app.downloads.contains(songID: song.id) ? "trash" : "arrow.down"
-                        )
+                       )
                     }
                 }
             }

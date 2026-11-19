@@ -131,7 +131,7 @@ struct ConnectionFormView: View {
                     SecureField(
                         flavor == .subsonicLegacy ? "Passwort" : "Passwort (wird nicht gespeichert übertragen)",
                         text: $secret
-                    )
+                   )
                 }
             }
 
@@ -185,7 +185,7 @@ struct ConnectionFormView: View {
                         urlText: url,
                         username: username,
                         password: secret
-                    )
+                   )
                 } else {
                     try await app.addConnection(
                         flavor: flavor,
@@ -193,7 +193,7 @@ struct ConnectionFormView: View {
                         urlText: url,
                         username: username,
                         secret: secret
-                    )
+                   )
                 }
                 if isAudiobookshelf {
                     await app.loadAudiobooks(force: true)

@@ -86,7 +86,7 @@ struct QuickAccessBand: View {
         Set(
             UserDefaults.standard.string(forKey: "navideck.quicklinks.hidden")?
                 .split(separator: ",").compactMap { QuickLink(rawValue: String($0)) } ?? []
-        )
+       )
     }
 
     private var visible: [QuickLink] {

@@ -113,7 +113,7 @@ struct PodcastsView: View {
                     icon: "waveform",
                     title: "Keine Podcasts",
                     message: "Abonnierte Podcasts erscheinen hier, sobald der Server sie kennt."
-                )
+               )
             }
         }
         .navideckScreen()
@@ -243,7 +243,7 @@ struct PodcastsView: View {
                     active: true,
                     size: 34,
                     accessibilityTitle: "Download entfernen"
-                ) {
+               ) {
                     app.removeDownload(episode)
                 }
             } else if app.isDownloading(episode) {
@@ -251,7 +251,7 @@ struct PodcastsView: View {
                     systemName: "stop.circle",
                     size: 34,
                     accessibilityTitle: "Download abbrechen"
-                ) {
+               ) {
                     app.cancelDownload(episode)
                 }
             } else {
@@ -259,7 +259,7 @@ struct PodcastsView: View {
                     systemName: "arrow.down.circle",
                     size: 34,
                     accessibilityTitle: "Folge herunterladen"
-                ) {
+               ) {
                     if let channel = index[episode.playableID]?.channel {
                         app.download(episode, from: channel)
                     } else if let channel = channels.first(where: { $0.id == episode.channelId || $0.episodes.contains(where: { $0.id == episode.id }) }) {
@@ -368,7 +368,7 @@ struct PodcastsView: View {
                 episode: location.episode,
                 channel: location.channel,
                 progress: progress
-            )
+           )
         }
         continued = Array(items.sorted { $0.progress.updated > $1.progress.updated }.prefix(5))
     }
@@ -449,7 +449,7 @@ struct PodcastChannelView: View {
         .task {
             await ImageStore.shared.prefetch(
                 [channel.imageURL ?? app.artworkURL(channel.coverArt)].compactMap { $0 }
-            )
+           )
         }
     }
 
@@ -475,7 +475,7 @@ struct PodcastChannelView: View {
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        if let description = episode.description, !description.isEmpty {
+                        if let description = Format.plainText(episode.description) {
                             Text(description)
                                 .font(.caption)
                                 .foregroundStyle(Theme.muted)

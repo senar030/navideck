@@ -60,6 +60,31 @@ enum Format {
         url.host ?? url.absoluteString
     }
 
+    /// Podcast descriptions arrive as HTML. Turn them into readable text.
+    static func plainText(_ html: String?) -> String? {
+        guard let html, !html.isEmpty else { return nil }
+        var text = html.replacingOccurrences(
+            of: "<[^>]+>",
+            with: " ",
+            options: .regularExpression
+        )
+        let entities: [String: String] = [
+            "&nbsp;": " ", "&amp;": "&", "&quot;": "\"", "&#39;": "'",
+            "&apos;": "'", "&lt;": "<", "&gt;": ">", "&mdash;": "–",
+            "&ndash;": "–", "&hellip;": "…",
+        ]
+        for (entity, replacement) in entities {
+            text = text.replacingOccurrences(of: entity, with: replacement)
+        }
+        text = text.replacingOccurrences(
+            of: "\\s+",
+            with: " ",
+            options: .regularExpression
+        )
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
     /// Cancelled requests are normal (tab switches, pull to refresh) and must
     /// never surface as an error.
     static func isCancellation(_ error: Error) -> Bool {

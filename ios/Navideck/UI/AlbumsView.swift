@@ -98,7 +98,7 @@ struct AlbumsView: View {
                     icon: "square.stack",
                     title: "Keine Alben",
                     message: "Diese Bibliothek hat noch keine Alben."
-                )
+               )
             }
         }
         .navigationTitle(embedded ? "" : "Alben")

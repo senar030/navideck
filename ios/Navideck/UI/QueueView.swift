@@ -12,7 +12,7 @@ struct QueueView: View {
                         icon: "music.note.list",
                         title: "Warteschlange ist leer",
                         message: "Spiele ein Album oder eine Playlist, um Titel hier zu sammeln."
-                    )
+                   )
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 4) {

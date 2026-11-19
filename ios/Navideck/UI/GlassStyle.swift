@@ -34,9 +34,9 @@ struct GlassBackdrop<S: Shape>: View {
                     colors: [Color.white.opacity(0.32), Color.white.opacity(0.06)],
                     startPoint: .top,
                     endPoint: .bottom
-                ),
+               ),
                 lineWidth: 0.7
-            )
+           )
         }
     }
 }

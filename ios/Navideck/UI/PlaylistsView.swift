@@ -61,7 +61,7 @@ struct PlaylistsView: View {
                     icon: "music.note.list",
                     title: "Keine Playlists",
                     message: "Auf diesem Server gibt es noch keine Playlists."
-                )
+               )
             }
         }
         .navigationTitle(embedded ? "" : "Playlists")
@@ -89,7 +89,7 @@ struct PlaylistsView: View {
                 Label(
                     descending ? "Absteigend" : "Aufsteigend",
                     systemImage: descending ? "arrow.down" : "arrow.up"
-                )
+               )
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.accent)
                 .animation(.easeOut(duration: 0.15), value: descending)
@@ -395,7 +395,7 @@ struct PlaylistDetailView: View {
                     downloaded: app.downloads.contains(songID: song.id),
                     onPlay: { app.player.play(entries, startingAt: offset) },
                     onStar: { toggleStar(song: song) }
-                )
+               )
                 .contextMenu {
                     Button {
                         app.player.playNext([song])

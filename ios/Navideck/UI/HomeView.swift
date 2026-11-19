@@ -83,7 +83,7 @@ struct HomeView: View {
                         icon: "arrow.down.circle",
                         title: "Nichts heruntergeladen",
                         message: "Im Offline-Modus siehst du nur Inhalte, die auf dem Gerät liegen. Lade Alben, Playlists oder Interpreten herunter."
-                    )
+                   )
                 }
 
                 if let errorMessage {
@@ -315,7 +315,7 @@ struct HomeView: View {
                                     AbsPodcastShowView(show: show)
                                 } label: {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        CoverArtView(url: app.absCoverURL(show, width: 300), radius: Theme.artworkRadius)
+                                        CoverArtView(url: app.absCoverURL(show, width: 300))
                                             .aspectRatio(1, contentMode: .fit)
                                             .frame(width: Theme.cardWidth)
                                         Text(show.media.metadata.title)
@@ -365,7 +365,7 @@ struct HomeView: View {
         albums: [Album],
         actionTitle: String? = nil,
         action: (() -> Void)? = nil
-    ) -> some View {
+   ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: title, actionTitle: actionTitle, action: action)
 
@@ -395,7 +395,7 @@ struct HomeView: View {
                     recent: cached.recent.filter { ids.contains($0.id) },
                     frequent: cached.frequent.filter { ids.contains($0.id) },
                     random: cached.random.filter { ids.contains($0.id) }
-                )
+               )
             }
             // A fresh offline start has no cached rows; show the downloads then.
             if snapshot.newest.isEmpty, snapshot.recent.isEmpty,

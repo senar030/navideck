@@ -73,8 +73,8 @@ struct SettingsView: View {
             isPresented: Binding(
                 get: { renameCandidate != nil },
                 set: { if !$0 { renameCandidate = nil } }
-            )
-        ) {
+           )
+       ) {
             TextField("Name", text: $renameText)
             Button("Speichern") {
                 if let profile = renameCandidate {
@@ -91,9 +91,9 @@ struct SettingsView: View {
             isPresented: Binding(
                 get: { removeCandidate != nil },
                 set: { if !$0 { removeCandidate = nil } }
-            ),
+           ),
             titleVisibility: .visible
-        ) {
+       ) {
             Button("Entfernen", role: .destructive) {
                 if let profile = removeCandidate {
                     app.remove(profile: profile)
@@ -109,7 +109,7 @@ struct SettingsView: View {
             "Alle Downloads löschen?",
             isPresented: $showDeleteDownloads,
             titleVisibility: .visible
-        ) {
+       ) {
             Button("Löschen", role: .destructive) {
                 app.downloads.deleteEverything()
             }

@@ -37,14 +37,14 @@ struct AudiobooksView: View {
                     icon: "books.vertical",
                     title: "Hörbücher nur online",
                     message: "Hörbuch-Downloads folgen in einem späteren Update. Schalte den Offline-Modus aus, um deine Bibliothek zu sehen."
-                )
+               )
                 .frame(maxHeight: .infinity)
             } else if !app.audiobooksAvailable {
                 EmptyStateView(
                     icon: "books.vertical",
                     title: "Keine Hörbuch-Quelle",
                     message: "Verbinde in den Optionen einen Audiobookshelf-Server oder wähle ihn als Quelle für Hörbücher."
-                )
+               )
                 .frame(maxHeight: .infinity)
             } else {
                 library
@@ -134,7 +134,7 @@ struct AudiobooksView: View {
                         icon: "books.vertical",
                         title: "Keine Hörbücher",
                         message: "Der Audiobookshelf-Server hat noch keine Buchbibliothek oder sie ist leer."
-                    )
+                   )
                 }
             }
             .padding(.vertical, 12)
@@ -144,7 +144,7 @@ struct AudiobooksView: View {
     private func section<Content: View>(
         _ title: String,
         @ViewBuilder content: () -> Content
-    ) -> some View {
+   ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: title)
                 .padding(.horizontal, 20)
@@ -156,7 +156,7 @@ struct AudiobooksView: View {
         _ names: [String],
         icon: String,
         route: @escaping (String) -> LibraryRoute
-    ) -> some View {
+   ) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(names, id: \.self) { name in
@@ -195,7 +195,7 @@ struct AudiobookCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.audiobook(book)) {
             VStack(alignment: .leading, spacing: 6) {
-                CoverArtView(url: app.absCoverURL(book, width: 400), radius: Theme.artworkRadius)
+                CoverArtView(url: app.absCoverURL(book, width: 400))
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: width)
 
@@ -270,7 +270,7 @@ struct AudiobookCollectionView: View {
                     icon: "books.vertical",
                     title: "Nichts gefunden",
                     message: "Für diese Auswahl liegen keine Hörbücher vor."
-                )
+               )
             }
         }
         .navigationTitle(title)
@@ -329,7 +329,7 @@ struct AudiobookDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.absCoverURL(book, width: 900), radius: 16, maxPixel: 1000)
+            CoverArtView(url: app.absCoverURL(book, width: 900), maxPixel: 1000)
                 .frame(width: 220, height: 220)
                 .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 

@@ -95,7 +95,7 @@ struct GenresView: View {
                     icon: "guitars",
                     title: "Keine Genres",
                     message: "Der Server liefert keine Genre-Liste."
-                )
+               )
             }
         }
         .navigationTitle(embedded ? "" : "Genres")
@@ -209,7 +209,7 @@ struct GenreDetailView: View {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
                 spacing: 20
-            ) {
+           ) {
                 ForEach(albums) { album in
                     AlbumCard(album: album)
                 }
@@ -232,7 +232,7 @@ struct GenreDetailView: View {
                         song: song,
                         isCurrent: app.player.current?.id == song.id,
                         subtitle: [song.artist, song.album].compactMap { $0 }.joined(separator: " · ")
-                    )
+                   )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
                 }

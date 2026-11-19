@@ -196,7 +196,7 @@ extension WidgetConfig {
                 .init(id: "random", title: "Zufällig", icon: "shuffle"),
                 .init(id: "downloads", title: "Downloads", icon: "arrow.down.circle"),
             ]
-        )
+       )
     }
 
     static var podcasts: WidgetConfig {
@@ -208,7 +208,7 @@ extension WidgetConfig {
                 .init(id: "newest", title: "Neueste Folgen", icon: "sparkles"),
                 .init(id: "shows", title: "Sender", icon: "waveform"),
             ]
-        )
+       )
     }
 
     static var books: WidgetConfig {
@@ -221,6 +221,6 @@ extension WidgetConfig {
                 .init(id: "series", title: "Serien", icon: "square.stack"),
                 .init(id: "authors", title: "Autoren", icon: "person"),
             ]
-        )
+       )
     }
 }

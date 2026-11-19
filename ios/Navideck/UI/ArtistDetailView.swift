@@ -167,7 +167,7 @@ struct ArtistDetailView: View {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)],
                 spacing: 20
-            ) {
+           ) {
                 ForEach(artist.albums) { album in
                     VStack(alignment: .leading, spacing: 4) {
                         AlbumCard(album: album)
@@ -200,7 +200,7 @@ struct ArtistDetailView: View {
                         isCurrent: app.player.current?.id == song.id,
                         subtitle: song.album,
                         downloaded: app.downloads.contains(songID: song.id)
-                    )
+                   )
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
                 }
@@ -282,7 +282,7 @@ struct ArtistDetailView: View {
                 .flatMap(\.songs)
                 .filter { $0.artistId == artist.id || $0.artist == artist.name }
                 .prefix(10)
-        )
+       )
         if artist.coverArt == nil { artist.coverArt = albums.first?.coverArt }
     }
 
