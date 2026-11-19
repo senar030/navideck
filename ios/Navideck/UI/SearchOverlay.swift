@@ -450,7 +450,9 @@ struct SearchOverlay: View {
             Task { await ImageStore.shared.prefetch(urls, limit: 14) }
         } catch {
             guard !Task.isCancelled else { return }
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
             results = SearchResult()
             searched = true
         }

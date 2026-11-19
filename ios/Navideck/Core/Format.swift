@@ -60,6 +60,14 @@ enum Format {
         url.host ?? url.absoluteString
     }
 
+    /// Cancelled requests are normal (tab switches, pull to refresh) and must
+    /// never surface as an error.
+    static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let url = error as? URLError, url.code == .cancelled { return true }
+        return false
+    }
+
     static func albumMeta(_ album: Album) -> String {
         var parts: [String] = []
         if let artist = album.artist, !artist.isEmpty { parts.append(artist) }

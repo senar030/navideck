@@ -154,7 +154,9 @@ struct PlaylistsView: View {
         do {
             playlists = try await client.playlists()
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
     }
@@ -481,7 +483,9 @@ struct PlaylistDetailView: View {
         do {
             playlist = try await client.playlist(id: playlist.id)
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
     }

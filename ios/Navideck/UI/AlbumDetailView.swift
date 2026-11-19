@@ -274,7 +274,9 @@ struct AlbumDetailView: View {
         do {
             album = try await client.album(id: album.id)
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
     }

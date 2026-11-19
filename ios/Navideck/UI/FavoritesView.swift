@@ -174,7 +174,9 @@ struct FavoritesView: View {
         do {
             result = try await client.starred()
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
     }

@@ -141,7 +141,9 @@ struct GenresView: View {
             genres = try await client.genres()
                 .sorted { $0.value.localizedCaseInsensitiveCompare($1.value) == .orderedAscending }
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
     }
@@ -281,7 +283,9 @@ struct GenreDetailView: View {
             albums.append(contentsOf: page.filter { album in !albums.contains { $0.id == album.id } })
             albumsDone = page.count < SubsonicClient.pageSize
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
             albumsDone = true
         }
         loading = false
@@ -303,7 +307,9 @@ struct GenreDetailView: View {
             songs.append(contentsOf: page.filter { song in !songs.contains { $0.id == song.id } })
             songsDone = page.count < SubsonicClient.pageSize
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
             songsDone = true
         }
         loading = false

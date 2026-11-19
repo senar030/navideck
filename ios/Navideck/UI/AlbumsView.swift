@@ -154,7 +154,9 @@ struct AlbumsView: View {
             albums = page
             canLoadMore = sort != .random && page.count >= SubsonicClient.pageSize
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if !Format.isCancellation(error) {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
         loading = false
         await prefetch(Array(albums.prefix(18)))
