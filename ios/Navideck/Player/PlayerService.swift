@@ -49,7 +49,7 @@ final class PlayerService {
     /// Obergrenze fürs Streaming in kbit/s (0 = Originaldatei).
     @ObservationIgnored var streamBitRate: () -> Int = { 0 }
     /// Reports playback position so podcast episodes can be continued later.
-    @ObservationIgnored var progressSink: ((Song, Double, Double) -> Void)?
+    @ObservationIgnored var progressSink: ((Song, Double, Double, Bool) -> Void)?
     /// Lets the library refresh when a song was starred from the player.
     @ObservationIgnored var onFavoriteChange: (() -> Void)?
     @ObservationIgnored private var lastProgressReport = Date.distantPast
@@ -461,14 +461,7 @@ final class PlayerService {
         isLoading = true
         errorMessage = nil
         pendingResume = max(0, resume)
-
-        if resume > 0 {
-            player.seek(
-                to: CMTime(seconds: resume, preferredTimescale: 600),
-                toleranceBefore: .zero,
-                toleranceAfter: .zero
-            )
-        }
+        applyPendingResume()
 
         if autoplay {
             activateAudioSession()
@@ -529,6 +522,9 @@ final class PlayerService {
         switch item.status {
         case .readyToPlay:
             isLoading = false
+            // A seek issued before the asset is ready may be dropped. Repeat
+            // it now so an audiobook really resumes where it stopped.
+            applyPendingResume()
             if let song = current, let songDuration = song.duration, songDuration > 0 {
                 let itemDuration = item.duration.seconds
                 if !itemDuration.isFinite || itemDuration <= 0 {
@@ -541,6 +537,28 @@ final class PlayerService {
             errorMessage = item.error?.localizedDescription ?? "Der Titel konnte nicht geladen werden."
         default:
             break
+        }
+    }
+
+    /// Seeks to the saved position once the item can actually honour it.
+    private func applyPendingResume() {
+        guard pendingResume > 0 else {
+            isSeeking = false
+            return
+        }
+        let target = pendingResume
+        isSeeking = true
+        player.seek(
+            to: CMTime(seconds: target, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) { [weak self] finished in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isSeeking = false
+                if finished { self.pendingResume = 0 }
+                self.updateNowPlaying()
+            }
         }
     }
 
@@ -576,7 +594,7 @@ final class PlayerService {
 
         let finishedIndex = finished.songIndex
         if queue.indices.contains(finishedIndex) {
-            progressSink?(queue[finishedIndex], duration, duration)
+            progressSink?(queue[finishedIndex], duration, duration, true)
         }
         playerSongs.removeFirst()
 
@@ -624,6 +642,10 @@ final class PlayerService {
 
     private func tick(_ time: CMTime) {
         let seconds = time.seconds
+        if pendingResume > 0, seconds.isFinite, seconds >= pendingResume - 0.5 {
+            pendingResume = 0
+            isSeeking = false
+        }
         if !isSeeking, seconds.isFinite, seconds >= 0 {
             currentTime = seconds
         }
@@ -655,7 +677,7 @@ final class PlayerService {
         guard force || isPlaying else { return }
         guard force || Date().timeIntervalSince(lastProgressReport) > 4 else { return }
         lastProgressReport = Date()
-        sink(song, currentTime, duration)
+        sink(song, currentTime, duration, force)
     }
 
     private func maybeSubmitScrobble() {

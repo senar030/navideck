@@ -30,6 +30,12 @@ final class AppModel {
     @ObservationIgnored private var absTrackAssets: [String: AVURLAsset] = [:]
     @ObservationIgnored private var absTrackBooks: [String: (bookID: String, offset: Double, duration: Double)] = [:]
     @ObservationIgnored private var lastABSSync = Date.distantPast
+    /// Saved position that is currently being restored; early progress reports
+    /// before the seek lands are ignored so they cannot overwrite it.
+    @ObservationIgnored private var absResumeTargets: [String: (target: Double, since: Date)] = [:]
+    /// Books whose progress changed on this device recently. A server refresh
+    /// must not replace these with an older value.
+    @ObservationIgnored private var absProgressTouched: [String: Date] = [:]
 
     /// Set by the player's menu so the active tab can push the destination.
     var pendingRoute: LibraryRoute?
@@ -80,17 +86,17 @@ final class AppModel {
         player.streamBitRate = { [weak prefs] in
             prefs?.maxBitRate ?? 0
         }
-        player.progressSink = { [weak self] song, position, duration in
+        player.progressSink = { [weak self] song, position, duration, force in
             guard let self else { return }
             if self.episodeIDs.contains(song.id) {
                 self.episodeProgress.record(id: song.id, position: position, duration: duration)
                 return
             }
             if self.absEpisodeIDs.contains(song.id) {
-                self.updatePlayedEpisode(song: song, position: position, duration: duration)
+                self.updatePlayedEpisode(song: song, position: position, duration: duration, force: force)
                 return
             }
-            self.handleAudiobookProgress(song: song, position: position)
+            self.handleAudiobookProgress(song: song, position: position, force: force)
         }
 
         if let profile = servers.active, let client = servers.makeClient(for: profile) {
@@ -1059,10 +1065,17 @@ final class AppModel {
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
             let progress = (try? await abs.progress()) ?? []
-            absProgress = Dictionary(
+            var merged = Dictionary(
                 progress.map { ($0.libraryItemId, $0) },
                 uniquingKeysWith: { first, _ in first }
             )
+            // Keep this device's recent positions; a slow server response must
+            // not make an audiobook jump backwards in "Weiterhören".
+            for (id, touched) in absProgressTouched
+            where Date().timeIntervalSince(touched) < 300 {
+                if let local = absProgress[id] { merged[id] = local }
+            }
+            absProgress = merged
             absLoadedAt = Date()
         } catch is CancellationError {
         } catch let error as URLError where error.code == .cancelled {
@@ -1246,7 +1259,7 @@ final class AppModel {
         persistPlayedEpisodes()
     }
 
-    private func updatePlayedEpisode(song: Song, position: Double, duration: Double) {
+    private func updatePlayedEpisode(song: Song, position: Double, duration: Double, force: Bool) {
         guard let index = playedEpisodes.firstIndex(where: { $0.id == song.id }) else { return }
         playedEpisodes[index].position = position
         playedEpisodes[index].duration = max(playedEpisodes[index].duration, duration)
@@ -1254,7 +1267,7 @@ final class AppModel {
         persistPlayedEpisodes()
 
         let now = Date()
-        guard now.timeIntervalSince(lastEpisodeSync) > 10 else { return }
+        guard force || now.timeIntervalSince(lastEpisodeSync) > 10 else { return }
         lastEpisodeSync = now
         guard let abs else { return }
         let entry = playedEpisodes[index]
@@ -1323,13 +1336,21 @@ final class AppModel {
 
     var audiobooksInProgress: [AbsBook] {
         absBooks
-            .filter {
-                guard let progress = absProgress[$0.id] else { return false }
+            .filter { book in
+                if isPlayingAudiobook(book) { return true }
+                guard let progress = absProgress[book.id] else { return false }
                 return progress.isFinished != true && progress.currentTime > 5
             }
-            .sorted {
-                (absProgress[$0.id]?.currentTime ?? 0) > (absProgress[$1.id]?.currentTime ?? 0)
+            .sorted { left, right in
+                let leftPlaying = isPlayingAudiobook(left)
+                let rightPlaying = isPlayingAudiobook(right)
+                if leftPlaying != rightPlaying { return leftPlaying }
+                return (absProgress[left.id]?.currentTime ?? 0) > (absProgress[right.id]?.currentTime ?? 0)
             }
+    }
+
+    private func isPlayingAudiobook(_ book: AbsBook) -> Bool {
+        player.current?.id.hasPrefix("abs:\(book.id):") == true
     }
 
     /// Biography for an author, fetched once from Audiobookshelf.
@@ -1390,7 +1411,9 @@ final class AppModel {
     @discardableResult
     func fullBook(_ book: AbsBook) async -> AbsBook? {
         guard let abs else { return nil }
-        if !book.media.tracks.isEmpty || !book.media.audioFiles.isEmpty { return book }
+        // Only `tracks` carry the book-wide `startOffset` needed for correct
+        // progress and resume; `audioFiles` alone is not enough.
+        if !book.media.tracks.isEmpty { return book }
 
         do {
             let full = try await abs.item(id: book.id)
@@ -1412,14 +1435,20 @@ final class AppModel {
     /// conventional file URL when the server omits `contentUrl`.
     func tracks(of book: AbsBook) -> [AbsTrack] {
         if !book.media.tracks.isEmpty { return book.media.tracks }
+        // Older servers only expose `audioFiles`; build cumulative offsets so
+        // progress and resume still work across the whole book.
+        var offset = 0.0
         return book.media.audioFiles.compactMap { file in
             guard !file.ino.isEmpty else { return nil }
-            return AbsTrack(
+            let duration = file.duration ?? 0
+            let track = AbsTrack(
                 ino: file.ino,
-                startOffset: 0,
-                duration: file.duration ?? 0,
+                startOffset: offset,
+                duration: duration,
                 contentUrl: "/api/items/\(book.id)/file/\(file.ino)"
             )
+            offset += duration
+            return track
         }
     }
 
@@ -1431,7 +1460,9 @@ final class AppModel {
             return
         }
 
-        let startTime = time ?? absProgress[book.id]?.currentTime ?? 0
+        let saved = absProgress[book.id]
+        var startTime = time ?? saved?.currentTime ?? 0
+        if time == nil, saved?.isFinished == true { startTime = 0 }
         var songs: [Song] = []
         for (index, track) in tracks.enumerated() {
             let contentUrl = track.contentUrl.isEmpty
@@ -1457,17 +1488,27 @@ final class AppModel {
         }
         guard !songs.isEmpty else { return }
 
-        var index = 0
+        // Remember the position we are about to restore. The player reports a
+        // few seconds from the start before the seek has landed; those reports
+        // must not overwrite the saved progress.
+        if startTime > 5 {
+            absResumeTargets[book.id] = (startTime, Date())
+        } else {
+            absResumeTargets[book.id] = nil
+        }
+
+        var index = songs.count - 1
         var offset = 0.0
         for (position, song) in songs.enumerated() {
             guard let meta = absTrackBooks[song.id] else { continue }
-            if startTime >= meta.offset, startTime < meta.offset + meta.duration {
+            let end = meta.offset + meta.duration
+            if startTime < end || position == songs.count - 1 {
                 index = position
-                offset = startTime - meta.offset
+                offset = max(0, startTime - meta.offset)
+                if meta.duration > 0 {
+                    offset = min(offset, max(0, meta.duration - 1))
+                }
                 break
-            }
-            if startTime >= meta.offset + meta.duration {
-                index = min(position + 1, songs.count - 1)
             }
         }
         player.play(songs, startingAt: index, resumeAt: offset)
@@ -1479,16 +1520,37 @@ final class AppModel {
         absTrackAssets[song.id]
     }
 
-    private func handleAudiobookProgress(song: Song, position: Double) {
+    private func handleAudiobookProgress(song: Song, position: Double, force: Bool) {
         guard let meta = absTrackBooks[song.id], let abs else { return }
-        let absolute = meta.offset + position
-        let total = absBooks.first(where: { $0.id == meta.bookID })?.media.duration ?? 0
 
-        let now = Date()
-        guard now.timeIntervalSince(lastABSSync) > 10 else { return }
-        lastABSSync = now
+        // While a saved position is being restored the player may report 0 for
+        // a moment. Ignore those reports instead of losing the position.
+        if let resume = absResumeTargets[meta.bookID] {
+            let absolute = meta.offset + position
+            if absolute >= resume.target - 3 || Date().timeIntervalSince(resume.since) > 20 {
+                absResumeTargets[meta.bookID] = nil
+            } else {
+                return
+            }
+        }
 
+        let book = absBooks.first(where: { $0.id == meta.bookID })
+        let trackTotal = absTrackBooks.values
+            .filter { $0.bookID == meta.bookID }
+            .reduce(0) { $0 + $1.duration }
+        let total: Double
+        if let duration = book?.media.duration, duration > 0 {
+            total = duration
+        } else {
+            total = trackTotal
+        }
+
+        var absolute = max(0, meta.offset + position)
+        if total > 0 { absolute = min(absolute, total) }
         let finished = total > 0 && absolute >= total - 5
+
+        // Local progress updates on every report (also when pausing), so
+        // "Weiterhören" is right immediately; the server is synced less often.
         absProgress[meta.bookID] = AbsProgress(
             libraryItemId: meta.bookID,
             episodeId: nil,
@@ -1497,6 +1559,11 @@ final class AppModel {
             progress: total > 0 ? min(1, absolute / total) : 0,
             isFinished: finished
         )
+        absProgressTouched[meta.bookID] = Date()
+
+        let now = Date()
+        guard force || now.timeIntervalSince(lastABSSync) > 10 else { return }
+        lastABSSync = now
         Task {
             await abs.pushProgress(
                 itemID: meta.bookID,
