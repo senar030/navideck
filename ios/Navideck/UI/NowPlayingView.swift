@@ -277,19 +277,36 @@ struct NowPlayingView: View {
             Spacer()
 
             Menu {
-                Button {
-                    app.openAlbum(id: song.albumId, name: song.album, artist: song.artist)
-                } label: {
-                    Label("Zum Album", systemImage: "square.stack")
-                }
-                .disabled(song.albumId == nil)
+                if let book = app.audiobook(for: song) {
+                    Button {
+                        app.openAudiobookAuthor(book)
+                    } label: {
+                        Label("Zum Autor", systemImage: "person")
+                    }
+                    .disabled(book.media.metadata.resolvedAuthor == nil)
 
-                Button {
-                    app.openArtist(id: song.artistId, name: song.artist)
-                } label: {
-                    Label("Zum Interpreten", systemImage: "music.mic")
+                    if let series = book.media.metadata.seriesName, !series.isEmpty {
+                        Button {
+                            app.openAudiobookSeries(book)
+                        } label: {
+                            Label("Zur Serie", systemImage: "square.stack")
+                        }
+                    }
+                } else {
+                    Button {
+                        app.openAlbum(id: song.albumId, name: song.album, artist: song.artist)
+                    } label: {
+                        Label("Zum Album", systemImage: "square.stack")
+                    }
+                    .disabled(song.albumId == nil)
+
+                    Button {
+                        app.openArtist(id: song.artistId, name: song.artist)
+                    } label: {
+                        Label("Zum Interpreten", systemImage: "music.mic")
+                    }
+                    .disabled(song.artistId == nil)
                 }
-                .disabled(song.artistId == nil)
 
                 Divider()
 

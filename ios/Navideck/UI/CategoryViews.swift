@@ -188,11 +188,10 @@ struct HörbücherCategoryView: View {
 
     private let items: [CategoryBand.Item] = [
         overviewItem,
-        .init(id: 1, title: "Weiterhören", icon: "play.circle"),
-        .init(id: 2, title: "Alle", icon: "books.vertical"),
-        .init(id: 3, title: "Serien", icon: "square.stack"),
-        .init(id: 4, title: "Autoren", icon: "person"),
-        .init(id: 5, title: "Neu", icon: "sparkles"),
+        .init(id: 1, title: "Bücher", icon: "books.vertical"),
+        .init(id: 2, title: "Serien", icon: "square.stack"),
+        .init(id: 3, title: "Autoren", icon: "person"),
+        .init(id: 4, title: "Neu", icon: "sparkles"),
     ]
 
     private let columns = [
@@ -310,7 +309,7 @@ struct HörbücherCategoryView: View {
                     app.playDownloadedAudiobook(item)
                 } label: {
                     HStack(spacing: 12) {
-                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt))
+                        BookCoverView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
                             .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -400,8 +399,16 @@ struct HörbücherCategoryView: View {
         }
     }
 
+    private var authorNames: [String] {
+        var seen = Set<String>()
+        return app.absBooks
+            .compactMap { $0.media.metadata.resolvedAuthor }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     private var authorChips: some View {
-        let values = unique(\.authorName)
+        let values = authorNames
         return Group {
             if !values.isEmpty {
                 WidgetSection(title: "Autoren", icon: "person") {
@@ -450,7 +457,7 @@ struct HörbücherCategoryView: View {
                 ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
                     NavigationLink(value: LibraryRoute.audiobook(book)) {
                         HStack(spacing: 12) {
-                            CoverArtView(url: app.absCoverURL(book, width: 200))
+                            BookCoverView(url: app.absCoverURL(book, width: 400))
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(book.media.metadata.title)
@@ -493,7 +500,8 @@ struct HörbücherCategoryView: View {
     private func unique(_ key: KeyPath<AbsMetadata, String?>) -> [String] {
         var seen = Set<String>()
         return app.absBooks
-            .compactMap { $0.media.metadata[keyPath: key] }
+            .compactMap { Format.plainText($0.media.metadata[keyPath: key]) }
+            .filter { $0 != app.absBooks.first?.media.metadata.title }
             .filter { !$0.isEmpty && seen.insert($0).inserted }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
@@ -1028,7 +1036,7 @@ struct PodcastCategoryView: View {
                     app.player.play(item.songs)
                 } label: {
                     HStack(spacing: 12) {
-                        CoverArtView(url: app.downloads.localCoverURL(coverArt: item.coverArt))
+                        BookCoverView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
                             .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {

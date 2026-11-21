@@ -29,6 +29,32 @@ struct CoverArtView: View {
     }
 }
 
+/// Square cover for audiobooks. Portrait book art is scaled to full height and
+/// the sides are filled with a blurred version of the same artwork, so the
+/// whole painting stays visible without letterboxing.
+struct BookCoverView: View {
+    let url: URL?
+    var maxPixel: Int = 700
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                CachedImage(url: url, maxPixel: maxPixel)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
+                    .blur(radius: 26)
+                    .opacity(0.55)
+
+                CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .clipped()
+        .contentShape(Rectangle())
+    }
+}
+
 /// Circular portrait for artists and authors, matching the square artwork
 /// direction used for albums, books and podcasts.
 struct PersonAvatar: View {

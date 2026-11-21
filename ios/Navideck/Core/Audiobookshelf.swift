@@ -24,10 +24,24 @@ private struct AbsLibrariesResponse: Decodable {
     var libraries: [AbsLibrary]
 }
 
+struct AbsAuthorRef: Decodable, Hashable, Sendable {
+    var id: String
+    var name: String
+
+    enum CodingKeys: String, CodingKey { case id, name }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+    }
+}
+
 struct AbsMetadata: Decodable, Hashable, Sendable {
     var title: String
     var subtitle: String?
     var authorName: String?
+    var authors: [AbsAuthorRef]
     var narratorName: String?
     var seriesName: String?
     var seriesSequence: String?
@@ -37,7 +51,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
     var language: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, subtitle, authorName, narratorName, seriesName
+        case title, subtitle, authorName, authors, narratorName, seriesName
         case seriesSequence, genres, description, publishedYear, language
     }
 
@@ -47,6 +61,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         subtitle = try? c.decodeIfPresent(String.self, forKey: .subtitle)
         description = try? c.decodeIfPresent(String.self, forKey: .description)
         authorName = try? c.decodeIfPresent(String.self, forKey: .authorName)
+        authors = (try? c.decodeIfPresent([AbsAuthorRef].self, forKey: .authors)) ?? []
         narratorName = try? c.decodeIfPresent(String.self, forKey: .narratorName)
         seriesName = try? c.decodeIfPresent(String.self, forKey: .seriesName)
         seriesSequence = try? c.decodeIfPresent(String.self, forKey: .seriesSequence)
@@ -54,6 +69,16 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         description = try? c.decodeIfPresent(String.self, forKey: .description)
         publishedYear = try? c.decodeIfPresent(String.self, forKey: .publishedYear)
         language = try? c.decodeIfPresent(String.self, forKey: .language)
+    }
+
+    /// Author name with fallback to the structured author list.
+    var resolvedAuthor: String? {
+        if let authorName, !authorName.isEmpty { return authorName }
+        return authors.first?.name
+    }
+
+    var authorID: String? {
+        authors.first(where: { !$0.id.isEmpty })?.id
     }
 }
 
@@ -248,6 +273,7 @@ extension AbsMetadata {
         title = ""
         subtitle = nil
         authorName = nil
+        authors = []
         narratorName = nil
         seriesName = nil
         seriesSequence = nil
@@ -475,6 +501,22 @@ struct AudiobookshelfClient: Sendable {
     /// arrive without them.
     func item(id: String) async throws -> AbsBook {
         try await request("api/items/\(id)")
+    }
+
+    struct Author: Decodable, Sendable {
+        var id: String
+        var name: String
+        var description: String?
+    }
+
+    private struct AuthorResponse: Decodable {
+        var author: Author?
+    }
+
+    func author(id: String) async throws -> Author {
+        let response: AuthorResponse = try await request("api/authors/\(id)")
+        if let author = response.author { return author }
+        return Author(id: id, name: "", description: nil)
     }
 
     func progress() async throws -> [AbsProgress] {

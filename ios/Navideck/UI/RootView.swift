@@ -430,7 +430,7 @@ struct MainTabs: View {
         case .audioSeries(let name):
             AudiobookCollectionView(title: name, filter: .series(name))
         case .audioAuthor(let name):
-            AudiobookCollectionView(title: name, filter: .author(name))
+            AudiobookAuthorView(name: name)
         }
     }
 }

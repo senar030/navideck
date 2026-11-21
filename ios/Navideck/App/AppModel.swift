@@ -180,6 +180,7 @@ final class AppModel {
             if let client = servers.makeAudiobookshelfClient(for: profile) {
                 self.abs = client
             }
+            Task { @MainActor in await refreshLibraries() }
             if ProcessInfo.processInfo.environment["NAVIDECK_DEMO_PODCAST_ABS"] == "1" {
                 prefs.podcastSource = profile.id.uuidString
             }
@@ -576,6 +577,24 @@ final class AppModel {
         guard let id, !id.isEmpty else { return }
         player.showNowPlaying = false
         pendingRoute = .artist(Artist(id: id, name: name ?? "Interpret"))
+    }
+
+    /// Audiobook that owns a player song, if any.
+    func audiobook(for song: Song) -> AbsBook? {
+        guard let meta = absTrackBooks[song.id] else { return nil }
+        return absBooks.first { $0.id == meta.bookID }
+    }
+
+    func openAudiobookAuthor(_ book: AbsBook) {
+        guard let name = book.media.metadata.resolvedAuthor else { return }
+        player.showNowPlaying = false
+        pendingRoute = .audioAuthor(name)
+    }
+
+    func openAudiobookSeries(_ book: AbsBook) {
+        guard let series = book.media.metadata.seriesName, !series.isEmpty else { return }
+        player.showNowPlaying = false
+        pendingRoute = .audioSeries(series)
     }
 
     func openDownloads() {
@@ -998,6 +1017,10 @@ final class AppModel {
 
     /// Loads all book libraries, their items and the listening progress.
     func loadAudiobooks(force: Bool = false) async {
+        guard abs != nil else { return }
+        if libraries.isEmpty {
+            await refreshLibraries()
+        }
         guard let abs else { return }
         if !force, let loaded = absLoadedAt,
            Date().timeIntervalSince(loaded) < 300, !absBooks.isEmpty {
@@ -1040,6 +1063,10 @@ final class AppModel {
     @ObservationIgnored private var absPodcastsLoadedAt: Date?
 
     func loadPodcasts(force: Bool = false) async {
+        guard abs != nil else { return }
+        if libraries.isEmpty {
+            await refreshLibraries()
+        }
         guard let abs else { return }
         if !force, let loaded = absPodcastsLoadedAt,
            Date().timeIntervalSince(loaded) < 300, !absPodcasts.isEmpty {
@@ -1271,7 +1298,7 @@ final class AppModel {
             id: songID,
             title: episode.title,
             album: show.media.metadata.title,
-            artist: show.media.metadata.authorName,
+            artist: show.media.metadata.resolvedAuthor,
             duration: episode.duration.map { Int($0.rounded()) },
             coverArt: "abs:\(show.id)"
         )
@@ -1288,6 +1315,14 @@ final class AppModel {
             .sorted {
                 (absProgress[$0.id]?.currentTime ?? 0) > (absProgress[$1.id]?.currentTime ?? 0)
             }
+    }
+
+    /// Biography for an author, fetched once from Audiobookshelf.
+    func authorBio(name: String) async -> String? {
+        guard let abs else { return nil }
+        let id = absBooks.first { $0.media.metadata.resolvedAuthor == name }?.media.metadata.authorID
+        guard let id, !id.isEmpty, let author = try? await abs.author(id: id) else { return nil }
+        return Format.plainText(author.description)
     }
 
     func absCoverURL(_ book: AbsBook, width: Int = 300) -> URL? {
@@ -1376,7 +1411,7 @@ final class AppModel {
                 id: "abs:\(book.id):\(track.ino)",
                 title: title,
                 album: book.media.metadata.title,
-                artist: book.media.metadata.authorName,
+                artist: book.media.metadata.resolvedAuthor,
                 duration: Int(track.duration.rounded()),
                 track: index + 1,
                 coverArt: "abs:\(book.id)"
@@ -1479,7 +1514,7 @@ final class AppModel {
                     id: "abs:\(full.id):\(track.ino)",
                     title: title,
                     album: full.media.metadata.title,
-                    artist: full.media.metadata.authorName,
+                    artist: full.media.metadata.resolvedAuthor,
                     duration: Int(track.duration.rounded()),
                     track: index + 1,
                     coverArt: "abs:\(full.id)"
@@ -1498,7 +1533,7 @@ final class AppModel {
                 kind: .audiobook,
                 sourceID: full.id,
                 title: full.media.metadata.title,
-                subtitle: full.media.metadata.authorName,
+                subtitle: full.media.metadata.resolvedAuthor,
                 coverArt: "abs:\(full.id)",
                 songs: songs,
                 requests: requests,
@@ -1521,7 +1556,7 @@ final class AppModel {
             id: "abs:\(show.id):\(ino)",
             title: episode.title,
             album: show.media.metadata.title,
-            artist: show.media.metadata.authorName,
+            artist: show.media.metadata.resolvedAuthor,
             duration: episode.duration.map { Int($0.rounded()) },
             coverArt: "abs:\(show.id)"
         )

@@ -195,8 +195,7 @@ struct AudiobookCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.audiobook(book)) {
             VStack(alignment: .leading, spacing: 6) {
-                CoverArtView(url: app.absCoverURL(book, width: 400))
-                    .aspectRatio(1, contentMode: .fit)
+                BookCoverView(url: app.absCoverURL(book, width: 700))
                     .frame(maxWidth: width)
 
                 Text(book.media.metadata.title)
@@ -249,21 +248,82 @@ struct AudiobookCollectionView: View {
     private var books: [AbsBook] {
         switch filter {
         case .series(let name):
-            return app.absBooks.filter { $0.media.metadata.seriesName == name }
+            return app.absBooks
+                .filter { $0.media.metadata.seriesName == name }
+                .sorted { left, right in
+                    let leftSequence = Int(left.media.metadata.seriesSequence ?? "") ?? Int.max
+                    let rightSequence = Int(right.media.metadata.seriesSequence ?? "") ?? Int.max
+                    if leftSequence != rightSequence { return leftSequence < rightSequence }
+                    return left.media.metadata.title.localizedCaseInsensitiveCompare(right.media.metadata.title) == .orderedAscending
+                }
         case .author(let name):
-            return app.absBooks.filter { $0.media.metadata.authorName == name }
+            return app.absBooks
+                .filter { $0.media.metadata.resolvedAuthor == name }
+                .sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
         }
+    }
+
+    private var isSeries: Bool {
+        if case .series = filter { return true }
+        return false
+    }
+
+    private func sequenceTitle(_ book: AbsBook) -> String {
+        if let sequence = book.media.metadata.seriesSequence, !sequence.isEmpty {
+            return "Band \(sequence)"
+        }
+        return book.media.metadata.title
     }
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(books) { book in
-                    AudiobookCard(book: book, width: nil)
+            if isSeries {
+                // Volumes as a list, ordered by series sequence.
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
+                        NavigationLink(value: LibraryRoute.audiobook(book)) {
+                            HStack(spacing: 12) {
+                                BookCoverView(url: app.absCoverURL(book, width: 400))
+                                    .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(sequenceTitle(book))
+                                        .font(.body.weight(.medium))
+                                        .foregroundStyle(Theme.text)
+                                        .lineLimit(1)
+                                    Text(book.media.metadata.title)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.muted)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Theme.muted.opacity(0.7))
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if offset < books.count - 1 {
+                            Divider().overlay(Theme.hairline).padding(.leading, 20)
+                        }
+                    }
                 }
+                .padding(.vertical, 8)
+            } else {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(books) { book in
+                        AudiobookCard(book: book, width: nil)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
 
             if books.isEmpty {
                 EmptyStateView(
@@ -329,7 +389,7 @@ struct AudiobookDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            CoverArtView(url: app.absCoverURL(book, width: 900), maxPixel: 1000)
+            BookCoverView(url: app.absCoverURL(book, width: 900), maxPixel: 1000)
                 .frame(width: 220, height: 220)
                 .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 
@@ -339,7 +399,7 @@ struct AudiobookDetailView: View {
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
 
-                if let author = metadata.authorName, !author.isEmpty {
+                if let author = metadata.resolvedAuthor, !author.isEmpty {
                     Text(author)
                         .font(.subheadline)
                         .foregroundStyle(Theme.accent)
@@ -374,18 +434,13 @@ struct AudiobookDetailView: View {
     private var actions: some View {
         ZStack {
             HStack(spacing: 6) {
-                downloadControl
-                Spacer(minLength: 0)
                 if let progress, progress.currentTime > 5, progress.isFinished != true {
-                    Button {
-                        app.playAudiobook(book)
-                    } label: {
-                        Label("Weiterhören", systemImage: "arrow.clockwise")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Theme.accent)
+                    SquareIconButton(systemName: "backward.end", accessibilityTitle: "Von vorne") {
+                        app.playAudiobook(book, from: 0)
                     }
-                    .buttonStyle(.plain)
                 }
+                Spacer(minLength: 0)
+                downloadControl
             }
 
             PlayCircleButton(isPlaying: isPlaying) {
@@ -481,5 +536,89 @@ struct AudiobookDetailView: View {
                 }
             }
         }
+    }
+}
+
+
+// MARK: - Autor
+
+struct AudiobookAuthorView: View {
+    @Environment(AppModel.self) private var app
+    let name: String
+
+    @State private var bio: String?
+    @State private var loadingBio = false
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 16, alignment: .top)
+    ]
+
+    private var books: [AbsBook] {
+        app.absBooks
+            .filter { $0.media.metadata.resolvedAuthor == name }
+            .sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+
+                if let bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                        .padding(.horizontal, 20)
+                } else if loadingBio {
+                    ProgressView().tint(Theme.accent)
+                        .padding(.horizontal, 20)
+                }
+
+                if books.isEmpty {
+                    EmptyStateView(
+                        icon: "person",
+                        title: "Keine Bücher",
+                        message: "Für diesen Autor liegen keine Hörbücher vor."
+                    )
+                    .padding(.top, 20)
+                } else {
+                    LazyVGrid(columns: columns, spacing: 20) {
+                        ForEach(books) { book in
+                            AudiobookCard(book: book, width: nil)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(name)
+        .navideckScreen()
+        .task {
+            await app.loadAudiobooks()
+            if bio == nil {
+                loadingBio = true
+                bio = await app.authorBio(name: name)
+                loadingBio = false
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            CoverArtView(url: books.first.flatMap { app.absCoverURL($0, width: 400) }, radius: 36)
+                .frame(width: 72, height: 72)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.text)
+                Text("\(books.count) \(books.count == 1 ? "Hörbuch" : "Hörbücher")")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
     }
 }
