@@ -42,6 +42,7 @@ struct MiniPlayerBar: View {
             .padding(.trailing, 5)
             .padding(.vertical, 7)
             .navideckGlass(Capsule())
+            .clipShape(Capsule())
             .contentShape(Capsule())
             .offset(x: dragOffset)
             .opacity(1 - min(0.85, abs(dragOffset) / 280))

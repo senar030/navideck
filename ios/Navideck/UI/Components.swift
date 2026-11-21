@@ -41,10 +41,9 @@ struct BookCoverView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                // Always present: a generated cover for books without artwork.
-                GeneratedBookCover(title: title ?? "", author: author)
-
                 if let url {
+                    // Real artwork: portrait covers keep their sides filled with
+                    // a blurred copy, never with the generated title cover.
                     CachedImage(url: url, maxPixel: maxPixel)
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
@@ -52,6 +51,9 @@ struct BookCoverView: View {
                         .opacity(0.55)
 
                     CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
+                } else {
+                    // Only books without artwork get the generated cover.
+                    GeneratedBookCover(title: title ?? "", author: author)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
