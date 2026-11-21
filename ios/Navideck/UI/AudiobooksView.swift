@@ -17,7 +17,7 @@ struct AudiobooksView: View {
     private var seriesNames: [String] {
         var seen = Set<String>()
         return app.absBooks
-            .compactMap { $0.media.metadata.seriesName }
+            .compactMap { $0.media.metadata.seriesTitle }
             .filter { !$0.isEmpty && seen.insert($0).inserted }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
@@ -195,8 +195,12 @@ struct AudiobookCard: View {
     var body: some View {
         NavigationLink(value: LibraryRoute.audiobook(book)) {
             VStack(alignment: .leading, spacing: 6) {
-                BookCoverView(url: app.absCoverURL(book, width: 700))
-                    .frame(maxWidth: width)
+                BookCoverView(
+                    url: app.absCoverURL(book, width: 700),
+                    title: book.media.metadata.title,
+                    author: book.media.metadata.resolvedAuthor
+                )
+                .frame(maxWidth: width)
 
                 Text(book.media.metadata.title)
                     .font(.body.weight(.semibold))
@@ -249,10 +253,10 @@ struct AudiobookCollectionView: View {
         switch filter {
         case .series(let name):
             return app.absBooks
-                .filter { $0.media.metadata.seriesName == name }
+                .filter { $0.media.metadata.seriesTitle == name }
                 .sorted { left, right in
-                    let leftSequence = Int(left.media.metadata.seriesSequence ?? "") ?? Int.max
-                    let rightSequence = Int(right.media.metadata.seriesSequence ?? "") ?? Int.max
+                    let leftSequence = Int(left.media.metadata.seriesVolume ?? "") ?? Int.max
+                    let rightSequence = Int(right.media.metadata.seriesVolume ?? "") ?? Int.max
                     if leftSequence != rightSequence { return leftSequence < rightSequence }
                     return left.media.metadata.title.localizedCaseInsensitiveCompare(right.media.metadata.title) == .orderedAscending
                 }
@@ -269,7 +273,7 @@ struct AudiobookCollectionView: View {
     }
 
     private func sequenceTitle(_ book: AbsBook) -> String {
-        if let sequence = book.media.metadata.seriesSequence, !sequence.isEmpty {
+        if let sequence = book.media.metadata.seriesVolume, !sequence.isEmpty {
             return "Band \(sequence)"
         }
         return book.media.metadata.title
@@ -283,8 +287,12 @@ struct AudiobookCollectionView: View {
                     ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
                         NavigationLink(value: LibraryRoute.audiobook(book)) {
                             HStack(spacing: 12) {
-                                BookCoverView(url: app.absCoverURL(book, width: 400))
-                                    .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                                BookCoverView(
+                                    url: app.absCoverURL(book, width: 400),
+                                    title: book.media.metadata.title,
+                                    author: book.media.metadata.resolvedAuthor
+                                )
+                                .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(sequenceTitle(book))
@@ -389,8 +397,13 @@ struct AudiobookDetailView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            BookCoverView(url: app.absCoverURL(book, width: 900), maxPixel: 1000)
-                .frame(width: 220, height: 220)
+            BookCoverView(
+                url: app.absCoverURL(book, width: 900),
+                title: metadata.title,
+                author: metadata.resolvedAuthor,
+                maxPixel: 1000
+            )
+            .frame(width: 220, height: 220)
                 .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 
             VStack(spacing: 4) {
@@ -418,8 +431,8 @@ struct AudiobookDetailView: View {
         if let narrator = metadata.narratorName, !narrator.isEmpty {
             parts.append("Gelesen von \(narrator)")
         }
-        if let series = metadata.seriesName, !series.isEmpty {
-            if let sequence = metadata.seriesSequence, !sequence.isEmpty {
+        if let series = metadata.seriesTitle, !series.isEmpty {
+            if let sequence = metadata.seriesVolume, !sequence.isEmpty {
                 parts.append("\(series) \(sequence)")
             } else {
                 parts.append(series)
@@ -604,10 +617,13 @@ struct AudiobookAuthorView: View {
         }
     }
 
+    private var authorImage: URL? {
+        app.absAuthors.first { $0.name == name }.flatMap { app.authorImageURL($0) }
+    }
+
     private var header: some View {
         HStack(spacing: 14) {
-            CoverArtView(url: books.first.flatMap { app.absCoverURL($0, width: 400) }, radius: 36)
-                .frame(width: 72, height: 72)
+            PersonAvatar(url: authorImage ?? books.first.flatMap { app.absCoverURL($0, width: 400) }, size: 72)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)

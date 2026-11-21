@@ -324,7 +324,7 @@ struct HörbücherCategoryView: View {
     private var seriesGroups: [SeriesGroup] {
         var counts: [String: Int] = [:]
         for book in app.absBooks {
-            guard let name = Format.plainText(book.media.metadata.seriesName), !name.isEmpty else { continue }
+            guard let name = book.media.metadata.seriesTitle, !name.isEmpty else { continue }
             counts[name, default: 0] += 1
         }
         return counts
@@ -501,8 +501,12 @@ struct HörbücherCategoryView: View {
                     app.playDownloadedAudiobook(item)
                 } label: {
                     HStack(spacing: 12) {
-                        BookCoverView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
-                            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                        BookCoverView(
+                            url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt),
+                            title: item.title,
+                            author: item.subtitle
+                        )
+                        .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text(item.title)
@@ -642,8 +646,12 @@ struct HörbücherCategoryView: View {
                 ForEach(Array(books.enumerated()), id: \.element.id) { offset, book in
                     NavigationLink(value: LibraryRoute.audiobook(book)) {
                         HStack(spacing: 12) {
-                            BookCoverView(url: app.absCoverURL(book, width: 400))
-                                .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                            BookCoverView(
+                                url: app.absCoverURL(book, width: 400),
+                                title: book.media.metadata.title,
+                                author: book.media.metadata.resolvedAuthor
+                            )
+                            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(book.media.metadata.title)
                                     .font(.body.weight(.medium))
@@ -1221,8 +1229,12 @@ struct PodcastCategoryView: View {
                     app.player.play(item.songs)
                 } label: {
                     HStack(spacing: 12) {
-                        BookCoverView(url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt))
-                            .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                        BookCoverView(
+                            url: app.downloads.localCoverURL(coverArt: item.coverArt) ?? app.artworkURL(item.coverArt),
+                            title: item.title,
+                            author: item.subtitle
+                        )
+                        .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text(item.title)

@@ -34,24 +34,81 @@ struct CoverArtView: View {
 /// whole painting stays visible without letterboxing.
 struct BookCoverView: View {
     let url: URL?
+    var title: String? = nil
+    var author: String? = nil
     var maxPixel: Int = 700
 
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                CachedImage(url: url, maxPixel: maxPixel)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .clipped()
-                    .blur(radius: 26)
-                    .opacity(0.55)
+                // Always present: a generated cover for books without artwork.
+                GeneratedBookCover(title: title ?? "", author: author)
 
-                CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
+                if let url {
+                    CachedImage(url: url, maxPixel: maxPixel)
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                        .blur(radius: 26)
+                        .opacity(0.55)
+
+                    CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
+                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .aspectRatio(1, contentMode: .fit)
         .clipped()
         .contentShape(Rectangle())
+    }
+}
+
+/// Hand-made cover for books that ship without artwork.
+struct GeneratedBookCover: View {
+    let title: String
+    let author: String?
+
+    private var hue: Double {
+        let hash = abs(title.unicodeScalars.reduce(0) { $0 &+ Int($1.value) })
+        return Double(hash % 360) / 360
+    }
+
+    var body: some View {
+        let base = Color(hue: hue, saturation: 0.45, brightness: 0.45)
+        let accent = Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1), saturation: 0.5, brightness: 0.7)
+
+        ZStack(alignment: .topLeading) {
+            LinearGradient(
+                colors: [base, Theme.backgroundLift, accent.opacity(0.85)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "book.closed")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+
+                Spacer(minLength: 0)
+
+                if !title.isEmpty {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.75)
+                }
+
+                if let author, !author.isEmpty {
+                    Text(author)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .padding(10)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -62,8 +119,21 @@ struct PersonAvatar: View {
     var size: CGFloat = Theme.rowArtwork
 
     var body: some View {
-        CoverArtView(url: url, radius: size / 2)
-            .frame(width: size, height: size)
+        ZStack {
+            Circle().fill(Theme.surface)
+            Image(systemName: "person.fill")
+                .font(.system(size: size * 0.38))
+                .foregroundStyle(Theme.muted.opacity(0.45))
+
+            if let url {
+                CachedImage(url: url, contentMode: .fill, maxPixel: Int(size * 4))
+                    .frame(width: size, height: size)
+                    .clipped()
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .contentShape(Circle())
     }
 }
 

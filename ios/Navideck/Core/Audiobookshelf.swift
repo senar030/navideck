@@ -37,6 +37,27 @@ struct AbsAuthorRef: Decodable, Hashable, Sendable {
     }
 }
 
+struct AbsSeriesRef: Decodable, Hashable, Sendable {
+    var name: String
+    var sequence: String?
+
+    enum CodingKeys: String, CodingKey { case name, sequence }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        if let value = try? c.decodeIfPresent(String.self, forKey: .sequence) {
+            sequence = value
+        } else if let value = try? c.decodeIfPresent(Int.self, forKey: .sequence) {
+            sequence = String(value)
+        } else if let value = try? c.decodeIfPresent(Double.self, forKey: .sequence) {
+            sequence = String(Int(value))
+        } else {
+            sequence = nil
+        }
+    }
+}
+
 struct AbsMetadata: Decodable, Hashable, Sendable {
     var title: String
     var subtitle: String?
@@ -45,6 +66,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
     var narratorName: String?
     var seriesName: String?
     var seriesSequence: String?
+    var series: [AbsSeriesRef]
     var genres: [String]?
     var description: String?
     var publishedYear: String?
@@ -52,7 +74,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case title, subtitle, authorName, authors, narratorName, seriesName
-        case seriesSequence, genres, description, publishedYear, language
+        case seriesSequence, series, genres, description, publishedYear, language
     }
 
     init(from decoder: Decoder) throws {
@@ -65,6 +87,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         narratorName = try? c.decodeIfPresent(String.self, forKey: .narratorName)
         seriesName = try? c.decodeIfPresent(String.self, forKey: .seriesName)
         seriesSequence = try? c.decodeIfPresent(String.self, forKey: .seriesSequence)
+        series = (try? c.decodeIfPresent([AbsSeriesRef].self, forKey: .series)) ?? []
         genres = try? c.decodeIfPresent([String].self, forKey: .genres)
         description = try? c.decodeIfPresent(String.self, forKey: .description)
         publishedYear = try? c.decodeIfPresent(String.self, forKey: .publishedYear)
@@ -79,6 +102,28 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
 
     var authorID: String? {
         authors.first(where: { !$0.id.isEmpty })?.id
+    }
+
+    /// Series name without the trailing volume marker some servers append
+    /// ("Harry Potter #3" -> "Harry Potter").
+    var seriesTitle: String? {
+        if let first = series.first, !first.name.isEmpty {
+            return Format.plainText(first.name)
+        }
+        guard let legacy = Format.plainText(seriesName), !legacy.isEmpty else { return nil }
+        let cleaned = legacy.replacingOccurrences(
+            of: "\\s*#\\s*\\d+\\s*$",
+            with: "",
+            options: .regularExpression
+        )
+        return cleaned.isEmpty ? legacy : cleaned
+    }
+
+    var seriesVolume: String? {
+        if let first = series.first, let sequence = first.sequence, !sequence.isEmpty {
+            return sequence
+        }
+        return seriesSequence
     }
 }
 
@@ -277,6 +322,7 @@ extension AbsMetadata {
         narratorName = nil
         seriesName = nil
         seriesSequence = nil
+        series = []
         genres = nil
         description = nil
         publishedYear = nil

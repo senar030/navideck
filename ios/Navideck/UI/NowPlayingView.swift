@@ -285,7 +285,7 @@ struct NowPlayingView: View {
                     }
                     .disabled(book.media.metadata.resolvedAuthor == nil)
 
-                    if let series = book.media.metadata.seriesName, !series.isEmpty {
+                    if let series = book.media.metadata.seriesTitle, !series.isEmpty {
                         Button {
                             app.openAudiobookSeries(book)
                         } label: {

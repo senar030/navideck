@@ -593,7 +593,7 @@ final class AppModel {
     }
 
     func openAudiobookSeries(_ book: AbsBook) {
-        guard let series = book.media.metadata.seriesName, !series.isEmpty else { return }
+        guard let series = book.media.metadata.seriesTitle, !series.isEmpty else { return }
         player.showNowPlaying = false
         pendingRoute = .audioSeries(series)
     }
