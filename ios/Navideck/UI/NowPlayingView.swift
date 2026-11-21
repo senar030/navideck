@@ -16,12 +16,7 @@ struct NowPlayingView: View {
                     topBar
                     Spacer(minLength: 6)
 
-                    CoverArtView(url: app.artworkURL(song.coverArt, size: 900), maxPixel: 1200)
-                        .aspectRatio(1, contentMode: .fit)
-                        .frame(maxWidth: 380, maxHeight: 380)
-                        .shadow(color: .black.opacity(0.45), radius: 24, y: 16)
-                        .scaleEffect(app.player.isPlaying ? 1 : 0.965)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: app.player.isPlaying)
+                    cover(for: song)
 
                     Spacer(minLength: 12)
                     metadata(for: song)
@@ -58,6 +53,31 @@ struct NowPlayingView: View {
                     .background(Theme.background.ignoresSafeArea())
             }
         }
+    }
+
+    // MARK: - Cover
+
+    @ViewBuilder
+    private func cover(for song: Song) -> some View {
+        Group {
+            if let book = app.audiobook(for: song) {
+                // Square artwork for audiobooks: portrait covers keep the whole
+                // painting visible on a blurred copy of itself.
+                BookCoverView(
+                    url: app.artworkURL(song.coverArt, size: 900),
+                    title: book.media.metadata.title,
+                    author: book.media.metadata.resolvedAuthor,
+                    maxPixel: 1200
+                )
+            } else {
+                CoverArtView(url: app.artworkURL(song.coverArt, size: 900), maxPixel: 1200)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: 380, maxHeight: 380)
+        .shadow(color: .black.opacity(0.45), radius: 24, y: 16)
+        .scaleEffect(app.player.isPlaying ? 1 : 0.965)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: app.player.isPlaying)
     }
 
     // MARK: - Background
@@ -281,16 +301,14 @@ struct NowPlayingView: View {
                     Button {
                         app.openAudiobookAuthor(book)
                     } label: {
-                        Label("Zum Autor", systemImage: "person")
+                        Label("Zum Autoren", systemImage: "person")
                     }
                     .disabled(book.media.metadata.resolvedAuthor == nil)
 
-                    if let series = book.media.metadata.seriesTitle, !series.isEmpty {
-                        Button {
-                            app.openAudiobookSeries(book)
-                        } label: {
-                            Label("Zur Serie", systemImage: "square.stack")
-                        }
+                    Button {
+                        app.openAudiobookDetail(book)
+                    } label: {
+                        Label("Zum Buch", systemImage: "book.closed")
                     }
                 } else {
                     Button {

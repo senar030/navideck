@@ -586,6 +586,11 @@ final class AppModel {
         return absBooks.first { $0.id == meta.bookID }
     }
 
+    func openAudiobookDetail(_ book: AbsBook) {
+        player.showNowPlaying = false
+        pendingRoute = .audiobook(book)
+    }
+
     func openAudiobookAuthor(_ book: AbsBook) {
         guard let name = book.media.metadata.resolvedAuthor else { return }
         player.showNowPlaying = false
