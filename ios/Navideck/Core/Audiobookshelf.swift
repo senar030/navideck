@@ -507,6 +507,20 @@ struct AudiobookshelfClient: Sendable {
         var id: String
         var name: String
         var description: String?
+        var imagePath: String?
+    }
+
+    private struct AuthorsResponse: Decodable {
+        var authors: [Author]
+    }
+
+    func authors(libraryID: String) async throws -> [Author] {
+        let response: AuthorsResponse = try await request("api/libraries/\(libraryID)/authors")
+        return response.authors
+    }
+
+    func authorImageURL(id: String) -> URL? {
+        url("api/authors/\(id)/image", query: [URLQueryItem(name: "token", value: token)])
     }
 
     private struct AuthorResponse: Decodable {

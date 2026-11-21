@@ -243,16 +243,19 @@ struct HörbücherCategoryView: View {
                 }
             } else {
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    Menu {
-                        Picker("Sortierung", selection: $sortRaw) {
-                            Text("Neu hinzugefügt").tag("added")
-                            Text("Titel").tag("title")
+                    if section == 1 || section == 4 {
+                        Menu {
+                            Picker("Sortierung", selection: $sortRaw) {
+                                Text("Titel").tag("title")
+                                Text("Neu hinzugefügt").tag("added")
+                                Text("Autor").tag("author")
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .foregroundStyle(Theme.text)
                         }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .foregroundStyle(Theme.text)
+                        .accessibilityLabel("Sortierung")
                     }
-                    .accessibilityLabel("Sortierung")
 
                     Button {
                         layout = layout == "grid" ? "list" : "grid"
@@ -279,26 +282,215 @@ struct HörbücherCategoryView: View {
     private var content: some View {
         switch section {
         case 0: bookWidgets
-        case 1:
-            let books = app.audiobooksInProgress
-            if books.isEmpty {
-                EmptyStateView(
-                    icon: "play.circle",
-                    title: "Nichts angefangen",
-                    message: "Sobald du ein Hörbuch hörst, erscheint es hier."
-               )
-                .padding(.top, 30)
-            } else {
-                grid(books)
+        case 2: seriesSection
+        case 3: authorsSection
+        case 4: grid(newestBooks)
+        default: grid(sortedBooks)
+        }
+    }
+
+    // MARK: Bücher
+
+    private var newestBooks: [AbsBook] {
+        app.absBooks.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+    }
+
+    private var sortedBooks: [AbsBook] {
+        switch sortRaw {
+        case "added":
+            return newestBooks
+        case "author":
+            return app.absBooks.sorted {
+                let left = $0.media.metadata.resolvedAuthor ?? ""
+                let right = $1.media.metadata.resolvedAuthor ?? ""
+                if left != right { return left.localizedCaseInsensitiveCompare(right) == .orderedAscending }
+                return $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
             }
-        case 3:
-            chips(values: unique(\.seriesName), icon: "square.stack") { LibraryRoute.audioSeries($0) }
-        case 4:
-            chips(values: unique(\.authorName), icon: "person") { LibraryRoute.audioAuthor($0) }
-        case 5:
-            grid(Array(sortedBooks.prefix(18)))
         default:
-            grid(sortedBooks)
+            return app.absBooks.sorted {
+                $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
+            }
+        }
+    }
+
+    // MARK: Serien
+
+    private struct SeriesGroup: Identifiable {
+        let name: String
+        let count: Int
+        var id: String { name }
+    }
+
+    private var seriesGroups: [SeriesGroup] {
+        var counts: [String: Int] = [:]
+        for book in app.absBooks {
+            guard let name = Format.plainText(book.media.metadata.seriesName), !name.isEmpty else { continue }
+            counts[name, default: 0] += 1
+        }
+        return counts
+            .map { SeriesGroup(name: $0.key, count: $0.value) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    @ViewBuilder
+    private var seriesSection: some View {
+        let groups = seriesGroups
+        if groups.isEmpty {
+            EmptyStateView(
+                icon: "square.stack",
+                title: "Keine Serien",
+                message: "Die Bibliothek enthält keine Buchserien."
+            )
+            .padding(.top, 30)
+        } else if layout == "list" {
+            VStack(spacing: 0) {
+                ForEach(Array(groups.enumerated()), id: \.element.id) { offset, group in
+                    NavigationLink(value: LibraryRoute.audioSeries(group.name)) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.stack")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 44, height: 44)
+                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                            Text(group.name)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+
+                            Spacer(minLength: 8)
+
+                            Text("\(group.count) Bände")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.muted.opacity(0.7))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if offset < groups.count - 1 {
+                        Divider().overlay(Theme.hairline).padding(.leading, 76)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 14)], spacing: 16) {
+                ForEach(groups) { group in
+                    NavigationLink(value: LibraryRoute.audioSeries(group.name)) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Image(systemName: "square.stack")
+                                .font(.system(size: 18))
+                                .foregroundStyle(Theme.accent)
+                            Text(group.name)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(2)
+                            Text("\(group.count) Bände")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.artworkRadius, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+    }
+
+    // MARK: Autoren
+
+    private struct AuthorEntry: Identifiable {
+        let name: String
+        let imageURL: URL?
+        var id: String { name }
+    }
+
+    private var authorEntries: [AuthorEntry] {
+        if !app.absAuthors.isEmpty {
+            return app.absAuthors.map {
+                AuthorEntry(name: $0.name, imageURL: app.authorImageURL($0))
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+
+        var seen = Set<String>()
+        return app.absBooks
+            .compactMap { book -> AuthorEntry? in
+                guard let name = book.media.metadata.resolvedAuthor, !name.isEmpty,
+                      seen.insert(name).inserted else { return nil }
+                return AuthorEntry(name: name, imageURL: app.absCoverURL(book, width: 300))
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    @ViewBuilder
+    private var authorsSection: some View {
+        let entries = authorEntries
+        if entries.isEmpty {
+            EmptyStateView(
+                icon: "person",
+                title: "Keine Autoren",
+                message: "Die Bibliothek enthält keine Autorenangaben."
+            )
+            .padding(.top, 30)
+        } else if layout == "list" {
+            VStack(spacing: 0) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { offset, entry in
+                    NavigationLink(value: LibraryRoute.audioAuthor(entry.name)) {
+                        HStack(spacing: 12) {
+                            PersonAvatar(url: entry.imageURL, size: 44)
+
+                            Text(entry.name)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+
+                            Spacer(minLength: 8)
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.muted.opacity(0.7))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if offset < entries.count - 1 {
+                        Divider().overlay(Theme.hairline).padding(.leading, 76)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 16)], spacing: 20) {
+                ForEach(entries) { entry in
+                    NavigationLink(value: LibraryRoute.audioAuthor(entry.name)) {
+                        VStack(spacing: 8) {
+                            PersonAvatar(url: entry.imageURL, size: 92)
+                            Text(entry.name)
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
     }
 
@@ -441,13 +633,6 @@ struct HörbücherCategoryView: View {
             }
             .padding(.horizontal, 20)
         }
-    }
-
-    private var sortedBooks: [AbsBook] {
-        let books = app.absBooks
-        return sortRaw == "title"
-            ? books.sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
-            : books
     }
 
     @ViewBuilder

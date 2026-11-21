@@ -21,6 +21,7 @@ final class AppModel {
 
     // Audiobook library cache
     private(set) var absBooks: [AbsBook] = []
+    private(set) var absAuthors: [AudiobookshelfClient.Author] = []
     private(set) var absProgress: [String: AbsProgress] = [:]
     private(set) var absLoading = false
     var absError: String?
@@ -1032,16 +1033,25 @@ final class AppModel {
             let libraries = try await abs.libraries()
             let selected = Set(absLibraryIDs(for: .audiobooks))
             var items: [AbsBook] = []
+            var authors: [AudiobookshelfClient.Author] = []
             for library in libraries where library.mediaType == "book"
                 && (selected.isEmpty || selected.contains(library.id)) {
                 if let page = try? await abs.books(libraryID: library.id, page: 0, limit: 150) {
                     items.append(contentsOf: page)
+                }
+                if let page = try? await abs.authors(libraryID: library.id) {
+                    authors.append(contentsOf: page)
                 }
             }
             var seen = Set<String>()
             absBooks = items
                 .filter { seen.insert($0.id).inserted }
                 .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+
+            var seenAuthors = Set<String>()
+            absAuthors = authors
+                .filter { seenAuthors.insert($0.id).inserted }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
             let progress = (try? await abs.progress()) ?? []
             absProgress = Dictionary(
@@ -1323,6 +1333,10 @@ final class AppModel {
         let id = absBooks.first { $0.media.metadata.resolvedAuthor == name }?.media.metadata.authorID
         guard let id, !id.isEmpty, let author = try? await abs.author(id: id) else { return nil }
         return Format.plainText(author.description)
+    }
+
+    func authorImageURL(_ author: AudiobookshelfClient.Author) -> URL? {
+        abs?.authorImageURL(id: author.id)
     }
 
     func absCoverURL(_ book: AbsBook, width: Int = 300) -> URL? {
