@@ -576,6 +576,11 @@ struct AudiobookshelfClient: Sendable {
     }
 
     func author(id: String) async throws -> Author {
+        // Servers return either the bare author or an { author: … } envelope.
+        if let direct = try? await request("api/authors/\(id)") as Author,
+           !direct.name.isEmpty || direct.description != nil {
+            return direct
+        }
         let response: AuthorResponse = try await request("api/authors/\(id)")
         if let author = response.author { return author }
         return Author(id: id, name: "", description: nil)

@@ -1329,10 +1329,17 @@ final class AppModel {
 
     /// Biography for an author, fetched once from Audiobookshelf.
     func authorBio(name: String) async -> String? {
+        if let local = absAuthorDescription(name) { return local }
         guard let abs else { return nil }
         let id = absBooks.first { $0.media.metadata.resolvedAuthor == name }?.media.metadata.authorID
+            ?? absAuthors.first { $0.name == name }?.id
         guard let id, !id.isEmpty, let author = try? await abs.author(id: id) else { return nil }
         return Format.plainText(author.description)
+    }
+
+    /// Description that came with the author list, without another request.
+    func absAuthorDescription(_ name: String) -> String? {
+        Format.plainText(absAuthors.first { $0.name == name }?.description)
     }
 
     func authorImageURL(_ author: AudiobookshelfClient.Author) -> URL? {

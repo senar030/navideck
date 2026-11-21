@@ -610,6 +610,9 @@ struct AudiobookAuthorView: View {
         .task {
             await app.loadAudiobooks()
             if bio == nil {
+                bio = app.absAuthorDescription(name)
+            }
+            if bio == nil {
                 loadingBio = true
                 bio = await app.authorBio(name: name)
                 loadingBio = false
