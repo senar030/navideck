@@ -11,8 +11,8 @@ struct MiniPlayerBar: View {
     var body: some View {
         if let song = app.player.current {
             HStack(spacing: 8) {
-                CoverArtView(url: app.artworkURL(song.coverArt, size: 160))
-                    .frame(width: 38, height: 38)
+                CoverArtView(url: app.artworkURL(song.coverArt, size: 160), radius: 8)
+                    .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(song.title)
@@ -38,9 +38,9 @@ struct MiniPlayerBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(app.player.isPlaying ? "Pause" : "Abspielen")
             }
-            .padding(.leading, 7)
-            .padding(.trailing, 5)
-            .padding(.vertical, 7)
+            .padding(.leading, 10)
+            .padding(.trailing, 6)
+            .padding(.vertical, 8)
             .navideckGlass(Capsule())
             .clipShape(Capsule())
             .contentShape(Capsule())

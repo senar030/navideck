@@ -292,11 +292,12 @@ struct AbsMedia: Decodable, Hashable, Sendable {
     var tracks: [AbsTrack]
     var audioFiles: [AbsAudioFile]
     var episodes: [AbsEpisode]
+    var coverPath: String?
     var numTracks: Int?
     var numEpisodes: Int?
 
     enum CodingKeys: String, CodingKey {
-        case metadata, duration, chapters, tracks, audioFiles, episodes, numTracks, numEpisodes
+        case metadata, duration, chapters, tracks, audioFiles, episodes, coverPath, numTracks, numEpisodes
     }
 
     init(from decoder: Decoder) throws {
@@ -307,6 +308,7 @@ struct AbsMedia: Decodable, Hashable, Sendable {
         tracks = (try? c.decodeIfPresent([AbsTrack].self, forKey: .tracks)) ?? []
         audioFiles = (try? c.decodeIfPresent([AbsAudioFile].self, forKey: .audioFiles)) ?? []
         episodes = (try? c.decodeIfPresent([AbsEpisode].self, forKey: .episodes)) ?? []
+        coverPath = try? c.decodeIfPresent(String.self, forKey: .coverPath)
         numTracks = try? c.decodeIfPresent(Int.self, forKey: .numTracks)
         numEpisodes = try? c.decodeIfPresent(Int.self, forKey: .numEpisodes)
     }

@@ -1310,7 +1310,7 @@ final class AppModel {
             album: show.media.metadata.title,
             artist: show.media.metadata.resolvedAuthor,
             duration: episode.duration.map { Int($0.rounded()) },
-            coverArt: "abs:\(show.id)"
+            coverArt: absHasCover(show) ? "abs:\(show.id)" : nil
         )
         markEpisodePlayed(episode, show: show, songID: songID)
         player.play([song])
@@ -1339,8 +1339,16 @@ final class AppModel {
         abs?.authorImageURL(id: author.id)
     }
 
+    /// Only books that actually have artwork on the server get a cover URL;
+    /// otherwise nil so the generated title cover is used.
     func absCoverURL(_ book: AbsBook, width: Int = 300) -> URL? {
-        abs?.coverURL(itemID: book.id, width: width)
+        guard let path = book.media.coverPath, !path.isEmpty else { return nil }
+        return abs?.coverURL(itemID: book.id, width: width)
+    }
+
+    func absHasCover(_ book: AbsBook) -> Bool {
+        guard let path = book.media.coverPath else { return false }
+        return !path.isEmpty
     }
 
     func audiobookProgress(_ book: AbsBook) -> Double {
@@ -1428,7 +1436,7 @@ final class AppModel {
                 artist: book.media.metadata.resolvedAuthor,
                 duration: Int(track.duration.rounded()),
                 track: index + 1,
-                coverArt: "abs:\(book.id)"
+                coverArt: absHasCover(book) ? "abs:\(book.id)" : nil
             )
             absTrackURLs[song.id] = url
             absTrackAssets[song.id] = abs.playerAsset(contentUrl: contentUrl)
@@ -1531,7 +1539,7 @@ final class AppModel {
                     artist: full.media.metadata.resolvedAuthor,
                     duration: Int(track.duration.rounded()),
                     track: index + 1,
-                    coverArt: "abs:\(full.id)"
+                    coverArt: absHasCover(full) ? "abs:\(full.id)" : nil
                 )
                 songs.append(song)
                 requests.append((song, abs.authorizedRequest(url)))
@@ -1572,7 +1580,7 @@ final class AppModel {
             album: show.media.metadata.title,
             artist: show.media.metadata.resolvedAuthor,
             duration: episode.duration.map { Int($0.rounded()) },
-            coverArt: "abs:\(show.id)"
+            coverArt: absHasCover(show) ? "abs:\(show.id)" : nil
         )
         var coverRequest: URLRequest?
         if let cover = abs.coverURL(itemID: show.id, width: 700) {

@@ -55,6 +55,12 @@ struct BookCoverView: View {
                     // Only books without artwork get the generated cover.
                     GeneratedBookCover(title: title ?? "", author: author)
                 }
+
+                if url != nil {
+                    // Backdrop for portrait art: gradient without text.
+                    GeneratedBookCover(title: "", author: nil)
+                        .zIndex(-1)
+                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
