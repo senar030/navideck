@@ -47,8 +47,11 @@ struct BookCoverView: View {
                     CachedImage(url: url, maxPixel: maxPixel)
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
-                        .blur(radius: 26)
-                        .opacity(0.55)
+                        .blur(radius: 30)
+                        .brightness(-0.15)
+                        .opacity(0.95)
+
+                    Color.black.opacity(0.18)
 
                     CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
                 } else {
@@ -56,11 +59,6 @@ struct BookCoverView: View {
                     GeneratedBookCover(title: title ?? "", author: author)
                 }
 
-                if url != nil {
-                    // Backdrop for portrait art: gradient without text.
-                    GeneratedBookCover(title: "", author: nil)
-                        .zIndex(-1)
-                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
