@@ -112,7 +112,7 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         }
         guard let legacy = Format.plainText(seriesName), !legacy.isEmpty else { return nil }
         let cleaned = legacy.replacingOccurrences(
-            of: "\\s*#\\s*\\d+\\s*$",
+            of: "\\s*#\\s*\\d+(?:[.,]\\d+)?\\s*$",
             with: "",
             options: .regularExpression
         )
@@ -123,7 +123,17 @@ struct AbsMetadata: Decodable, Hashable, Sendable {
         if let first = series.first, let sequence = first.sequence, !sequence.isEmpty {
             return sequence
         }
-        return seriesSequence
+        if let sequence = seriesSequence, !sequence.isEmpty {
+            return sequence
+        }
+        // Libraries that only fill `seriesName` append the volume as "#3".
+        guard let legacy = seriesName else { return nil }
+        guard let range = legacy.range(of: "#\\s*\\d+(?:[.,]\\d+)?\\s*$", options: .regularExpression) else {
+            return nil
+        }
+        return legacy[range]
+            .replacingOccurrences(of: "#", with: "")
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 

@@ -255,9 +255,17 @@ struct AudiobookCollectionView: View {
             return app.absBooks
                 .filter { $0.media.metadata.seriesTitle == name }
                 .sorted { left, right in
-                    let leftSequence = Int(left.media.metadata.seriesVolume ?? "") ?? Int.max
-                    let rightSequence = Int(right.media.metadata.seriesVolume ?? "") ?? Int.max
-                    if leftSequence != rightSequence { return leftSequence < rightSequence }
+                    // Chronological by volume; books without a number go last.
+                    switch (volumeNumber(left), volumeNumber(right)) {
+                    case let (l?, r?):
+                        if l != r { return l < r }
+                    case (nil, _?):
+                        return false
+                    case (_?, nil):
+                        return true
+                    default:
+                        break
+                    }
                     return left.media.metadata.title.localizedCaseInsensitiveCompare(right.media.metadata.title) == .orderedAscending
                 }
         case .author(let name):
@@ -267,16 +275,33 @@ struct AudiobookCollectionView: View {
         }
     }
 
+    /// Volume numbers can be "1", "01" or "1.5". Anything unparsable sorts last.
+    private func volumeNumber(_ book: AbsBook) -> Double? {
+        guard let raw = book.media.metadata.seriesVolume?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        let cleaned = raw.replacingOccurrences(of: ",", with: ".")
+        if let value = Double(cleaned) { return value }
+        let numeric = cleaned.prefix { $0.isNumber || $0 == "." }
+        return Double(numeric)
+    }
+
+    private func volumeLabel(_ book: AbsBook) -> String? {
+        guard let raw = book.media.metadata.seriesVolume?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        return "Band \(raw)"
+    }
+
+    /// The title stays the primary label, even after a full item load adds
+    /// series metadata.
+    private func displayTitle(_ book: AbsBook) -> String {
+        let title = book.media.metadata.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !title.isEmpty { return title }
+        return volumeLabel(book) ?? "Unbekannter Titel"
+    }
+
     private var isSeries: Bool {
         if case .series = filter { return true }
         return false
-    }
-
-    private func sequenceTitle(_ book: AbsBook) -> String {
-        if let sequence = book.media.metadata.seriesVolume, !sequence.isEmpty {
-            return "Band \(sequence)"
-        }
-        return book.media.metadata.title
     }
 
     var body: some View {
@@ -295,14 +320,20 @@ struct AudiobookCollectionView: View {
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
 
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(sequenceTitle(book))
+                                    Text(displayTitle(book))
                                         .font(.body.weight(.medium))
                                         .foregroundStyle(Theme.text)
-                                        .lineLimit(1)
-                                    Text(book.media.metadata.title)
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.muted)
-                                        .lineLimit(1)
+                                        .lineLimit(2)
+
+                                    let details = [volumeLabel(book), book.media.metadata.resolvedAuthor]
+                                        .compactMap { $0 }
+                                        .filter { !$0.isEmpty }
+                                    if !details.isEmpty {
+                                        Text(details.joined(separator: " · "))
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.muted)
+                                            .lineLimit(1)
+                                    }
                                 }
 
                                 Spacer()

@@ -179,6 +179,16 @@ struct MainTabs: View {
             }
             return
         }
+        if raw == "series" {
+            Task {
+                await app.loadAudiobooks()
+                if let name = app.absBooks.compactMap({ $0.media.metadata.seriesTitle }).first {
+                    selection = 3
+                    paths[3].append(LibraryRoute.audioSeries(name))
+                }
+            }
+            return
+        }
         if raw == "mix" {
             Task {
                 await app.startInstantMix()
