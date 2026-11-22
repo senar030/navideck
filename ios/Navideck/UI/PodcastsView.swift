@@ -135,6 +135,11 @@ struct PodcastsView: View {
             HStack(spacing: 12) {
                 CoverArtView(url: app.artworkURL(item.episode.coverArt ?? item.channel.coverArt, size: 160))
                     .frame(width: 52, height: 52)
+                    .overlay(alignment: .bottomTrailing) {
+                        if app.isDownloaded(item.episode) {
+                            DownloadBadge()
+                        }
+                    }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.episode.title)
@@ -179,6 +184,11 @@ struct PodcastsView: View {
                 HStack(spacing: 12) {
                     CoverArtView(url: app.artworkURL(episode.coverArt, size: 160))
                         .frame(width: 52, height: 52)
+                        .overlay(alignment: .bottomTrailing) {
+                            if app.isDownloaded(episode) {
+                                DownloadBadge()
+                            }
+                        }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(episode.title)
@@ -205,6 +215,11 @@ struct PodcastsView: View {
         HStack(spacing: 12) {
             CoverArtView(url: channelImage(channel), maxPixel: 700)
                 .frame(width: 52, height: 52)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.isPodcastDownloaded(title: channel.title) {
+                        DownloadBadge()
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(channel.title)
@@ -530,6 +545,11 @@ struct PodcastChannelView: View {
         VStack(spacing: 12) {
             CoverArtView(url: channel.imageURL ?? app.artworkURL(channel.coverArt))
                 .frame(width: 170, height: 170)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.isPodcastDownloaded(title: channel.title) {
+                        DownloadBadge()
+                    }
+                }
 
             VStack(spacing: 4) {
                 Text(channel.title)

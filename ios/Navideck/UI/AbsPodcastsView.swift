@@ -47,6 +47,11 @@ struct AbsPodcastsView: View {
         HStack(spacing: 12) {
             CoverArtView(url: app.absCoverURL(show, width: 200))
                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.isPodcastDownloaded(title: show.media.metadata.title) {
+                        DownloadBadge()
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(show.media.metadata.title)
@@ -139,6 +144,11 @@ struct AbsPodcastShowView: View {
         HStack(spacing: 14) {
             CoverArtView(url: app.absCoverURL(show, width: 400))
                 .frame(width: 96, height: 96)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.isPodcastDownloaded(title: show.media.metadata.title) {
+                        DownloadBadge()
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(show.media.metadata.title)

@@ -242,6 +242,11 @@ struct PlaylistDetailView: View {
         VStack(spacing: 12) {
             CoverArtView(url: app.artworkURL(playlist.coverArt, size: 700), maxPixel: 1000)
                 .frame(width: 200, height: 200)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.downloads.item(kind: .playlist, sourceID: playlist.id) != nil {
+                        DownloadBadge()
+                    }
+                }
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
 
             VStack(spacing: 4) {

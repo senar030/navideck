@@ -318,6 +318,11 @@ struct HomeView: View {
                                         CoverArtView(url: app.absCoverURL(show, width: 300))
                                             .aspectRatio(1, contentMode: .fit)
                                             .frame(width: Theme.cardWidth)
+                                            .overlay(alignment: .bottomTrailing) {
+                                                if app.isPodcastDownloaded(title: show.media.metadata.title) {
+                                                    DownloadBadge()
+                                                }
+                                            }
                                         Text(show.media.metadata.title)
                                             .font(.body.weight(.semibold))
                                             .foregroundStyle(Theme.text)

@@ -1705,14 +1705,32 @@ final class AppModel {
         set { prefs.offlineMode = newValue }
     }
 
+    /// Downloads that belong to the music library. Audiobooks and podcasts
+    /// have their own categories and must not show up in album rows.
+    private var musicDownloads: [DownloadItem] {
+        downloads.items.filter {
+            $0.kind == .album || $0.kind == .song || $0.kind == .playlist || $0.kind == .artist
+        }
+    }
+
+    /// True when at least one episode of this podcast/show is on the device.
+    func isPodcastDownloaded(title: String) -> Bool {
+        guard !title.isEmpty else { return false }
+        return downloads.items.contains { item in
+            guard item.kind == .podcast else { return false }
+            return item.subtitle == title || item.songs.contains {
+                $0.album == title || $0.artist == title
+            }
+        }
+    }
+
     /// Albums that exist on the device, rebuilt from the downloaded songs so
     /// they can be opened without a server.
     var downloadedAlbums: [Album] {
-        print("NAVIDECK-DEBUG albums items=\(downloads.items.count)")
         var order: [String] = []
         var albums: [String: Album] = [:]
 
-        for item in downloads.items {
+        for item in musicDownloads {
             for song in item.songs {
                 let id = song.albumId ?? song.album ?? item.sourceID
                 if albums[id] == nil {
@@ -1729,7 +1747,6 @@ final class AppModel {
             }
         }
 
-        print("NAVIDECK-DEBUG albums result=\(order.count)")
         return order.compactMap { id in
             guard var album = albums[id] else { return nil }
             album.songCount = album.songs.count
@@ -1759,7 +1776,7 @@ final class AppModel {
             if let albumID { albumIDs[key]?.insert(albumID) }
         }
 
-        for item in downloads.items {
+        for item in musicDownloads {
             if item.kind == .artist {
                 add(id: item.sourceID, name: item.title, coverArt: item.coverArt, albumID: nil)
             }
@@ -1812,7 +1829,7 @@ final class AppModel {
     var downloadedSongs: [Song] {
         var seen = Set<String>()
         var result: [Song] = []
-        for item in downloads.items {
+        for item in musicDownloads {
             for song in item.songs where seen.insert(song.id).inserted {
                 result.append(song)
             }

@@ -12,20 +12,52 @@ struct CoverArtView: View {
     var maxPixel: Int = 600
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Theme.surfaceHigh, Theme.surface],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-           )
-            Image(systemName: "music.note")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(Theme.muted.opacity(0.45))
+        GeometryReader { proxy in
+            ZStack {
+                if url != nil {
+                    // Square frame by design: wide or tall artwork keeps its
+                    // full painting and the sides are filled with a blurred
+                    // copy of the same image, exactly like book covers.
+                    CachedImage(url: url, contentMode: .fill, maxPixel: min(200, maxPixel))
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                        .blur(radius: 20)
+                        .brightness(-0.12)
+                        .opacity(0.92)
 
-            CachedImage(url: url, maxPixel: maxPixel)
+                    Color.black.opacity(0.16)
+
+                    CachedImage(url: url, contentMode: .fit, maxPixel: maxPixel)
+                } else {
+                    LinearGradient(
+                        colors: [Theme.surfaceHigh, Theme.surface],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                   )
+                    Image(systemName: "music.note")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(Theme.muted.opacity(0.45))
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
+        .aspectRatio(1, contentMode: .fit)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .contentShape(Rectangle())
+    }
+}
+
+/// Small badge for artwork whose content exists on the device.
+struct DownloadBadge: View {
+    var body: some View {
+        Image(systemName: "arrow.down.circle.fill")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Theme.text)
+            .padding(5)
+            .background(Theme.background.opacity(0.75), in: Circle())
+            .padding(6)
+            .accessibilityLabel("Heruntergeladen")
     }
 }
 
@@ -393,15 +425,9 @@ struct AlbumCard: View {
         NavigationLink(value: LibraryRoute.album(album)) {
             VStack(alignment: .leading, spacing: 6) {
                 CoverArtView(url: app.artworkURL(album.coverArt))
-                    .aspectRatio(1, contentMode: .fit)
                     .overlay(alignment: .bottomTrailing) {
                         if app.downloads.item(kind: .album, sourceID: album.id) != nil {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(Theme.text)
-                                .padding(6)
-                                .background(Theme.background.opacity(0.7))
-                                .padding(6)
+                            DownloadBadge()
                         }
                     }
 
@@ -523,6 +549,11 @@ struct PlaylistRow: View {
             HStack(spacing: 12) {
                 CoverArtView(url: app.artworkURL(playlist.coverArt, size: 200))
                     .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                    .overlay(alignment: .bottomTrailing) {
+                        if app.downloads.item(kind: .playlist, sourceID: playlist.id) != nil {
+                            DownloadBadge()
+                        }
+                    }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(playlist.name)

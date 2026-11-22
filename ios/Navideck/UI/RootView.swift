@@ -179,6 +179,14 @@ struct MainTabs: View {
             }
             return
         }
+        if raw == "genre" {
+            Task {
+                guard let client = app.client,
+                      let first = try? await client.genres().first else { return }
+                paths[selection].append(LibraryRoute.genre(first))
+            }
+            return
+        }
         if raw == "series" {
             Task {
                 await app.loadAudiobooks()

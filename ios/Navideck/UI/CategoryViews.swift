@@ -198,6 +198,13 @@ struct HörbücherCategoryView: View {
         GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 16, alignment: .top)
     ]
 
+    /// Books available right now: the whole library online, only downloaded
+    /// books when the offline filter is on.
+    private var libraryBooks: [AbsBook] {
+        guard app.offlineMode else { return app.absBooks }
+        return app.absBooks.filter { app.isAudiobookDownloaded($0) }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             CategoryBand(items: items, selection: $section)
@@ -212,7 +219,12 @@ struct HörbücherCategoryView: View {
                        )
                         .padding(.top, 30)
                     } else {
-                        offlineDownloads
+                        switch section {
+                        case 2: seriesSection
+                        case 3: authorsSection
+                        case 4: grid(newestBooks)
+                        default: offlineDownloads
+                        }
                     }
                 } else if !app.audiobooksAvailable {
                     EmptyStateView(
@@ -292,7 +304,7 @@ struct HörbücherCategoryView: View {
     // MARK: Bücher
 
     private var newestBooks: [AbsBook] {
-        app.absBooks.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+        libraryBooks.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
     }
 
     private var sortedBooks: [AbsBook] {
@@ -300,14 +312,14 @@ struct HörbücherCategoryView: View {
         case "added":
             return newestBooks
         case "author":
-            return app.absBooks.sorted {
+            return libraryBooks.sorted {
                 let left = $0.media.metadata.resolvedAuthor ?? ""
                 let right = $1.media.metadata.resolvedAuthor ?? ""
                 if left != right { return left.localizedCaseInsensitiveCompare(right) == .orderedAscending }
                 return $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
             }
         default:
-            return app.absBooks.sorted {
+            return libraryBooks.sorted {
                 $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending
             }
         }
@@ -323,7 +335,7 @@ struct HörbücherCategoryView: View {
 
     private var seriesGroups: [SeriesGroup] {
         var counts: [String: Int] = [:]
-        for book in app.absBooks {
+        for book in libraryBooks {
             guard let name = book.media.metadata.seriesTitle, !name.isEmpty else { continue }
             counts[name, default: 0] += 1
         }
@@ -338,8 +350,10 @@ struct HörbücherCategoryView: View {
         if groups.isEmpty {
             EmptyStateView(
                 icon: "square.stack",
-                title: "Keine Serien",
-                message: "Die Bibliothek enthält keine Buchserien."
+                title: app.offlineMode ? "Keine Serien offline" : "Keine Serien",
+                message: app.offlineMode
+                    ? "Unter den heruntergeladenen Hörbüchern ist keine Serie."
+                    : "Die Bibliothek enthält keine Buchserien."
             )
             .padding(.top, 30)
         } else if layout == "list" {
@@ -424,7 +438,7 @@ struct HörbücherCategoryView: View {
         }
 
         var seen = Set<String>()
-        return app.absBooks
+        return libraryBooks
             .compactMap { book -> AuthorEntry? in
                 guard let name = book.media.metadata.resolvedAuthor, !name.isEmpty,
                       seen.insert(name).inserted else { return nil }
@@ -439,8 +453,10 @@ struct HörbücherCategoryView: View {
         if entries.isEmpty {
             EmptyStateView(
                 icon: "person",
-                title: "Keine Autoren",
-                message: "Die Bibliothek enthält keine Autorenangaben."
+                title: app.offlineMode ? "Keine Autoren offline" : "Keine Autoren",
+                message: app.offlineMode
+                    ? "Unter den heruntergeladenen Hörbüchern ist kein Autor hinterlegt."
+                    : "Die Bibliothek enthält keine Autorenangaben."
             )
             .padding(.top, 30)
         } else if layout == "list" {
@@ -559,7 +575,7 @@ struct HörbücherCategoryView: View {
                         }
                     }
                 case "newest":
-                    let books = Array(app.absBooks.prefix(12))
+                    let books = Array(libraryBooks.prefix(12))
                     if !books.isEmpty {
                         WidgetSection(title: entry.title, icon: entry.icon) {
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -597,7 +613,7 @@ struct HörbücherCategoryView: View {
 
     private var authorNames: [String] {
         var seen = Set<String>()
-        return app.absBooks
+        return libraryBooks
             .compactMap { $0.media.metadata.resolvedAuthor }
             .filter { !$0.isEmpty && seen.insert($0).inserted }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
@@ -692,9 +708,9 @@ struct HörbücherCategoryView: View {
 
     private func unique(_ key: KeyPath<AbsMetadata, String?>) -> [String] {
         var seen = Set<String>()
-        return app.absBooks
+        return libraryBooks
             .compactMap { Format.plainText($0.media.metadata[keyPath: key]) }
-            .filter { $0 != app.absBooks.first?.media.metadata.title }
+            .filter { $0 != libraryBooks.first?.media.metadata.title }
             .filter { !$0.isEmpty && seen.insert($0).inserted }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
@@ -1147,6 +1163,11 @@ struct PodcastCategoryView: View {
                             CoverArtView(url: app.artworkURL(channel.coverArt, size: 300))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: Theme.cardWidth)
+                                .overlay(alignment: .bottomTrailing) {
+                                    if app.isPodcastDownloaded(title: channel.title) {
+                                        DownloadBadge()
+                                    }
+                                }
                             Text(channel.title)
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(Theme.text)
@@ -1175,6 +1196,11 @@ struct PodcastCategoryView: View {
                             CoverArtView(url: app.absCoverURL(show, width: 300))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: Theme.cardWidth)
+                                .overlay(alignment: .bottomTrailing) {
+                                    if app.isPodcastDownloaded(title: show.media.metadata.title) {
+                                        DownloadBadge()
+                                    }
+                                }
                             Text(show.media.metadata.title)
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(Theme.text)

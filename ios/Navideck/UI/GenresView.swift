@@ -151,6 +151,7 @@ struct GenresView: View {
 
 struct GenreDetailView: View {
     private enum Mode: String, CaseIterable {
+        case artists = "Künstler"
         case albums = "Alben"
         case songs = "Titel"
     }
@@ -160,6 +161,16 @@ struct GenreDetailView: View {
 
     @State private var mode: Mode = .albums
     @State private var albums: [Album] = []
+
+    init(genre: Genre) {
+        self.genre = genre
+        #if DEBUG
+        if let raw = ProcessInfo.processInfo.environment["NAVIDECK_DEMO_GENRE_MODE"],
+           let mode = Mode(rawValue: raw) {
+            _mode = State(initialValue: mode)
+        }
+        #endif
+    }
     @State private var songs: [Song] = []
     @State private var albumsDone = false
     @State private var songsDone = false
@@ -182,6 +193,8 @@ struct GenreDetailView: View {
                 }
 
                 switch mode {
+                case .artists:
+                    artistContent
                 case .albums:
                     albumContent
                 case .songs:
@@ -195,13 +208,110 @@ struct GenreDetailView: View {
         .task { await loadInitial() }
         .onChange(of: mode) { _, newValue in
             Task {
-                if newValue == .albums && albums.isEmpty {
+                if newValue == .artists && albums.isEmpty {
+                    await loadAlbums()
+                } else if newValue == .albums && albums.isEmpty {
                     await loadAlbums()
                 } else if newValue == .songs && songs.isEmpty {
                     await loadSongs()
                 }
             }
         }
+    }
+
+    // MARK: - Künstler
+
+    private struct GenreArtist: Identifiable, Hashable {
+        let id: String
+        let name: String
+        let coverArt: String?
+        let albumCount: Int
+    }
+
+    /// Artists that appear on the genre's albums, built from the loaded pages.
+    private var genreArtists: [GenreArtist] {
+        var order: [String] = []
+        var map: [String: (name: String, coverArt: String?, count: Int)] = [:]
+
+        for album in albums {
+            let artistID = album.artistId
+                ?? album.songs.first(where: { ($0.artistId ?? "").isEmpty == false })?.artistId
+            guard let artistID, !artistID.isEmpty, let name = album.artist, !name.isEmpty else { continue }
+            if map[artistID] == nil {
+                order.append(artistID)
+                map[artistID] = (name, album.coverArt, 0)
+            }
+            map[artistID]?.count += 1
+            if map[artistID]?.coverArt == nil { map[artistID]?.coverArt = album.coverArt }
+        }
+
+        return order.compactMap { id in
+            guard let entry = map[id] else { return nil }
+            return GenreArtist(id: id, name: entry.name, coverArt: entry.coverArt, albumCount: entry.count)
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var artistContent: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(genreArtists.enumerated()), id: \.element.id) { offset, entry in
+                NavigationLink(
+                    value: LibraryRoute.artist(
+                        Artist(
+                            id: entry.id,
+                            name: entry.name,
+                            albumCount: entry.albumCount,
+                            coverArt: entry.coverArt
+                        )
+                    )
+                ) {
+                    HStack(spacing: 12) {
+                        PersonAvatar(url: app.artworkURL(entry.coverArt, size: 240), size: Theme.rowArtwork)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(entry.name)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                            Text("\(entry.albumCount) \(entry.albumCount == 1 ? "Album" : "Alben")")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.muted.opacity(0.7))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if offset < genreArtists.count - 1 {
+                    Divider().overlay(Theme.hairline).padding(.leading, 76)
+                }
+            }
+
+            if genreArtists.isEmpty && !loading {
+                EmptyStateView(
+                    icon: "person",
+                    title: "Keine Künstler",
+                    message: app.offlineMode
+                        ? "Unter den heruntergeladenen Alben dieses Genres ist kein Interpret hinterlegt."
+                        : "Für dieses Genre wurden keine Interpreten gefunden."
+                )
+                .padding(.top, 20)
+            }
+
+            loadMoreButton(visible: !albumsDone) {
+                Task { await loadAlbums() }
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     private var albumContent: some View {

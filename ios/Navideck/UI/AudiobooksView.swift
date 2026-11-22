@@ -201,6 +201,11 @@ struct AudiobookCard: View {
                     author: book.media.metadata.resolvedAuthor
                 )
                 .frame(maxWidth: width)
+                .overlay(alignment: .bottomTrailing) {
+                    if app.isAudiobookDownloaded(book) {
+                        DownloadBadge()
+                    }
+                }
 
                 Text(book.media.metadata.title)
                     .font(.body.weight(.semibold))
@@ -249,10 +254,16 @@ struct AudiobookCollectionView: View {
         GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 14, alignment: .top)
     ]
 
+    /// In offline mode only downloaded books may appear.
+    private var sourceBooks: [AbsBook] {
+        guard app.offlineMode else { return app.absBooks }
+        return app.absBooks.filter { app.isAudiobookDownloaded($0) }
+    }
+
     private var books: [AbsBook] {
         switch filter {
         case .series(let name):
-            return app.absBooks
+            return sourceBooks
                 .filter { $0.media.metadata.seriesTitle == name }
                 .sorted { left, right in
                     // Chronological by volume; books without a number go last.
@@ -269,7 +280,7 @@ struct AudiobookCollectionView: View {
                     return left.media.metadata.title.localizedCaseInsensitiveCompare(right.media.metadata.title) == .orderedAscending
                 }
         case .author(let name):
-            return app.absBooks
+            return sourceBooks
                 .filter { $0.media.metadata.resolvedAuthor == name }
                 .sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
         }
@@ -318,6 +329,11 @@ struct AudiobookCollectionView: View {
                                     author: book.media.metadata.resolvedAuthor
                                 )
                                 .frame(width: Theme.rowArtwork, height: Theme.rowArtwork)
+                                .overlay(alignment: .bottomTrailing) {
+                                    if app.isAudiobookDownloaded(book) {
+                                        DownloadBadge()
+                                    }
+                                }
 
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(displayTitle(book))
@@ -435,7 +451,12 @@ struct AudiobookDetailView: View {
                 maxPixel: 1000
             )
             .frame(width: 220, height: 220)
-                .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
+            .overlay(alignment: .bottomTrailing) {
+                if app.isAudiobookDownloaded(book) {
+                    DownloadBadge()
+                }
+            }
+            .shadow(color: .black.opacity(0.4), radius: 22, y: 12)
 
             VStack(spacing: 4) {
                 Text(metadata.title)
@@ -598,7 +619,10 @@ struct AudiobookAuthorView: View {
     ]
 
     private var books: [AbsBook] {
-        app.absBooks
+        let source = app.offlineMode
+            ? app.absBooks.filter { app.isAudiobookDownloaded($0) }
+            : app.absBooks
+        return source
             .filter { $0.media.metadata.resolvedAuthor == name }
             .sorted { $0.media.metadata.title.localizedCaseInsensitiveCompare($1.media.metadata.title) == .orderedAscending }
     }
