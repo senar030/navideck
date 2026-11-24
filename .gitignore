@@ -36,3 +36,6 @@ ios/*.xcodeproj/project.xcworkspace/xcuserdata
 
 # eigenes Apple-Signing-Team (lokal)
 .ios-team
+
+# graphify knowledge graph (lokal generiert, jeder Build schreibt graph.json neu)
+graphify-out/

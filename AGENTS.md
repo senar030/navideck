@@ -21,6 +21,10 @@ platform's idiom, but features, API calls, labels and behaviour stay aligned.
 If a change genuinely cannot be ported yet, say so explicitly in the final
 answer and record it in `ios/README.md` (or the desktop notes).
 
+Cross-platform questions ("where is X implemented on web vs iOS?") go through
+the knowledge graph first: `graphify query "<question>"` — see
+[graphify](#graphify-codebase-knowledge-graph) below.
+
 ## Always publish to GitHub
 
 After every completed change, commit the relevant files and push `main`. The
@@ -77,3 +81,46 @@ release or artifact link in the final answer.
 The Electron wrapper lives in `desktop/` (`main.cjs`, `package.json` with the
 electron-builder config). The web app is built first (`npm run build`), then
 packaged. Linux is an AppImage so it runs on Bazzite without system installation.
+
+## graphify (codebase knowledge graph)
+
+`graphify-out/` holds a local, queryable graph of this repository — web (`src/`),
+desktop (`desktop/`) and iOS (`ios/`) in **one** graph. Code is parsed locally
+with tree-sitter AST (deterministic, no API key, nothing leaves the machine).
+The output is a working artifact and is gitignored: do not commit it.
+
+- Location: `graphify-out/` is a Windows **junction** to
+  `C:\Users\fhain\AppData\Local\graphify\navideck\graphify-out`, so ~6 MB of
+  build output stays out of the Nextcloud folder. Keep the junction; delete its
+  *contents*, never the link, if the graph has to be rebuilt from scratch.
+- Binary: `graphify` (installed with `uv tool install "graphifyy[openai]"` into
+  `C:\Users\fhain\.local\bin`). If a shell cannot find it, prepend
+  `$env:PATH = "C:\Users\fhain\.local\bin;$env:PATH"`.
+- Skill/plugin: `.opencode/skills/graphify/` and `.opencode/plugins/graphify.js`
+  (the plugin reminds the agent once per session; it does not run queries).
+- Community names are hand-curated ("iOS Player Engine", "Web Dashboard
+  Widgets", …). `graphify label` forces a relabel and would throw them away —
+  regenerate with `graphify cluster-only .` (reuses the labels, no LLM) or
+  `graphify update .` (code changes, no LLM). Only run `label` to intentionally
+  rename clusters.
+
+Rules for agents, including OpenCode running DeepSeek V4.1 Flash:
+
+- Graph before grep. For a codebase question, run `graphify query "<question>"`
+  before the first grep/search/read and pass the same rule into every subagent
+  prompt that explores code. Read raw files only for lines the graph or an
+  earlier read already located.
+- `graphify path "A" "B"` for how two things connect, `graphify explain "X"`
+  for one concept (with file + line for every edge), `graphify god-nodes` for
+  architecture, `graphify affected "X"` before touching a shared component.
+- `graphify section "<heading>"` prints one Markdown section, so a doc need not
+  be opened. `graphify-out/GRAPH_REPORT.md` is only for broad architecture
+  review; if `graphify-out/wiki/index.md` exists, use it for navigation.
+- Keep it current after code changes: `graphify update .` (AST only, free).
+  Full rebuild: `graphify extract . --code-only`, or `graphify extract .` when
+  docs/PDFs should be part of the graph — that semantic pass is done by the
+  running session model (DeepSeek V4.1 Flash), no extra API key required.
+- Cluster names are curated — do not relabel (see above). Without a backend a
+  fresh `label` run keeps `Community N` placeholders.
+- Only skip the graph when the task is *about* stale graph output, or the user
+  says not to use it.
